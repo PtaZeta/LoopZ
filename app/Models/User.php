@@ -45,9 +45,12 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+<<<<<<< HEAD
 
     public function canciones()
     {
         return $this->belongsToMany(Cancion::class, 'cancion_user');
     }
+=======
+>>>>>>> main
 }
