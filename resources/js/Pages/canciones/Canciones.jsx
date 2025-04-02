@@ -1,7 +1,15 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 
-export default function CancionsDashboard({ canciones }) {
+export default function Canciones({ canciones }) {
+    const { delete: deleteCancion } = useForm();
+
+    const handleDelete = (id) => {
+        if (confirm('¿Estás seguro de que quieres eliminar esta canción?')) {
+            deleteCancion(route('canciones.destroy', id));
+        }
+    };
+
     return (
         <AuthenticatedLayout
             header={
@@ -14,6 +22,7 @@ export default function CancionsDashboard({ canciones }) {
 
             <div className="py-12">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
+
                     <div className="mb-4 flex justify-end">
                         <Link
                             href={route('canciones.create')}
@@ -46,6 +55,23 @@ export default function CancionsDashboard({ canciones }) {
                                                         Tu navegador no soporta la reproducción de audio.
                                                     </audio>
                                                 )}
+                                            </div>
+
+                                            {/* Botones de Editar y Eliminar */}
+                                            <div className="flex space-x-2">
+                                                <Link
+                                                    href={route('canciones.edit', cancion.id)}
+                                                    className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
+                                                >
+                                                    Editar
+                                                </Link>
+
+                                                <button
+                                                    onClick={() => handleDelete(cancion.id)}
+                                                    className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                                                >
+                                                    Eliminar
+                                                </button>
                                             </div>
                                         </div>
                                     </li>

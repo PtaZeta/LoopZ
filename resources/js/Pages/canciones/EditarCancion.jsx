@@ -1,14 +1,13 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm } from '@inertiajs/react';
 
-export default function CrearCancion() {
-    const { data, setData, post, processing, errors } = useForm({
-        titulo: '',
-        genero: '',
-        duracion: '',
+export default function EditarCancion({ cancion }) {
+    const { data, setData, put, processing, errors } = useForm({
+        titulo: cancion.titulo || '',
+        genero: cancion.genero || '',
         archivo: null,
         foto: null,
-        licencia: ''
+        licencia: cancion.licencia || ''
     });
 
     const submit = (e) => {
@@ -18,9 +17,8 @@ export default function CrearCancion() {
         const formData = new FormData();
         formData.append('titulo', data.titulo);
         formData.append('genero', data.genero);
-        formData.append('duracion', data.duracion);
 
-        // Solo añadimos los archivos si están seleccionados
+        // Solo añadimos los archivos si se han seleccionado nuevos archivos
         if (data.archivo) {
             formData.append('archivo', data.archivo);
         }
@@ -31,16 +29,16 @@ export default function CrearCancion() {
 
         formData.append('licencia', data.licencia);
 
-        // Enviar los datos usando Inertia
-        post(route('canciones.store'), {
+        // Enviar los datos usando Inertia con el método PUT para actualizar
+        put(route('canciones.update', cancion.id), {
             data: formData,
-            forceFormData: true,  // Forzamos el manejo de FormData por Inertia
+            forceFormData: true,
         });
     };
 
     return (
-        <AuthenticatedLayout header={<h2 className="text-xl font-semibold leading-tight text-gray-800">Crear Canción</h2>}>
-            <Head title="Crear Canción" />
+        <AuthenticatedLayout header={<h2 className="text-xl font-semibold leading-tight text-gray-800">Editar Canción</h2>}>
+            <Head title="Editar Canción" />
 
             <div className="py-12">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
@@ -68,18 +66,6 @@ export default function CrearCancion() {
                                     className="w-full p-2 border rounded"
                                 />
                                 {errors.genero && <p className="text-red-500 text-sm">{errors.genero}</p>}
-                            </div>
-
-                            {/* Duración */}
-                            <div className="mb-4">
-                                <label className="block text-gray-700">Duración (segundos)</label>
-                                <input
-                                    type="number"
-                                    value={data.duracion}
-                                    onChange={e => setData('duracion', e.target.value)}
-                                    className="w-full p-2 border rounded"
-                                />
-                                {errors.duracion && <p className="text-red-500 text-sm">{errors.duracion}</p>}
                             </div>
 
                             {/* Archivo de Audio */}
@@ -124,7 +110,7 @@ export default function CrearCancion() {
                                 className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
                                 disabled={processing}
                             >
-                                {processing ? 'Guardando...' : 'Guardar Canción'}
+                                {processing ? 'Guardando...' : 'Actualizar Canción'}
                             </button>
                         </form>
                     </div>
