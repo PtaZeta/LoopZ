@@ -1,38 +1,38 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 
 export default function EditarCancion({ cancion }) {
-    const { data, setData, put, processing, errors } = useForm({
+    const { data, setData, processing, errors } = useForm({
         titulo: cancion.titulo || '',
         genero: cancion.genero || '',
+        licencia: cancion.licencia || '',
         archivo: null,
         foto: null,
-        licencia: cancion.licencia || ''
     });
 
     const submit = (e) => {
         e.preventDefault();
 
-        // Crear un objeto FormData para enviar los datos y archivos
         const formData = new FormData();
         formData.append('titulo', data.titulo);
         formData.append('genero', data.genero);
+        formData.append('licencia', data.licencia);
 
-        // Solo añadimos los archivos si se han seleccionado nuevos archivos
+        // Agregar archivos si se seleccionaron
         if (data.archivo) {
             formData.append('archivo', data.archivo);
         }
-
         if (data.foto) {
             formData.append('foto', data.foto);
         }
 
-        formData.append('licencia', data.licencia);
+        // Agregar _method para que Laravel lo interprete como PUT
+        formData.append('_method', 'PUT');
 
-        // Enviar los datos usando Inertia con el método PUT para actualizar
-        put(route('canciones.update', cancion.id), {
-            data: formData,
+        router.post(route('canciones.update', cancion.id), formData, {
             forceFormData: true,
+            preserveScroll: true,
         });
     };
 

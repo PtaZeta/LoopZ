@@ -18,7 +18,7 @@ class CancionController extends Controller
         $canciones = Cancion::all();
 
         return Inertia::render('canciones/Canciones', [
-            'canciones' => $canciones
+            'canciones' => $canciones,
         ]);
     }
 
@@ -119,59 +119,57 @@ class CancionController extends Controller
     // CancionController.php
 
     public function update(Request $request, Cancion $cancion)
-    {
-        $request->validate([
-            'titulo' => 'required|string|max:255',
-            'genero' => 'nullable|string|max:255',
-            'archivo' => 'nullable|file|mimes:mp3,wav|max:10024',
-            'foto' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
-            'licencia' => 'nullable|string|max:255',
-        ]);
+{
+    $validated = $request->validate([
+        'titulo'   => 'required|string|max:255',
+        'genero'   => 'nullable|string|max:255',
+        'archivo'  => 'nullable|file|mimes:mp3,wav|max:10024',
+        'foto'     => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
+        'licencia' => 'nullable|string|max:255',
+    ]);
+    dd($cancion->toArray());    // Actualizar campos de texto
+    $cancion->titulo   = $request->input('titulo');
+    $cancion->genero   = $request->input('genero');
+    $cancion->licencia = $request->input('licencia');
 
-        // Actualizar la información de la canción
-        $cancion->titulo = $request->input('titulo');
-        $cancion->genero = $request->input('genero');
-        $cancion->licencia = $request->input('licencia');
+    $archivoCancion = $cancion->id . '_song.mp3';
+    $fotoCancion  = $cancion->id . '_pic.jpg';
 
-        // Si se ha subido un nuevo archivo de audio
-        if ($request->hasFile('archivo')) {
-            // Eliminar el archivo anterior si existe
-            if ($cancion->archivo_url) {
-                Storage::delete(str_replace('/storage/', 'public/', $cancion->archivo_url));
-            }
-
-            // Guardar el nuevo archivo
-            $audioFile = $request->file('archivo');
-            $audioNombre = "{$cancion->id}_song." . $audioFile->getClientOriginalExtension();
-            $audioFile->storeAs('canciones', $audioNombre, 'public');
-            $cancion->archivo_url = asset("storage/canciones/{$audioNombre}");
-
-            // Actualizar la duración si el archivo ha cambiado
-            $getID3 = new getID3;
-            $audioInfo = $getID3->analyze($audioFile->getRealPath());
-            $duration = isset($audioInfo['playtime_seconds']) ? round($audioInfo['playtime_seconds']) : 0;
-            $cancion->duracion = $duration;
-        }
-
-        // Si se ha subido una nueva foto
-        if ($request->hasFile('foto')) {
-            // Eliminar la foto anterior si existe
-            if ($cancion->foto_url) {
-                Storage::delete(str_replace('/storage/', 'public/', $cancion->foto_url));
-            }
-
-            // Guardar la nueva foto
-            $fotoFile = $request->file('foto');
-            $fotoNombre = "{$cancion->id}_pic." . $fotoFile->getClientOriginalExtension();
-            $fotoFile->storeAs('imagenes', $fotoNombre, 'public');
-            $cancion->foto_url = asset("storage/imagenes/{$fotoNombre}");
-        }
-
-        // Guardar los cambios
-        $cancion->save();
-
-        return redirect()->route('canciones.index')->with('success', 'Canción actualizada exitosamente.');
+    if ($request->hasFile('archivo_url')) {
+        $archivo = $request->file('archivo_url');
+        $archivo->storeAs('imagenes', $archivoCancion, 'public');
+        $cancion->archivo_url = asset("storage/canciones/{$archivoCancion}");
+    } else {
+        $cancion->archivo_url = $cancion->archivo_url;
     }
+    if ($request->hasFile('foto_url')) {
+        $foto = $request->file('foto_url');
+        $foto->storeAs('imagenes', $fotoCancion, 'public');
+        $cancion->foto_url = asset("storage/imagenes/{$fotoCancion}");
+    } else {
+        $cancion->foto_url = $cancion->foto_url;
+    }
+    // $audioFile = $cancion->archivo;
+    // $tempPath = $audioFile->getRealPath();
+
+    // // Usar getID3 para analizar el archivo y extraer la duración
+    // $getID3 = new getID3;
+    // $audioInfo = $getID3->analyze($tempPath);
+    // // Asegurarse de que se haya detectado la duración
+    // $duration = isset($audioInfo['playtime_seconds']) ? round($audioInfo['playtime_seconds']) : 0;
+    // $cancion->duracion = $duration;
+    $cancion->duracion = 32;
+    $cancion->save();
+
+    return redirect()->route('canciones.index')
+        ->with('success', 'Canción actualizada exitosamente.');
+}
+
+
+
+
+
+
 
 
 
