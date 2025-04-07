@@ -15,12 +15,13 @@ class CancionController extends Controller
      */
     public function index()
     {
+        // Obtiene todas las canciones con su creador (asumiendo que hay una relación 'usuario')
         $canciones = Cancion::all();
-
         return Inertia::render('canciones/Canciones', [
-            'canciones' => $canciones,
+            'canciones' => $canciones
         ]);
     }
+
 
 
     /**
@@ -28,66 +29,66 @@ class CancionController extends Controller
      */
     public function create()
     {
-        return Inertia::render('canciones/CrearCancion');
+        return Inertia::render('canciones/Create');
     }
 
     /**
      * Almacena una nueva canción en la base de datos y guarda los archivos.
      */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'titulo' => 'required|string|max:255',
-            'genero' => 'nullable|string|max:255',
-            'archivo' => 'required|file|mimes:mp3,wav|max:10024',
-            'foto' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
-            'licencia' => 'nullable|string|max:255',
-        ]);
 
-        // Crear la canción sin los archivos aún
-        $cancion = new Cancion();
-        $cancion->titulo = $request->input('titulo');
-        $cancion->genero = $request->input('genero');
-        $cancion->licencia = $request->input('licencia');
+     public function store(Request $request)
+     {
+         $request->validate([
+             'titulo' => 'required|string|max:255',
+             'genero' => 'nullable|string|max:255',
+             'archivo' => 'required|file|mimes:mp3,wav|max:10024',
+             'foto' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
+             'licencia' => 'nullable|string|max:255',
+         ]);
 
-        // Encontrar el último número de canción en la base de datos (sin importar el usuario)
-        $lastCancion = Cancion::latest()->first();
-        $nextNumber = $lastCancion ? (explode('_', basename($lastCancion->archivo_url))[0] + 1) : 1; // Incrementar el número o empezar en 1
+         // Crear la canción sin los archivos aún
+         $cancion = new Cancion();
+         $cancion->titulo = $request->input('titulo');
+         $cancion->genero = $request->input('genero');
+         $cancion->licencia = $request->input('licencia');
 
-        // Generar nombre de archivo para el audio
-        $audioExtension = $request->file('archivo')->getClientOriginalExtension();
-        $audioNombre = "{$nextNumber}_song.$audioExtension";
+         // Generar un número aleatorio único para la canción y la imagen
+         $randomNumber = rand(1, 10000000000);
 
-        // Guardar archivo de audio y obtener su ruta temporal
-        if ($request->hasFile('archivo')) {
-            $audioFile = $request->file('archivo');
-            $tempPath = $audioFile->getRealPath();
+         // Generar nombre de archivo para el audio
+         $audioExtension = $request->file('archivo')->getClientOriginalExtension();
+         $audioNombre = "{$randomNumber}_song.$audioExtension";
 
-            // Usar getID3 para analizar el archivo y extraer la duración
-            $getID3 = new getID3;
-            $audioInfo = $getID3->analyze($tempPath);
-            // Asegurarse de que se haya detectado la duración
-            $duration = isset($audioInfo['playtime_seconds']) ? round($audioInfo['playtime_seconds']) : 0;
-            $cancion->duracion = $duration;
+         // Guardar archivo de audio y obtener su ruta temporal
+         if ($request->hasFile('archivo')) {
+             $audioFile = $request->file('archivo');
+             $tempPath = $audioFile->getRealPath();
 
-            // Guardar el archivo en storage
-            $audioFile->storeAs('canciones', $audioNombre, 'public');
-            $cancion->archivo_url = asset("storage/canciones/{$audioNombre}");
-        }
+             // Usar getID3 para analizar el archivo y extraer la duración
+             $getID3 = new getID3;
+             $audioInfo = $getID3->analyze($tempPath);
+             // Asegurarse de que se haya detectado la duración
+             $duration = isset($audioInfo['playtime_seconds']) ? round($audioInfo['playtime_seconds']) : 0;
+             $cancion->duracion = $duration;
 
-        // Generar nombre para la foto
-        if ($request->hasFile('foto')) {
-            $fotoExtension = $request->file('foto')->getClientOriginalExtension();
-            $fotoNombre = "{$nextNumber}_pic.$fotoExtension";
-            $request->file('foto')->storeAs('imagenes', $fotoNombre, 'public');
-            $cancion->foto_url = asset("storage/imagenes/{$fotoNombre}");
-        }
+             // Guardar el archivo en storage
+             $audioFile->storeAs('canciones', $audioNombre, 'public');
+             $cancion->archivo_url = asset("storage/canciones/{$audioNombre}");
+         }
 
-        // Guardar cambios
-        $cancion->save();
+         // Generar nombre para la foto
+         if ($request->hasFile('foto')) {
+             $fotoExtension = $request->file('foto')->getClientOriginalExtension();
+             $fotoNombre = "{$randomNumber}_pic.$fotoExtension";
+             $request->file('foto')->storeAs('imagenes', $fotoNombre, 'public');
+             $cancion->foto_url = asset("storage/imagenes/{$fotoNombre}");
+         }
 
-        return redirect()->route('canciones.index')->with('success', 'Canción creada exitosamente.');
-    }
+         // Guardar cambios
+         $cancion->save();
+
+         return redirect()->route('canciones.index')->with('success', 'Canción creada exitosamente.');
+     }
 
 
 
@@ -95,9 +96,10 @@ class CancionController extends Controller
     /**
      * Muestra los detalles de una canción específica.
      */
-    public function show(Cancion $cancion)
+    public function show($id)
     {
-        return Inertia::render('MostrarCancion', [
+        $cancion = Cancion::findOrFail($id);
+        return Inertia::render('canciones/Show', [
             'cancion' => $cancion
         ]);
     }
@@ -108,8 +110,9 @@ class CancionController extends Controller
     public function edit($id)
     {
         $cancion = Cancion::findOrFail($id);
-        return Inertia::render('canciones/EditarCancion', [
-            'cancion' => $cancion
+
+        return Inertia::render('canciones/Edit', [
+            'cancion' => $cancion,
         ]);
     }
 
@@ -120,57 +123,61 @@ class CancionController extends Controller
 
     public function update(Request $request, Cancion $cancion)
 {
-    $validated = $request->validate([
-        'titulo'   => 'required|string|max:255',
-        'genero'   => 'nullable|string|max:255',
-        'archivo'  => 'nullable|file|mimes:mp3,wav|max:10024',
-        'foto'     => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
+    $request->validate([
+        'titulo' => 'required|string|max:255',
+        'genero' => 'nullable|string|max:255',
+        'archivo' => 'nullable|file|mimes:mp3,wav|max:10024',
+        'foto' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
         'licencia' => 'nullable|string|max:255',
     ]);
-    dd($cancion->toArray());    // Actualizar campos de texto
-    $cancion->titulo   = $request->input('titulo');
-    $cancion->genero   = $request->input('genero');
+
+    // Actualizar campos simples
+    $cancion->titulo = $request->input('titulo');
+    $cancion->genero = $request->input('genero');
     $cancion->licencia = $request->input('licencia');
 
-    $archivoCancion = $cancion->id . '_song.mp3';
-    $fotoCancion  = $cancion->id . '_pic.jpg';
+    // Generar un número aleatorio único (para nombre de archivos)
+    $randomNumber = rand(1, 10000000000);
 
-    if ($request->hasFile('archivo_url')) {
-        $archivo = $request->file('archivo_url');
-        $archivo->storeAs('imagenes', $archivoCancion, 'public');
-        $cancion->archivo_url = asset("storage/canciones/{$archivoCancion}");
-    } else {
-        $cancion->archivo_url = $cancion->archivo_url;
-    }
-    if ($request->hasFile('foto_url')) {
-        $foto = $request->file('foto_url');
-        $foto->storeAs('imagenes', $fotoCancion, 'public');
-        $cancion->foto_url = asset("storage/imagenes/{$fotoCancion}");
-    } else {
-        $cancion->foto_url = $cancion->foto_url;
-    }
-    // $audioFile = $cancion->archivo;
-    // $tempPath = $audioFile->getRealPath();
+    // Si se sube un nuevo archivo de audio
+    if ($request->hasFile('archivo')) {
+        $audioExtension = $request->file('archivo')->getClientOriginalExtension();
+        $audioNombre = "{$randomNumber}_song.$audioExtension";
 
-    // // Usar getID3 para analizar el archivo y extraer la duración
-    // $getID3 = new getID3;
-    // $audioInfo = $getID3->analyze($tempPath);
-    // // Asegurarse de que se haya detectado la duración
-    // $duration = isset($audioInfo['playtime_seconds']) ? round($audioInfo['playtime_seconds']) : 0;
-    // $cancion->duracion = $duration;
-    $cancion->duracion = 32;
+        $audioFile = $request->file('archivo');
+        $tempPath = $audioFile->getRealPath();
+
+        // Obtener duración con getID3
+        $getID3 = new getID3;
+        $audioInfo = $getID3->analyze($tempPath);
+        $duration = isset($audioInfo['playtime_seconds']) ? round($audioInfo['playtime_seconds']) : 0;
+        $cancion->duracion = $duration;
+
+        // Guardar nuevo archivo de audio
+        $audioFile->storeAs('canciones', $audioNombre, 'public');
+        $cancion->archivo_url = asset("storage/canciones/{$audioNombre}");
+    }
+
+    // Si no se sube un nuevo archivo, mantener la duración anterior (si existe)
+    if (!$request->hasFile('archivo') && !$cancion->duracion) {
+        // Si no se sube archivo, se podría asignar un valor predeterminado o dejarlo vacío
+        $cancion->duracion = 0; // Puedes cambiar esto por un valor por defecto si lo prefieres
+    }
+
+    // Si se sube una nueva foto
+    if ($request->hasFile('foto')) {
+        $fotoExtension = $request->file('foto')->getClientOriginalExtension();
+        $fotoNombre = "{$randomNumber}_pic.$fotoExtension";
+
+        $request->file('foto')->storeAs('imagenes', $fotoNombre, 'public');
+        $cancion->foto_url = asset("storage/imagenes/{$fotoNombre}");
+    }
+
+    // Guardar la canción
     $cancion->save();
 
-    return redirect()->route('canciones.index')
-        ->with('success', 'Canción actualizada exitosamente.');
+    return redirect()->route('canciones.index')->with('success', 'Canción actualizada correctamente.');
 }
-
-
-
-
-
-
-
 
 
 
@@ -181,13 +188,9 @@ class CancionController extends Controller
     public function destroy($id)
     {
         $cancion = Cancion::findOrFail($id);
-        Storage::delete(str_replace('/storage/', 'public/', $cancion->archivo_url));
-        if ($cancion->foto_url) {
-            Storage::delete(str_replace('/storage/', 'public/', $cancion->foto_url));
-        }
-
         $cancion->delete();
 
-        return redirect()->route('canciones.index')->with('success', 'Canción eliminada correctamente.');
+        return redirect()->route('canciones.index')->with('success', 'Canción eliminada correctamente');
     }
+
 }

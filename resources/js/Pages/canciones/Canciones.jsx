@@ -2,10 +2,12 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 
 export default function Canciones({ canciones }) {
+    // Usamos useForm para gestionar la eliminación
     const { delete: deleteCancion } = useForm();
 
     const handleDelete = (id) => {
         if (confirm('¿Estás seguro de que quieres eliminar esta canción?')) {
+            // Llamamos a deleteCancion y pasamos la ruta correctamente
             deleteCancion(route('canciones.destroy', id));
         }
     };
@@ -24,12 +26,12 @@ export default function Canciones({ canciones }) {
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
 
                     <div className="mb-4 flex justify-end">
-                    <a
-                        href={route('canciones.create')}
-                        className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                    >
-                        Crear Canción
-                    </a>
+                        <Link
+                            href={route('canciones.create')}
+                            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                        >
+                            Crear Canción
+                        </Link>
                     </div>
                     <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                         <div className="p-6 text-gray-900">
@@ -38,6 +40,7 @@ export default function Canciones({ canciones }) {
                                     <li key={cancion.id} className="border-b py-4">
                                         <div className="flex items-center space-x-4">
                                             {cancion.foto_url && (
+
                                                 <img
                                                     src={cancion.foto_url}
                                                     alt={cancion.titulo}
@@ -54,6 +57,15 @@ export default function Canciones({ canciones }) {
                                                         <source src={cancion.archivo_url} type="audio/mpeg" />
                                                         Tu navegador no soporta la reproducción de audio.
                                                     </audio>
+                                                )}
+                                                {/* Enlace para ver la imagen */}
+                                                {cancion.foto_url && (
+                                                    <Link
+                                                        href={route('canciones.show', cancion.id)}
+                                                        className="text-blue-500 text-sm mt-2 inline-block"
+                                                    >
+                                                        Ver imagen
+                                                    </Link>
                                                 )}
                                             </div>
 
