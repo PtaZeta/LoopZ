@@ -12,6 +12,15 @@ class Cancion extends Model
 
     protected $table = 'canciones';
 
+    protected $fillable = [
+        'titulo',
+        'genero',
+        'duracion',
+        'licencia',
+        'foto_url',
+        'archivo_url',
+    ];
+
     public function users()
     {
         return $this->belongsToMany(User::class, 'cancion_user');
