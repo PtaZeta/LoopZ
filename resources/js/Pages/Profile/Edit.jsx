@@ -87,7 +87,6 @@ export default function Edit({ mustVerifyEmail, status }) {
                 name: user.name,
                 email: user.email,
             };
-    
             const options = {
                 forceFormData: true,
                 preserveScroll: true,
