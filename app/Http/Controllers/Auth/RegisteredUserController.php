@@ -47,13 +47,12 @@ class RegisteredUserController extends Controller
         if ($request->hasFile('foto_perfil') && $request->file('foto_perfil')->isValid()) {
             // Guarda el archivo en 'storage/app/public/fotos_perfil' y obtiene la ruta
             // 'store' genera un nombre único para evitar colisiones
-            $rutaFotoPerfil = $request->file('foto_perfil')->store('fotos_perfil', 'public');
+            $rutaFotoPerfil = $request->file('foto_perfil')->store('foto_perfil', 'public');
         }
 
         $rutaBannerPerfil = null;
         if ($request->hasFile('banner_perfil') && $request->file('banner_perfil')->isValid()) {
-            // Guarda el archivo en 'storage/app/public/banners_perfil' y obtiene la ruta
-            $rutaBannerPerfil = $request->file('banner_perfil')->store('banners_perfil', 'public');
+            $rutaBannerPerfil = $request->file('banner_perfil')->store('banner_perfil', 'public');
         }
 
         // 3. Crear el usuario con todos los datos (incluyendo las rutas de archivo)
