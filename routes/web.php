@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CancionController;
 use App\Http\Controllers\ProfileController; // Asegúrate de que ProfileController está importado
+use App\Http\Controllers\PlaylistController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -32,7 +33,7 @@ Route::middleware('auth')->group(function () {
          ->name('profile.destroy');
 
     Route::resource('canciones', CancionController::class);
-
+    Route::resource('playlists', PlaylistController::class);
 });
 
 require __DIR__.'/auth.php';
