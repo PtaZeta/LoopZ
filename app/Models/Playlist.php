@@ -4,10 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Playlist extends Model
 {
-    /** @use HasFactory<\Database\Factories\PlaylistFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -15,6 +15,15 @@ class Playlist extends Model
         'descripcion',
         'imagen',
     ];
+
+    protected $appends = ['imagen_url'];
+
+    public function getImagenUrlAttribute()
+    {
+        return $this->imagen
+            ? Storage::disk('public')->url($this->imagen)
+            : null;
+    }
 
     public function users()
     {

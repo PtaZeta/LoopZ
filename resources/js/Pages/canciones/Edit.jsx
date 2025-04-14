@@ -17,10 +17,9 @@ export default function Editar({ auth, cancion, errors: erroresSesion, success: 
 
   const manejarEnvio = (e) => {
     e.preventDefault();
-    post(route('canciones.update', cancion.id), { // Asume Ziggy o usa la URL directa
+    post(route('canciones.update', cancion.id), {
       forceFormData: true,
       onSuccess: () => {
-        // Limpiar estado interno de archivos seleccionados
         setData(datosAnteriores => ({
              ...datosAnteriores,
              archivo_nuevo: null,
