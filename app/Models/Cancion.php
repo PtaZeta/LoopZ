@@ -21,8 +21,8 @@ class Cancion extends Model
         'archivo_url',
     ];
 
-    public function users()
+    public function usuarios()
     {
-        return $this->belongsToMany(User::class, 'cancion_user');
+        return $this->morphToMany(User::class, 'perteneceable', 'pertenece_user');
     }
 }

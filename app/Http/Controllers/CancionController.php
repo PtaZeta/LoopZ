@@ -8,6 +8,9 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use getID3;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Redirect;
 
 class CancionController extends Controller
 {
@@ -91,13 +94,12 @@ class CancionController extends Controller
          // Guardar la canción
          $cancion->save();
 
+         // Asociar la canción al usuario logueado
+         $cancion->usuarios()->attach(Auth::id());
+
          // Redirigir a la página de canciones con un mensaje de éxito
          return redirect()->route('canciones.index')->with('success', 'Canción creada exitosamente.');
      }
-
-
-
-
 
     /**
      * Muestra los detalles de una canción específica.
@@ -268,9 +270,63 @@ class CancionController extends Controller
     public function destroy($id)
     {
         $cancion = Cancion::findOrFail($id);
+
+        if (method_exists($cancion, 'usuarios')) {
+            $cancion->usuarios()->detach();
+        }
+
+        if ($cancion->archivo_url) {
+            $fullPath = parse_url($cancion->archivo_url, PHP_URL_PATH);
+            $relativePath = null;
+            $storagePrefix = '/storage/';
+
+            if ($fullPath && Str::startsWith($fullPath, $storagePrefix)) {
+                $relativePath = Str::after($fullPath, $storagePrefix);
+            } else {
+                 Log::warning("No se pudo extraer la ruta relativa del archivo de audio desde: {$cancion->archivo_url}");
+            }
+
+            if ($relativePath) {
+                if (Storage::disk('public')->exists($relativePath)) {
+                    if (Storage::disk('public')->delete($relativePath)) {
+                        Log::info("Archivo de audio eliminado: {$relativePath}");
+                    } else {
+                         Log::error("Error al eliminar archivo de audio: {$relativePath}");
+                    }
+                } else {
+                    Log::warning("No se encontró el archivo de audio para eliminar (ruta calculada): {$relativePath}");
+                }
+            }
+        }
+
+         if ($cancion->foto_url) {
+            $fullPath = parse_url($cancion->foto_url, PHP_URL_PATH);
+            $relativePath = null;
+            $storagePrefix = '/storage/';
+
+            if ($fullPath && Str::startsWith($fullPath, $storagePrefix)) {
+                $relativePath = Str::after($fullPath, $storagePrefix);
+            } else {
+                 Log::warning("No se pudo extraer la ruta relativa de la foto desde: {$cancion->foto_url}");
+            }
+
+            if ($relativePath) {
+                if (Storage::disk('public')->exists($relativePath)) {
+                     if (Storage::disk('public')->delete($relativePath)) {
+                        Log::info("Foto eliminada: {$relativePath}");
+                     } else {
+                        Log::error("Error al eliminar foto: {$relativePath}");
+                     }
+                } else {
+                    Log::warning("No se encontró la foto para eliminar (ruta calculada): {$relativePath}");
+                }
+            }
+        }
+
         $cancion->delete();
 
         return redirect()->route('canciones.index')->with('success', 'Canción eliminada correctamente');
     }
+
 
 }

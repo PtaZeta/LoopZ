@@ -26,7 +26,8 @@ class Playlist extends Model
     }
 
     public function users()
-    {
-        return $this->belongsToMany(User::class, 'playlist_user');
-    }
+{
+    return $this->morphToMany(User::class, 'perteneceable', 'pertenece_user');
+}
+
 }

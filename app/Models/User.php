@@ -28,7 +28,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'foto_perfil',   
+        'foto_perfil',
         'banner_perfil',
     ];
 
@@ -55,7 +55,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',         
+            'password' => 'hashed',
         ];
     }
 
@@ -63,13 +63,10 @@ class User extends Authenticatable
      * Define la relación muchos a muchos con Cancion.
      * Asume que existe un modelo App\Models\Cancion y una tabla pivote 'cancion_user'.
      */
-    public function canciones()
+
+    public function perteneceCanciones()
     {
-        return $this->belongsToMany(Cancion::class, 'cancion_user');
+        return $this->morphedByMany(Cancion::class, 'perteneceable', 'pertenece_user');
     }
 
-    public function playlists()
-    {
-        return $this->belongsToMany(Playlist::class, 'user_playlist');
-    }
 }
