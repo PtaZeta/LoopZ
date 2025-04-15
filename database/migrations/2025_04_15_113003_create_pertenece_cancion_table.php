@@ -11,10 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('pertence_cancion', function (Blueprint $table) {
-            $table->foreignId('cancion_id')->constrained()->onDelete('cascade');
-            $table->morphs('pertenceable');
-            $table->primary(['cancion_id', 'pertenceable_id', 'pertenceable_type']);
+        Schema::create('pertenece_cancion', function (Blueprint $table) {
+            $table->foreignId('cancion_id')->constrained('canciones')->onDelete('cascade');
+            $table->morphs('perteneceable');
+            $table->primary(['cancion_id', 'perteneceable_id', 'perteneceable_type']);
             $table->timestamps();
         });
     }
@@ -24,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('pertence_cancion');
+        Schema::dropIfExists('pertenece_cancion');
     }
 };

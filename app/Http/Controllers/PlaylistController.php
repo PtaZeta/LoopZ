@@ -5,19 +5,20 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StorePlaylistRequest;
 use App\Http\Requests\UpdatePlaylistRequest;
 use App\Models\Playlist;
-use Illuminate\Support\Facades\Storage;
-use Inertia\Inertia;
+use App\Models\Cancion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log; // Para registrar información útil
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
 
 class PlaylistController extends Controller
 {
     public function index()
     {
-        $playlists = Playlist::all();
+        $listasReproduccion = Playlist::all();
         return Inertia::render('playlists/Index', [
-            'playlists' => $playlists,
+            'playlists' => $listasReproduccion,
         ]);
     }
 
@@ -28,24 +29,30 @@ class PlaylistController extends Controller
 
     public function store(StorePlaylistRequest $request)
     {
-        $validatedData = $request->validated();
+        $datosValidados = $request->validated();
 
         if ($request->hasFile('imagen')) {
-            $path = $request->file('imagen')->store('playlist_images', 'public');
-            $validatedData['imagen'] = $path;
+            $ruta = $request->file('imagen')->store('playlist_images', 'public');
+            $datosValidados['imagen'] = $ruta;
         } else {
-             unset($validatedData['imagen']);
-             // $validatedData['imagen'] = null;
+             unset($datosValidados['imagen']);
         }
 
-        $playlist = Playlist::create($validatedData);
+        $listaReproduccion = Playlist::create($datosValidados);
 
-        $playlist->usuarios()->attach(Auth::id());
+        if (method_exists($listaReproduccion, 'usuarios')) {
+             $listaReproduccion->usuarios()->attach(Auth::id());
+        }
+
         return redirect()->route('playlists.index')->with('success', 'Playlist creada exitosamente.');
     }
 
     public function show(Playlist $playlist)
     {
+        $playlist->load('canciones');
+
+        Log::info('Mostrando Playlist con Canciones:', ['playlist_id' => $playlist->id, 'songs_count' => $playlist->canciones->count()]);
+
         return Inertia::render('playlists/Show', [
             'playlist' => $playlist,
         ]);
@@ -53,90 +60,72 @@ class PlaylistController extends Controller
 
     public function edit($id)
     {
-        $playlist = Playlist::findOrFail($id);
-        // $playlist->append('imagen_url'); // Descomenta si usas el accesor y no se añade automáticamente
+        $listaReproduccion = Playlist::findOrFail($id);
         return Inertia::render('playlists/Edit', [
-            'playlist' => $playlist,
+            'playlist' => $listaReproduccion,
         ]);
     }
 
-
-    /**
-     * Actualiza la información de una playlist existente.
-     * CORREGIDO PARA USAR 'playlist_images' Y GUARDAR RUTA RELATIVA.
-     */
-    public function update(Request $request, $id) // Cambia Request a UpdatePlaylistRequest si lo creas
+    public function update(Request $request, $id)
     {
-        Log::info('Playlist Update Request Data:', $request->except(['imagen_nueva']));
-        Log::info('Playlist Update Request Files:', $request->allFiles());
+        Log::info('Datos de Solicitud de Actualización de Playlist:', $request->except(['imagen_nueva']));
+        Log::info('Archivos de Solicitud de Actualización de Playlist:', $request->allFiles());
 
-        $playlist = Playlist::findOrFail($id);
+        $listaReproduccion = Playlist::findOrFail($id);
 
-        // Validación (ajusta si usas UpdatePlaylistRequest)
-        $validated = $request->validate([
+        $valido = $request->validate([
             'nombre' => 'required|string|max:255',
             'descripcion' => 'required|string|max:65535',
             'imagen_nueva' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
             'eliminar_imagen' => 'nullable|boolean',
         ]);
 
-        $playlist->nombre = $validated['nombre'];
-        $playlist->descripcion = $validated['descripcion'];
+        $listaReproduccion->nombre = $valido['nombre'];
+        $listaReproduccion->descripcion = $valido['descripcion'];
 
-        // --- Manejo de la Imagen ---
         $eliminarImagen = $request->boolean('eliminar_imagen');
-        $targetFolder = 'playlist_images'; // <--- CARPETA CORRECTA
+        $carpetaDestino = 'playlist_images';
 
-        // Obtener la ruta relativa ANTIGUA (esperamos 'playlist_images/nombre.jpg')
-        $oldImagePath = $playlist->imagen;
+        $rutaImagenAntigua = $listaReproduccion->imagen;
 
-        // 1. Si se sube una nueva imagen ('imagen_nueva' del formulario Edit)
         if ($request->hasFile('imagen_nueva')) {
-            $newImageFile = $request->file('imagen_nueva');
+            $nuevoArchivoImagen = $request->file('imagen_nueva');
 
-            // Borrar la imagen antigua si existe la ruta y el archivo
-            if ($oldImagePath && Storage::disk('public')->exists($oldImagePath)) {
-                Storage::disk('public')->delete($oldImagePath);
-                Log::info("Imagen antigua de playlist eliminada: " . $oldImagePath);
-            } elseif ($oldImagePath) {
-                 Log::warning("Se encontró ruta de imagen antigua ({$oldImagePath}) pero el archivo no existe en el disco 'public'.");
+            if ($rutaImagenAntigua && Storage::disk('public')->exists($rutaImagenAntigua)) {
+                Storage::disk('public')->delete($rutaImagenAntigua);
+                Log::info("Imagen antigua de playlist eliminada: " . $rutaImagenAntigua);
+            } elseif ($rutaImagenAntigua) {
+                 Log::warning("Se encontró ruta de imagen antigua ({$rutaImagenAntigua}) pero el archivo no existe en el disco 'public'.");
             }
 
-            // Guardar la nueva imagen usando store() en la carpeta correcta
-            // Devuelve la ruta relativa: 'playlist_images/hash.jpg'
-            $newImagePath = $newImageFile->store($targetFolder, 'public'); // <--- USA store() y targetFolder
+            $nuevaRutaImagen = $nuevoArchivoImagen->store($carpetaDestino, 'public');
+            $listaReproduccion->imagen = $nuevaRutaImagen;
+            Log::info("Nueva imagen de playlist guardada en: " . $nuevaRutaImagen);
 
-            // Actualizar el campo 'imagen' con la NUEVA RUTA RELATIVA
-            $playlist->imagen = $newImagePath; // <--- GUARDA RUTA RELATIVA
-            Log::info("Nueva imagen de playlist guardada en: " . $newImagePath);
-
-        // 2. Si NO se sube nueva imagen, pero se marca eliminar_imagen
         } elseif ($eliminarImagen) {
-            // Borrar la imagen antigua si existe la ruta y el archivo
-            if ($oldImagePath && Storage::disk('public')->exists($oldImagePath)) {
-                Storage::disk('public')->delete($oldImagePath);
-                $playlist->imagen = null; // Poner a null la columna en la BD
-                Log::info("Imagen antigua de playlist eliminada (vía checkbox): " . $oldImagePath);
-            } elseif ($playlist->imagen) { // Si había ruta pero no se encontró archivo
-                $playlist->imagen = null;
-                if ($oldImagePath) Log::warning("No se encontró el archivo de la imagen antigua en '{$oldImagePath}' para eliminar (vía checkbox), pero se eliminó la referencia en BD.");
+            if ($rutaImagenAntigua && Storage::disk('public')->exists($rutaImagenAntigua)) {
+                Storage::disk('public')->delete($rutaImagenAntigua);
+                $listaReproduccion->imagen = null;
+                Log::info("Imagen antigua de playlist eliminada (vía checkbox): " . $rutaImagenAntigua);
+            } elseif ($listaReproduccion->imagen) {
+                $listaReproduccion->imagen = null;
+                if ($rutaImagenAntigua) Log::warning("No se encontró el archivo de la imagen antigua en '{$rutaImagenAntigua}' para eliminar (vía checkbox), pero se eliminó la referencia en BD.");
             }
         }
-        // 3. Si no se sube nueva imagen ni se marca eliminar, no hacemos nada con $playlist->imagen.
 
-        // Guardar los cambios
-        $playlist->save();
+        $listaReproduccion->save();
 
         return redirect()->route('playlists.index')->with('success', 'Playlist actualizada exitosamente.');
     }
 
-
-
     public function destroy(Playlist $playlist)
     {
-        if (method_exists($playlist, 'usuarios')) {
-            $playlist->usuarios()->detach();
-        }
+         if (method_exists($playlist, 'usuarios')) {
+             $playlist->usuarios()->detach();
+         }
+         if (method_exists($playlist, 'canciones')) {
+             $playlist->canciones()->detach(); // Desvincular canciones también si es necesario
+         }
 
         if ($playlist->imagen) {
             Storage::disk('public')->delete($playlist->imagen);
@@ -146,4 +135,43 @@ class PlaylistController extends Controller
 
         return redirect()->route('playlists.index')->with('success', 'Playlist eliminada exitosamente.');
     }
+
+    public function anadirCancion(Request $request, Playlist $playlist)
+    {
+        $valido = $request->validate([
+            'cancion_id' => 'required|exists:canciones,id',
+        ]);
+
+        $idCancion = $valido['cancion_id'];
+
+        $playlist->canciones()->syncWithoutDetaching([$idCancion]);
+
+        return redirect()->route('playlists.show', $playlist->id)
+                         ->with('success', 'Canción añadida a la playlist.');
+    }
+
+    public function buscarCanciones(Request $request)
+    {
+        $consulta = $request->input('query', '');
+        $resultados = [];
+        $minQueryLength = 2; // Longitud mínima para búsqueda real
+
+        if (strlen($consulta) >= $minQueryLength) {
+            // Búsqueda normal por título/artista
+            $resultados = Cancion::where('titulo', 'LIKE', "%{$consulta}%")
+                // ->orWhere('artista', 'LIKE', "%{$consulta}%") // Descomenta si buscas por artista
+                ->select('id', 'titulo')
+                ->limit(15) // Limita resultados de búsqueda
+                ->get();
+        } else {
+            // Si la consulta es corta o vacía, devuelve una lista general (limitada)
+            $resultados = Cancion::select('id', 'titulo')
+                ->orderBy('titulo') // Ordena alfabéticamente (opcional)
+                ->limit(30) // Limita cuántas mostrar por defecto
+                ->get();
+        }
+
+        return response()->json($resultados);
+    }
+
 }
