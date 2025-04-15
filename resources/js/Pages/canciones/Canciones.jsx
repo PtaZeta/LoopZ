@@ -56,16 +56,16 @@ export default function Canciones({ auth, canciones, success: mensajeExitoSesion
                                                 {/* Columna Izquierda: Imagen */}
                                                 {cancion.foto_url ? (
                                                     <div className="flex-shrink-0 mb-4 md:mb-0">
-                                                        <img
-                                                            src={cancion.foto_url}
-                                                            alt={`Portada de ${cancion.titulo}`}
-                                                            className="w-24 h-24 md:w-32 md:h-32 rounded-md object-cover border border-gray-100"
-                                                        />
+                                                        <Link href={route('canciones.show', cancion.id)} title="Ver Detalles">
+                                                            <img src={cancion.foto_url} alt={`Portada de ${cancion.titulo}`} className="w-24 h-24 md:w-32 md:h-32 rounded-md object-cover border border-gray-100"/>
+                                                        </Link>
                                                     </div>
                                                 ) : (
-                                                    <div className="flex-shrink-0 mb-4 md:mb-0 w-24 h-24 md:w-32 md:h-32 rounded-md bg-gray-100 flex items-center justify-center text-gray-400">
-                                                        Sin foto
-                                                    </div>
+                                                    <Link href={route('canciones.show', cancion.id)} title="Ver Detalles">
+                                                        <div className="flex-shrink-0 mb-4 md:mb-0 w-24 h-24 md:w-32 md:h-32 rounded-md bg-gray-100 flex items-center justify-center text-gray-400">
+                                                            Sin foto
+                                                        </div>
+                                                    </Link>
                                                 )}
 
                                                 {/* Columna Central: Detalles y Audio */}
@@ -104,16 +104,9 @@ export default function Canciones({ auth, canciones, success: mensajeExitoSesion
                                                 {/* Columna Derecha: Acciones */}
                                                 <div className="flex-shrink-0 flex flex-row md:flex-col space-x-2 md:space-x-0 md:space-y-2 mt-4 md:mt-0 self-start md:self-center">
                                                     <Link
-                                                        href={route('canciones.show', cancion.id)}
-                                                        className="inline-flex items-center px-3 py-1.5 bg-indigo-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-600 active:bg-indigo-700 focus:outline-none focus:border-indigo-700 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150"
-                                                        title="Ver Detalles"
-                                                    >
-                                                        Detalles
-                                                    </Link>
-                                                    <Link
                                                         href={route('canciones.edit', cancion.id)}
-                                                          className="inline-flex items-center px-3 py-1.5 bg-yellow-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-600 active:bg-yellow-700 focus:outline-none focus:border-yellow-700 focus:ring ring-yellow-300 disabled:opacity-25 transition ease-in-out duration-150"
-                                                          title="Editar"
+                                                        className="inline-flex items-center px-3 py-1.5 bg-yellow-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-600 active:bg-yellow-700 focus:outline-none focus:border-yellow-700 focus:ring ring-yellow-300 disabled:opacity-25 transition ease-in-out duration-150"
+                                                        title="Editar"
                                                     >
                                                         Editar
                                                     </Link>

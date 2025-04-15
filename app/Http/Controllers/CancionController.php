@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Validation\Rules\Can;
 
 class CancionController extends Controller
 {
@@ -19,7 +20,6 @@ class CancionController extends Controller
      */
     public function index()
     {
-        // Obtiene todas las canciones con su creador (asumiendo que hay una relación 'usuario')
         $canciones = Cancion::with('usuarios')->latest()->get();
         return Inertia::render('canciones/Canciones', [
             'canciones' => $canciones
