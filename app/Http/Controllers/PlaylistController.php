@@ -8,7 +8,7 @@ use App\Models\Playlist;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log; // Para registrar información útil
 
 class PlaylistController extends Controller
@@ -40,6 +40,7 @@ class PlaylistController extends Controller
 
         $playlist = Playlist::create($validatedData);
 
+        $playlist->usuarios()->attach(Auth::id());
         return redirect()->route('playlists.index')->with('success', 'Playlist creada exitosamente.');
     }
 
@@ -133,6 +134,10 @@ class PlaylistController extends Controller
 
     public function destroy(Playlist $playlist)
     {
+        if (method_exists($playlist, 'usuarios')) {
+            $playlist->usuarios()->detach();
+        }
+
         if ($playlist->imagen) {
             Storage::disk('public')->delete($playlist->imagen);
         }

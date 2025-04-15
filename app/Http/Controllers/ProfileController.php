@@ -11,12 +11,21 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Models\User;
 
 class ProfileController extends Controller
 {
     public function index(Request $request): Response
     {
-        return Inertia::render('Profile/Index');
+        $user = $request->user();
+
+        $cancionesQuery = $user->perteneceCanciones()
+                               ->orderBy('created_at', 'desc');
+
+        $canciones = $cancionesQuery->get();
+        return Inertia::render('Profile/Index', [
+            'cancionesUsuario' => $canciones,
+        ]);
     }
 
     public function edit(Request $request): Response
@@ -27,40 +36,40 @@ class ProfileController extends Controller
         ]);
     }
 
-    public function update(Request $request)
+    public function update(Request $request): RedirectResponse
     {
         $user = $request->user();
 
-        $request->validate([
+        $validatedData = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
+            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'foto_perfil' => 'nullable|image|max:2048',
             'banner_perfil' => 'nullable|image|max:4096',
         ]);
 
+        $user->name = $validatedData['name'];
+        $user->email = $validatedData['email'];
+
         if ($request->hasFile('foto_perfil')) {
-            // Elimina la foto anterior si existe
-            if ($user->foto_perfil) {
+            if ($user->foto_perfil && Storage::disk('public')->exists($user->foto_perfil)) {
                 Storage::disk('public')->delete($user->foto_perfil);
             }
-
-            // Guarda en storage/app/public/foto_perfil/
             $path = $request->file('foto_perfil')->store('foto_perfil', 'public');
             $user->foto_perfil = $path;
         }
 
         if ($request->hasFile('banner_perfil')) {
-            if ($user->banner_perfil) {
+            if ($user->banner_perfil && Storage::disk('public')->exists($user->banner_perfil)) {
                 Storage::disk('public')->delete($user->banner_perfil);
             }
-
-            // Guarda en storage/app/public/banner_perfil/
             $path = $request->file('banner_perfil')->store('banner_perfil', 'public');
             $user->banner_perfil = $path;
         }
 
-        $user->name = $request->name;
-        $user->email = $request->email;
+        if ($user->isDirty('email') && $user instanceof MustVerifyEmail) {
+            $user->email_verified_at = null;
+        }
+
         $user->save();
 
         return back()->with('status', 'profile-updated');
@@ -73,19 +82,20 @@ class ProfileController extends Controller
             'password' => ['required', 'current_password'],
         ]);
 
-        $usuario = $request->user();
+        $user = $request->user();
 
-        $rutaFotoPerfil = $usuario->foto_perfil;
-        $rutaBanner = $usuario->banner_perfil;
+        $rutaFotoPerfil = $user->foto_perfil;
+        $rutaBanner = $user->banner_perfil;
 
         Auth::logout();
 
-        $usuario->delete();
+        // $user->perteneceCanciones()->detach();
+        $user->delete();
 
-        if ($rutaFotoPerfil) {
+        if ($rutaFotoPerfil && Storage::disk('public')->exists($rutaFotoPerfil)) {
             Storage::disk('public')->delete($rutaFotoPerfil);
         }
-        if ($rutaBanner) {
+        if ($rutaBanner && Storage::disk('public')->exists($rutaBanner)) {
             Storage::disk('public')->delete($rutaBanner);
         }
 

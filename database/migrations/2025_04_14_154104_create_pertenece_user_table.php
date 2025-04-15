@@ -11,10 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('cancion_user', function (Blueprint $table) {
-            $table->foreignId('cancion_id')->constrained('canciones');
-            $table->foreignId('user_id')->constrained();
-            $table->primary(['user_id', 'cancion_id']);
+        Schema::create('pertenece_user', function (Blueprint $table) {
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->morphs('perteneceable');
             $table->timestamps();
         });
     }
@@ -24,6 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('cancion_user');
+        Schema::dropIfExists('pertenece_user');
     }
 };
