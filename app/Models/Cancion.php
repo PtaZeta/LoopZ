@@ -23,7 +23,7 @@ class Cancion extends Model
 
     public function pertenecePlaylists()
     {
-        return $this->morphedByMany(Playlist::class, 'perteneceable', 'pertenece_user');
+        return $this->morphedByMany(Playlist::class, 'perteneceable', 'pertenece_cancion');
     }
 
     public function usuarios()

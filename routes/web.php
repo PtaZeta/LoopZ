@@ -21,19 +21,21 @@ Route::get('/dashboard', function () {
 
 Route::middleware('auth')->group(function () {
 
-    Route::get('/profile/index', [ProfileController::class, 'index']) ->name('profile.index'); 
+    Route::get('/profile/index', [ProfileController::class, 'index']) ->name('profile.index');
 
-    Route::get('/profile', [ProfileController::class, 'edit']) 
+    Route::get('/profile', [ProfileController::class, 'edit'])
          ->name('profile.edit');
 
-    Route::patch('/profile', [ProfileController::class, 'update']) 
+    Route::patch('/profile', [ProfileController::class, 'update'])
          ->name('profile.update');
 
-    Route::delete('/profile', [ProfileController::class, 'destroy']) 
+    Route::delete('/profile', [ProfileController::class, 'destroy'])
          ->name('profile.destroy');
 
     Route::resource('canciones', CancionController::class);
     Route::resource('playlists', PlaylistController::class);
 });
 
+Route::middleware('auth')->get('/songs/search', [PlaylistController::class, 'buscarCanciones'])->name('songs.search');
+Route::middleware('auth')->post('/playlists/{playlist}/songs', [PlaylistController::class, 'anadirCancion'])->name('playlists.songs.add');
 require __DIR__.'/auth.php';
