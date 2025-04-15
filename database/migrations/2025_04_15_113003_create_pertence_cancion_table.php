@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('pertence_cancion', function (Blueprint $table) {
-            $table->id();
+            $table->foreignId('cancion_id')->constrained()->onDelete('cascade');
+            $table->morphs('pertenceable');
+            $table->primary(['cancion_id', 'pertenceable_id', 'pertenceable_type']);
             $table->timestamps();
         });
     }

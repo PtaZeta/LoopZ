@@ -21,6 +21,11 @@ class Cancion extends Model
         'archivo_url',
     ];
 
+    public function pertenecePlaylists()
+    {
+        return $this->morphedByMany(Playlist::class, 'perteneceable', 'pertenece_user');
+    }
+
     public function usuarios()
     {
         return $this->morphToMany(User::class, 'perteneceable', 'pertenece_user');
