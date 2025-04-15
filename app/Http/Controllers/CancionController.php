@@ -20,7 +20,7 @@ class CancionController extends Controller
     public function index()
     {
         // Obtiene todas las canciones con su creador (asumiendo que hay una relación 'usuario')
-        $canciones = Cancion::all();
+        $canciones = Cancion::with('usuarios')->latest()->get();
         return Inertia::render('canciones/Canciones', [
             'canciones' => $canciones
         ]);
