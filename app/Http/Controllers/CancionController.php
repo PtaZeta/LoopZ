@@ -18,11 +18,31 @@ class CancionController extends Controller
     /**
      * Muestra la lista de canciones.
      */
+
+
     public function index()
     {
+        $user = Auth::user();
+
         $canciones = Cancion::with('usuarios')->latest()->get();
+
+        $cancionesConPermisos = $canciones->map(function ($cancion) use ($user) {
+            if ($user) {
+                $cancion->can = [
+                    'edit' => $user->can('edit', $cancion),
+                    'delete' => $user->can('delete', $cancion),
+                ];
+            } else {
+                 $cancion->can = [
+                    'edit' => false,
+                    'delete' => false,
+                ];
+            }
+            return $cancion;
+        });
+
         return Inertia::render('canciones/Canciones', [
-            'canciones' => $canciones
+            'canciones' => $cancionesConPermisos,
         ]);
     }
 
@@ -118,7 +138,7 @@ class CancionController extends Controller
     public function edit($id)
     {
         $cancion = Cancion::findOrFail($id);
-
+        $this->authorize('edit', $cancion);
         return Inertia::render('canciones/Edit', [
             'cancion' => $cancion,
         ]);
@@ -270,12 +290,14 @@ class CancionController extends Controller
     public function destroy($id)
     {
         $cancion = Cancion::findOrFail($id);
+        $this->authorize('delete', $cancion);
 
         if (method_exists($cancion, 'usuarios')) {
             $cancion->usuarios()->detach();
         }
 
         if ($cancion->archivo_url) {
+
             $fullPath = parse_url($cancion->archivo_url, PHP_URL_PATH);
             $relativePath = null;
             $storagePrefix = '/storage/';
