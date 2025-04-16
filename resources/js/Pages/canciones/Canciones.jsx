@@ -27,7 +27,6 @@ export default function Canciones({ auth, canciones, success: mensajeExitoSesion
             <div className="py-12">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
 
-                    {/* Mensaje de éxito */}
                     {mensajeExitoSesion && (
                         <div className="mb-4 p-4 bg-green-100 text-green-700 rounded-md shadow-sm">
                             {mensajeExitoSesion}
@@ -43,7 +42,6 @@ export default function Canciones({ auth, canciones, success: mensajeExitoSesion
                         </Link>
                     </div>
 
-                    {/* Contenedor Principal */}
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div className="p-6 text-gray-900">
                             {canciones.length === 0 ? (
@@ -53,7 +51,6 @@ export default function Canciones({ auth, canciones, success: mensajeExitoSesion
                                     {canciones.map(cancion => (
                                         <li key={cancion.id} className="border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 p-4">
                                             <div className="flex flex-col md:flex-row md:items-start md:space-x-6">
-                                                {/* Columna Izquierda: Imagen */}
                                                 {cancion.foto_url ? (
                                                     <div className="flex-shrink-0 mb-4 md:mb-0">
                                                         <Link href={route('canciones.show', cancion.id)} title="Ver Detalles">
@@ -68,7 +65,6 @@ export default function Canciones({ auth, canciones, success: mensajeExitoSesion
                                                     </Link>
                                                 )}
 
-                                                {/* Columna Central: Detalles y Audio */}
                                                 <div className="flex-grow min-w-0">
                                                     <h3 className="text-xl font-bold text-gray-800 truncate mb-1">{cancion.titulo}</h3>
                                                     <p className="text-sm text-gray-600 mb-1">
@@ -80,17 +76,13 @@ export default function Canciones({ auth, canciones, success: mensajeExitoSesion
                                                     <p className="text-sm text-gray-600 mb-3">
                                                         <span className="font-medium">Visualizaciones:</span> {cancion.visualizaciones || 0}
                                                     </p>
-                                                    {/* --- INICIO: Mostrar Artistas --- */}
                                                     <p className="text-sm text-gray-600 mb-3">
                                                         <span className="font-medium">Artista(s):</span>
                                                         {' '}
-                                                        {/* Verifica si hay usuarios y si el array no está vacío */}
                                                         {cancion.usuarios && cancion.usuarios.length > 0
-                                                            ? cancion.usuarios.map(user => user.name).join(', ') // Mapea los nombres y los une con coma
-                                                            : ' No asignado'} {/* Muestra texto alternativo si no hay artistas */}
+                                                            ? cancion.usuarios.map(user => user.name).join(', ')
+                                                            : ' No asignado'}
                                                     </p>
-                                                    {/* --- FIN: Mostrar Artistas --- */}
-
                                                     {cancion.archivo_url && (
                                                         <div className="mt-2 max-w-md">
                                                             <audio controls controlsList="nodownload" className="w-full h-10">
@@ -101,23 +93,26 @@ export default function Canciones({ auth, canciones, success: mensajeExitoSesion
                                                     )}
                                                 </div>
 
-                                                {/* Columna Derecha: Acciones */}
                                                 <div className="flex-shrink-0 flex flex-row md:flex-col space-x-2 md:space-x-0 md:space-y-2 mt-4 md:mt-0 self-start md:self-center">
-                                                    <Link
-                                                        href={route('canciones.edit', cancion.id)}
-                                                        className="inline-flex items-center px-3 py-1.5 bg-yellow-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-600 active:bg-yellow-700 focus:outline-none focus:border-yellow-700 focus:ring ring-yellow-300 disabled:opacity-25 transition ease-in-out duration-150"
-                                                        title="Editar"
-                                                    >
-                                                        Editar
-                                                    </Link>
-                                                    <button
-                                                        onClick={() => manejarEliminar(cancion.id)}
-                                                        disabled={processing}
-                                                        className="inline-flex items-center px-3 py-1.5 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 active:bg-red-800 focus:outline-none focus:border-red-900 focus:ring ring-red-300 disabled:opacity-50 transition ease-in-out duration-150"
-                                                        title="Eliminar"
-                                                    >
-                                                        Eliminar
-                                                    </button>
+                                                    {cancion.can?.edit && (
+                                                        <Link
+                                                            href={route('canciones.edit', cancion.id)}
+                                                            className="inline-flex items-center px-3 py-1.5 bg-yellow-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-600 active:bg-yellow-700 focus:outline-none focus:border-yellow-700 focus:ring ring-yellow-300 disabled:opacity-25 transition ease-in-out duration-150"
+                                                            title="Editar"
+                                                        >
+                                                            Editar
+                                                        </Link>
+                                                    )}
+                                                    {cancion.can?.delete && (
+                                                        <button
+                                                            onClick={() => manejarEliminar(cancion.id)}
+                                                            disabled={processing}
+                                                            className="inline-flex items-center px-3 py-1.5 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 active:bg-red-800 focus:outline-none focus:border-red-900 focus:ring ring-red-300 disabled:opacity-50 transition ease-in-out duration-150"
+                                                            title="Eliminar"
+                                                        >
+                                                            Eliminar
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         </li>

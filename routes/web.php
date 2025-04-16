@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Controllers\CancionController;
-use App\Http\Controllers\ProfileController; // Asegúrate de que ProfileController está importado
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PlaylistController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
