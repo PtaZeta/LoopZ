@@ -160,12 +160,12 @@ class PlaylistController extends Controller
             // Búsqueda normal por título/artista
             $resultados = Cancion::where('titulo', 'LIKE', "%{$consulta}%")
                 // ->orWhere('artista', 'LIKE', "%{$consulta}%") // Descomenta si buscas por artista
-                ->select('id', 'titulo')
+                ->select('id', 'titulo', 'foto_url')
                 ->limit(15) // Limita resultados de búsqueda
                 ->get();
         } else {
             // Si la consulta es corta o vacía, devuelve una lista general (limitada)
-            $resultados = Cancion::select('id', 'titulo')
+            $resultados = Cancion::select('id', 'titulo', 'foto_url')
                 ->orderBy('titulo') // Ordena alfabéticamente (opcional)
                 ->limit(30) // Limita cuántas mostrar por defecto
                 ->get();
