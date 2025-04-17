@@ -32,12 +32,17 @@ class PlaylistPolicy
         return false;
     }
 
+    public function edit(User $user, Playlist $playlist): bool
+    {
+        return $playlist->usuarios->contains($user);
+    }
+
     /**
      * Determine whether the user can update the model.
      */
     public function update(User $user, Playlist $playlist): bool
     {
-        return false;
+        return $playlist->usuarios->contains($user);
     }
 
     /**
@@ -45,7 +50,7 @@ class PlaylistPolicy
      */
     public function delete(User $user, Playlist $playlist): bool
     {
-        return false;
+        return $playlist->usuarios->contains($user);
     }
 
     /**
