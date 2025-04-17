@@ -38,4 +38,7 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware('auth')->get('/songs/search', [PlaylistController::class, 'buscarCanciones'])->name('songs.search');
 Route::middleware('auth')->post('/playlists/{playlist}/songs', [PlaylistController::class, 'anadirCancion'])->name('playlists.songs.add');
+
+Route::get('/users/search', [CancionController::class, 'searchUsers'])->name('users.search'); // Or point to UserController@search
+
 require __DIR__.'/auth.php';
