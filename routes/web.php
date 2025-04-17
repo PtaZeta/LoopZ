@@ -36,6 +36,10 @@ Route::middleware('auth')->group(function () {
     Route::resource('playlists', PlaylistController::class);
 });
 
-Route::middleware('auth')->get('/songs/search', [PlaylistController::class, 'buscarCanciones'])->name('songs.search');
+Route::middleware('auth')->get('/playlists/{playlist}/songs/search', [PlaylistController::class, 'buscarCanciones'])->name('songs.search');
 Route::middleware('auth')->post('/playlists/{playlist}/songs', [PlaylistController::class, 'anadirCancion'])->name('playlists.songs.add');
+Route::middleware('auth')->delete('/playlists/{playlist}/songs/{pivotId}', [PlaylistController::class, 'quitarCancionPorPivot'])->name('playlists.songs.remove');
+
+Route::get('/users/search', [CancionController::class, 'searchUsers'])->name('users.search'); // Or point to UserController@search
+
 require __DIR__.'/auth.php';

@@ -31,6 +31,8 @@ class Playlist extends Model
     }
     public function canciones()
     {
-        return $this->morphToMany(Cancion::class, 'perteneceable', 'pertenece_cancion');
+        return $this->morphToMany(Cancion::class, 'perteneceable', 'pertenece_cancion')
+                    ->withPivot('id')
+                    ->withTimestamps();
     }
 }
