@@ -16,9 +16,25 @@ class PlaylistController extends Controller
 {
     public function index()
     {
+        $user = Auth::user();
         $listasReproduccion = Playlist::all();
+
+        $listasConPermisos = $listasReproduccion->map(function ($playlist) use ($user) {
+            if ($user) {
+                $playlist->can = [
+                    'edit' => $user->can('edit', $playlist),
+                    'delete' => $user->can('delete', $playlist),
+                ];
+            } else {
+                 $playlist->can = [
+                    'edit' => false,
+                    'delete' => false,
+                ];
+            }
+            return $playlist;
+        });
         return Inertia::render('playlists/Index', [
-            'playlists' => $listasReproduccion,
+            'playlists' => $listasConPermisos,
         ]);
     }
 
@@ -61,6 +77,8 @@ class PlaylistController extends Controller
     public function edit($id)
     {
         $listaReproduccion = Playlist::findOrFail($id);
+        $this->authorize('edit', $listaReproduccion);
+
         return Inertia::render('playlists/Edit', [
             'playlist' => $listaReproduccion,
         ]);
@@ -120,6 +138,7 @@ class PlaylistController extends Controller
 
     public function destroy(Playlist $playlist)
     {
+        $this->authorize('delete', $playlist);
          if (method_exists($playlist, 'usuarios')) {
              $playlist->usuarios()->detach();
          }
