@@ -21,7 +21,7 @@ class PlaylistPolicy
      */
     public function view(User $user, Playlist $playlist): bool
     {
-        return false;
+        return $playlist->usuarios->contains($user);
     }
 
     /**
