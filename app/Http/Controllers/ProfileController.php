@@ -23,8 +23,15 @@ class ProfileController extends Controller
                                ->orderBy('created_at', 'desc');
 
         $canciones = $cancionesQuery->get();
+
+        $playlistsQuery = $user->pertenecePlaylists()
+                               ->orderBy('created_at', 'desc');
+
+        $playlists = $playlistsQuery->get();
+
         return Inertia::render('Profile/Index', [
             'cancionesUsuario' => $canciones,
+            'playlistsUsuario' => $playlists,
         ]);
     }
 

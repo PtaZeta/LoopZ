@@ -78,18 +78,29 @@ class PlaylistController extends Controller
 
     public function show(Playlist $playlist)
     {
-        // Cargar canciones incluyendo el ID del pivot (requiere withPivot en el modelo)
+        $user = Auth::user();
+
+        if ($user) {
+            $playlist->can = [
+                'view'   => $user->can('view', $playlist),
+            ];
+        } else {
+            $playlist->can = [
+                'view'   => true,
+            ];
+        }
+
         $playlist->load('canciones');
-        Log::info('Mostrando Playlist con Canciones:', ['playlist_id' => $playlist->id, 'songs_count' => $playlist->canciones->count()]);
+
         return Inertia::render('playlists/Show', [
             'playlist' => $playlist,
         ]);
     }
 
-    public function edit(Playlist $playlist) // Usar Route Model Binding
+
+    public function edit(Playlist $playlist)
     {
         $this->authorize('update', $playlist);
-        // No es necesario cargar canciones aquí a menos que se muestren en la vista de edición
         return Inertia::render('playlists/Edit', [
             'playlist' => $playlist,
         ]);
