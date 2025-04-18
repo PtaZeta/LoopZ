@@ -262,6 +262,7 @@ export default function PlaylistShow({ auth, playlist: listaReproduccionInicial 
                                             <li key={cancion.pivot?.id ?? `fallback-${cancion.id}-${Math.random()}`} className="p-2 bg-gray-100 dark:bg-gray-700 rounded-md flex items-center space-x-3">
                                                 <ImagenCancion url={obtenerUrlImagen(cancion)} titulo={cancion.titulo} className="w-10 h-10" />
                                                 <span className="text-gray-800 dark:text-gray-200 flex-grow truncate" title={cancion.titulo}>{cancion.titulo}</span>
+                                                {listaReproduccion.can?.view && (
                                                 <button
                                                     onClick={() => manejarEliminarCancion(cancion.pivot?.id)} // Pasar ID de pivot
                                                     disabled={!cancion.pivot?.id} // Deshabilitar si no hay pivot ID (error)
@@ -270,6 +271,7 @@ export default function PlaylistShow({ auth, playlist: listaReproduccionInicial 
                                                 >
                                                     Quitar
                                                 </button>
+                                                )}
                                             </li>
                                         ))}
                                     </ul>
@@ -279,67 +281,73 @@ export default function PlaylistShow({ auth, playlist: listaReproduccionInicial 
                             </div>
 
                             {/* Sección Añadir Canciones */}
-                            <div className="mt-10 border-t dark:border-gray-700 pt-6">
-                                <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Añadir Canciones</h3>
-                                <div className="mb-4">
-                                    <input
-                                        type="text"
-                                        placeholder="Buscar canciones por título..."
-                                        value={consultaBusqueda}
-                                        onChange={manejarCambioInputBusqueda}
-                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-gray-200"
-                                        disabled={!listaReproduccion?.id} // Deshabilitar si no hay playlist cargada
-                                    />
-                                </div>
+                            {listaReproduccion?.can?.view && (
 
-                                {estaBuscando && <p className="text-gray-500 dark:text-gray-400 italic text-center">Buscando...</p>}
-
-                                {!estaBuscando && resultadosBusqueda.length > 0 && (
-                                    <div className="max-h-60 overflow-y-auto border dark:border-gray-600 rounded-md p-2 space-y-2 bg-gray-50 dark:bg-gray-700/50">
-                                        <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">
-                                            {consultaBusqueda.length >= minQueryLength ? 'Resultados:' : 'Canciones Disponibles:'}
-                                        </h4>
-                                        <ul>
-                                            {resultadosBusqueda.map((cancionEncontrada) => (
-                                                <li key={cancionEncontrada.id} className="flex items-center justify-between p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded space-x-3">
-                                                    <div className="flex items-center space-x-3 flex-grow overflow-hidden">
-                                                        <ImagenCancion url={obtenerUrlImagen(cancionEncontrada)} titulo={cancionEncontrada.titulo} className="w-10 h-10" />
-                                                        <span className="text-gray-800 dark:text-gray-200 truncate" title={cancionEncontrada.titulo}>{cancionEncontrada.titulo}</span>
-                                                    </div>
-                                                    <button
-                                                        onClick={() => manejarAnadirCancion(cancionEncontrada.id)}
-                                                        disabled={anadiendoCancionId === cancionEncontrada.id}
-                                                        className={`ml-2 px-3 py-1 text-xs font-semibold rounded-md transition ease-in-out duration-150 flex-shrink-0 ${
-                                                            anadiendoCancionId === cancionEncontrada.id
-                                                                ? 'bg-indigo-300 text-white cursor-wait dark:bg-indigo-700'
-                                                                : 'bg-indigo-500 text-white hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800'
-                                                        }`}
-                                                    >
-                                                        {anadiendoCancionId === cancionEncontrada.id ? 'Añadiendo...' : 'Añadir'}
-                                                    </button>
-                                                </li>
-                                            ))}
-                                        </ul>
+                                <div className="mt-10 border-t dark:border-gray-700 pt-6">
+                                    <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Añadir Canciones</h3>
+                                    <div className="mb-4">
+                                        <input
+                                            type="text"
+                                            placeholder="Buscar canciones por título..."
+                                            value={consultaBusqueda}
+                                            onChange={manejarCambioInputBusqueda}
+                                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-gray-200"
+                                            disabled={!listaReproduccion?.id} // Deshabilitar si no hay playlist cargada
+                                        />
                                     </div>
-                                )}
-                                {/* Mensajes "No se encontraron" / "No hay disponibles" */}
-                                {!estaBuscando && consultaBusqueda.length >= minQueryLength && resultadosBusqueda.length === 0 && (
-                                     <p className="text-gray-500 dark:text-gray-400 italic text-center">No se encontraron canciones que coincidan.</p>
-                                )}
-                                {!estaBuscando && consultaBusqueda.length < minQueryLength && resultadosBusqueda.length === 0 && !estaBuscando && (
-                                     <p className="text-gray-500 dark:text-gray-400 italic text-center">No hay canciones disponibles para añadir.</p>
-                                )}
-                            </div>
 
-                             {/* Link Editar Playlist */}
-                             <div className="mt-8 flex justify-center space-x-3">
-                                {listaReproduccion?.id && auth.user && pagina.props.auth.user.id === (listaReproduccion.user_id || listaReproduccion.usuarios?.[0]?.id) && ( // Verifica si el usuario actual puede editar (ejemplo simple)
+                                    {estaBuscando && <p className="text-gray-500 dark:text-gray-400 italic text-center">Buscando...</p>}
+
+                                    {!estaBuscando && resultadosBusqueda.length > 0 && (
+                                        <div className="max-h-60 overflow-y-auto border dark:border-gray-600 rounded-md p-2 space-y-2 bg-gray-50 dark:bg-gray-700/50">
+                                            <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">
+                                                {consultaBusqueda.length >= minQueryLength ? 'Resultados:' : 'Canciones Disponibles:'}
+                                            </h4>
+                                            <ul>
+                                                {resultadosBusqueda.map((cancionEncontrada) => (
+                                                    <li key={cancionEncontrada.id} className="flex items-center justify-between p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded space-x-3">
+                                                        <div className="flex items-center space-x-3 flex-grow overflow-hidden">
+                                                            <ImagenCancion url={obtenerUrlImagen(cancionEncontrada)} titulo={cancionEncontrada.titulo} className="w-10 h-10" />
+                                                            <span className="text-gray-800 dark:text-gray-200 truncate" title={cancionEncontrada.titulo}>{cancionEncontrada.titulo}</span>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => manejarAnadirCancion(cancionEncontrada.id)}
+                                                            disabled={anadiendoCancionId === cancionEncontrada.id}
+                                                            className={`ml-2 px-3 py-1 text-xs font-semibold rounded-md transition ease-in-out duration-150 flex-shrink-0 ${
+                                                                anadiendoCancionId === cancionEncontrada.id
+                                                                    ? 'bg-indigo-300 text-white cursor-wait dark:bg-indigo-700'
+                                                                    : 'bg-indigo-500 text-white hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800'
+                                                            }`}
+                                                        >
+                                                            {anadiendoCancionId === cancionEncontrada.id ? 'Añadiendo...' : 'Añadir'}
+                                                        </button>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                    {/* Mensajes "No se encontraron" / "No hay disponibles" */}
+                                    {!estaBuscando && consultaBusqueda.length >= minQueryLength && resultadosBusqueda.length === 0 && (
+                                        <p className="text-gray-500 dark:text-gray-400 italic text-center">No se encontraron canciones que coincidan.</p>
+                                    )}
+                                    {!estaBuscando && consultaBusqueda.length < minQueryLength && resultadosBusqueda.length === 0 && !estaBuscando && (
+                                        <p className="text-gray-500 dark:text-gray-400 italic text-center">No hay canciones disponibles para añadir.</p>
+                                    )}
+                                </div> // Fin del div de "Añadir Canciones"
+
+                            )} {/* Fin de la condición listaReproduccion?.can?.view */}
+                            {/* --- END CORRECTION --- */}
+
+
+                            {/* Link Editar Playlist */}
+                            <div className="mt-8 flex justify-center space-x-3">
+                                {/* Usar listaReproduccion?.can?.view aquí también es más consistente */}
+                                {listaReproduccion?.can?.view && (
                                     <Link href={route('playlists.edit', listaReproduccion.id)} className="inline-flex items-center px-4 py-2 bg-yellow-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-600 active:bg-yellow-700 focus:outline-none focus:border-yellow-700 focus:ring ring-yellow-300 disabled:opacity-25 transition ease-in-out duration-150">
                                         Editar Playlist
                                     </Link>
-                                 )}
-                             </div>
-
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

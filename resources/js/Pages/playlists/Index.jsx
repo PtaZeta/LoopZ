@@ -48,7 +48,7 @@ export default function PlaylistIndex() {
             user={auth.user} // Use auth object obtained from usePage
             header={
                 <h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-                    Mis Playlists
+                    Playlists
                 </h2>
             }
         >
