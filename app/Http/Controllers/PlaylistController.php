@@ -21,7 +21,7 @@ class PlaylistController extends Controller
     {
         $user = Auth::user();
         $listasReproduccion = Playlist::with(['usuarios' => function ($query) {
-            $query->select('users.id', 'users.name'); // Select only needed fields for efficiency
+            $query->select('users.id', 'users.name');
         }])->withCount('canciones')->latest()->get();
 
 

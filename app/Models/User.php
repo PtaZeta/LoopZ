@@ -73,4 +73,9 @@ class User extends Authenticatable
     {
         return $this->morphedByMany(Playlist::class, 'perteneceable', 'pertenece_user');
     }
+
+    public function perteneceAlbumes()
+    {
+        return $this->morphedByMany(Album::class, 'perteneceable', 'pertenece_user');
+    }
 }
