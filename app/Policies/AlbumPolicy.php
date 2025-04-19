@@ -35,9 +35,19 @@ class AlbumPolicy
     /**
      * Determine whether the user can update the model.
      */
+    public function edit(User $user, Album $album): bool
+    {
+        return $album->usuarios->contains($user);
+        //return true;
+    }
+
+    /**
+     * Determine whether the user can update the model.
+     */
     public function update(User $user, Album $album): bool
     {
-        return false;
+        return $album->usuarios->contains($user);
+        //return true;
     }
 
     /**
@@ -45,7 +55,8 @@ class AlbumPolicy
      */
     public function delete(User $user, Album $album): bool
     {
-        return false;
+        return $album->usuarios->contains($user);
+        //return true;
     }
 
     /**

@@ -39,14 +39,23 @@ export default function AuthenticatedLayout({ header, children }) {
                                     Canciones
                                 </NavLink>
                             </div>
-                        <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                            <NavLink
-                                href={route('playlists.index')}
-                                active={route().current('playlists.index')}
-                            >
-                                Playlists
-                            </NavLink>
-                        </div>
+                            <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                                <NavLink
+                                    href={route('playlists.index')}
+                                    active={route().current('playlists.index')}
+                                >
+                                    Playlists
+                                </NavLink>
+                            </div>
+                            <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                                <NavLink
+                                    href={route('albumes.index')}
+                                    active={route().current('albumes.index')}
+                                >
+                                    Albumes
+                                </NavLink>
+                            </div>
+
                         </div>
 
                         <div className="hidden sm:ms-6 sm:flex sm:items-center">
