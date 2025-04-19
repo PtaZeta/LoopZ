@@ -36,6 +36,11 @@ class Cancion extends Model
         return $this->morphedByMany(Ep::class, 'perteneceable', 'pertenece_cancion');
     }
 
+    public function perteneceSingles()
+    {
+        return $this->morphedByMany(Single::class, 'perteneceable', 'pertenece_cancion');
+    }
+
     public function usuarios()
     {
         return $this->morphToMany(User::class, 'perteneceable', 'pertenece_user');

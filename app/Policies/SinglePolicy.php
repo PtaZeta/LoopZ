@@ -35,9 +35,19 @@ class SinglePolicy
     /**
      * Determine whether the user can update the model.
      */
+    public function edit(User $user, Single $single): bool
+    {
+        return $single->usuarios->contains($user);
+        //return true;
+    }
+
+    /**
+     * Determine whether the user can update the model.
+     */
     public function update(User $user, Single $single): bool
     {
-        return false;
+        return $single->usuarios->contains($user);
+        //return true;
     }
 
     /**
@@ -45,7 +55,8 @@ class SinglePolicy
      */
     public function delete(User $user, Single $single): bool
     {
-        return false;
+        return $single->usuarios->contains($user);
+        //return true;
     }
 
     /**
