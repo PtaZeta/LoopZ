@@ -5,6 +5,7 @@ use App\Http\Controllers\CancionController;
 use App\Http\Controllers\EPController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PlaylistController;
+use App\Http\Controllers\SingleController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -38,6 +39,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('playlists', PlaylistController::class);
     Route::resource('albumes', AlbumController::class);
     Route::resource('eps', EPController::class);
+    Route::resource('singles', SingleController::class);
 });
 
 Route::middleware('auth')->get('/playlists/{playlist}/songs/search', [PlaylistController::class, 'buscarCanciones'])->name('songs.search');
@@ -51,6 +53,10 @@ Route::middleware('auth')->delete('/albumes/{album}/songs/{pivotId}', [AlbumCont
 Route::middleware('auth')->get('/eps/{ep}/songs/search', [EPController::class, 'buscarCanciones'])->name('eps.songs.search');
 Route::middleware('auth')->post('/eps/{ep}/songs', [EPController::class, 'anadirCancion'])->name('eps.songs.add');
 Route::middleware('auth')->delete('/eps/{ep}/songs/{pivotId}', [EPController::class, 'quitarCancionPorPivot'])->name('eps.songs.remove');
+
+Route::middleware('auth')->get('/singles/{single}/songs/search', [SingleController::class, 'buscarCanciones'])->name('singles.songs.search');
+Route::middleware('auth')->post('/singles/{single}/songs', [SingleController::class, 'anadirCancion'])->name('singles.songs.add');
+Route::middleware('auth')->delete('/singles/{single}/songs/{pivotId}', [SingleController::class, 'quitarCancionPorPivot'])->name('singles.songs.remove');
 
 Route::get('/users/search', [CancionController::class, 'searchUsers'])->name('users.search'); // Or point to UserController@search
 
