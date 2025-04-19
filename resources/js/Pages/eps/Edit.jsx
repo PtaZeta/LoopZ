@@ -1,22 +1,29 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useForm, Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import InputError from '@/Components/InputError';
+import PrimaryButton from '@/Components/PrimaryButton';
+import TextInput from '@/Components/TextInput';
+import InputLabel from '@/Components/InputLabel';
 import axios from 'axios';
 import { debounce } from 'lodash';
 
-// import InputError from '@/Components/InputError';
+export default function Edit({ auth, ep, errors: erroresSesion, success: mensajeExitoSesion }) {
 
-function AlbumCreate({ auth }) {
-    const { data, setData, post, processing, errors, progress, reset } = useForm({
-        nombre: '',
-        descripcion: '',
-        imagen: null,
-        userIds: [],
+    const initialUserIds = ep.usuarios?.map(u => u.id) || [];
+    const initialSelectedUsers = ep.usuarios?.map(u => ({ id: u.id, name: u.name, email: u.email })) || [];
+
+    const { data, setData, post, processing, errors, reset, recentlySuccessful } = useForm({
+        _method: 'PUT',
+        nombre: ep.nombre || '',
+        imagen_nueva: null,
+        eliminar_imagen: false,
+        userIds: initialUserIds,
     });
 
     const [searchTerm, setSearchTerm] = useState('');
     const [searchResults, setSearchResults] = useState([]);
-    const [selectedUsers, setSelectedUsers] = useState([]);
+    const [selectedUsers, setSelectedUsers] = useState(initialSelectedUsers);
     const [isLoadingSearch, setIsLoadingSearch] = useState(false);
     const [showInitialUsers, setShowInitialUsers] = useState(false);
 
@@ -32,19 +39,21 @@ function AlbumCreate({ auth }) {
     };
 
     const removeUser = (userId) => {
-        if (auth.user?.id === userId) {
-            console.warn("Cannot remove the album creator.");
+        // Example: Prevent removing the original creator if needed
+        // Replace Auth::id() check if creator status is stored differently
+        if (auth.user?.id === userId) { // Assuming auth user is the creator for this check
+            console.warn("Cannot remove the ep creator.");
             return;
         }
         const newSelectedUsers = selectedUsers.filter(user => user.id !== userId);
         setSelectedUsers(newSelectedUsers);
         setData('userIds', newSelectedUsers.map(u => u.id));
         if (!searchTerm.trim()) {
-             performSearch('');
+            performSearch('');
         }
     };
 
-    const performSearch = useCallback(
+     const performSearch = useCallback(
         debounce(async (term) => {
             setIsLoadingSearch(true);
             try {
@@ -62,7 +71,7 @@ function AlbumCreate({ auth }) {
                 setIsLoadingSearch(false);
             }
         }, 300),
-        [selectedUsers, auth.user?.id]
+        [selectedUsers] // Recreate if selectedUsers change
     );
 
     const handleSearchChange = (e) => {
@@ -72,106 +81,146 @@ function AlbumCreate({ auth }) {
     };
 
     useEffect(() => {
-        if (auth.user && !selectedUsers.some(u => u.id === auth.user.id)) {
-            const creatorUser = { id: auth.user.id, name: auth.user.name, email: auth.user.email };
-            const newSelectedUsers = [creatorUser];
-            setSelectedUsers(newSelectedUsers);
-            setData('userIds', newSelectedUsers.map(u => u.id));
-        }
-    }, [auth.user]);
-
-    useEffect(() => {
-        if (!searchTerm.trim() && !showInitialUsers && selectedUsers.some(u => u.id === auth.user?.id)) {
+        if (!searchTerm.trim() && !showInitialUsers && selectedUsers.length > 0) {
              performSearch('');
         }
         return () => {
             performSearch.cancel();
         };
-    }, [performSearch, searchTerm, showInitialUsers, selectedUsers, auth.user?.id]);
+    }, [performSearch, searchTerm, showInitialUsers, selectedUsers]);
 
-    const handleSubmit = (e) => {
+
+    const manejarEnvio = (e) => {
         e.preventDefault();
-        post(route('albumes.store'), {
-            preserveScroll: true,
+        post(route('eps.update', ep.id), {
+            forceFormData: true,
             onSuccess: () => {
-                reset();
-                if (auth.user) {
-                    const creatorUser = { id: auth.user.id, name: auth.user.name, email: auth.user.email };
-                    setSelectedUsers([creatorUser]);
-                    setData('userIds', [creatorUser.id]);
-                } else {
-                    setSelectedUsers([]);
-                    setData('userIds', []);
-                }
+                setData(datosAnteriores => ({
+                    ...datosAnteriores,
+                    imagen_nueva: null,
+                    eliminar_imagen: false,
+                }));
+                const inputArchivoImagen = document.getElementById('imagen_nueva');
+                if(inputArchivoImagen) inputArchivoImagen.value = null;
+                // Reset search state on success, but keep selectedUsers as they are now saved
                 setSearchTerm('');
                 setSearchResults([]);
                 setShowInitialUsers(false);
             },
-             onError: (err) => {
-                 console.error("Album creation error:", err);
-             },
+            onError: (errores) => {
+                console.error("Errores de actualización de ep:", errores);
+            },
+            preserveScroll: true,
         });
+    };
+
+    const manejarCambioInput = (e) => {
+        const { name, value } = e.target;
+        setData(name, value);
+    };
+
+    const manejarCambioArchivo = (e) => {
+        const { name, files } = e.target;
+        if (files[0]) {
+            setData(name, files[0]);
+            if (name === 'imagen_nueva') {
+                setData('eliminar_imagen', false);
+            }
+        } else {
+            setData(name, null);
+        }
+    };
+
+    const manejarCambioCheckbox = (e) => {
+        const { name, checked } = e.target;
+        setData(name, checked);
+        if (name === 'eliminar_imagen' && checked) {
+            setData('imagen_nueva', null);
+            const inputArchivo = document.getElementById('imagen_nueva');
+            if(inputArchivo) inputArchivo.value = null;
+        }
     };
 
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Crear Nueva Album</h2>}
+            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Editar EP: {ep.nombre}</h2>}
         >
-            <Head title="Crear Album" />
+            <Head title={`Editar ${ep.nombre}`} />
 
             <div className="py-12">
-                <div className="max-w-2xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                        <div className="p-6 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                    {recentlySuccessful && mensajeExitoSesion && (
+                        <div className="mb-4 p-4 bg-green-100 text-green-700 rounded">
+                            {mensajeExitoSesion}
+                        </div>
+                    )}
 
-                            <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div className="p-6 text-gray-900">
+                            <h3 className="text-lg font-medium text-gray-900 mb-4">
+                                Editando EP
+                            </h3>
 
+                           {Object.keys(erroresSesion || {}).length > 0 && !errors && (
+                                <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
+                                    Hubo errores al procesar tu solicitud. Revisa los campos.
+                                </div>
+                            )}
+
+                            <form onSubmit={manejarEnvio} className="space-y-6">
                                 <div>
-                                    <label htmlFor="nombre" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Nombre de la Album *
-                                    </label>
-                                    <input
-                                        type="text"
+                                    <InputLabel htmlFor="nombre" value="Nombre *" />
+                                    <TextInput
                                         id="nombre"
+                                        name="nombre"
                                         value={data.nombre}
-                                        onChange={(e) => setData('nombre', e.target.value)}
-                                        className={`mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-200 sm:text-sm ${errors.nombre ? 'border-red-500' : ''}`}
+                                        className="mt-1 block w-full"
+                                        autoComplete="nombre"
+                                        isFocused={true}
+                                        onChange={manejarCambioInput}
                                         required
                                     />
-                                    {errors.nombre && (
-                                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.nombre}</p>
-                                    )}
+                                    <InputError message={errors.nombre} className="mt-2" />
                                 </div>
+
                                 <div>
-                                    <label htmlFor="imagen" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Imagen de Portada (Opcional)
-                                    </label>
-                                    <input
-                                        type="file"
-                                        id="imagen"
-                                        accept="image/*"
-                                        onChange={(e) => setData('imagen', e.target.files[0])}
-                                        className="mt-1 block w-full text-sm text-gray-500 dark:text-gray-400
-                                            file:mr-4 file:py-2 file:px-4
-                                            file:rounded-md file:border-0
-                                            file:text-sm file:font-semibold
-                                            file:bg-indigo-50 dark:file:bg-indigo-900
-                                            file:text-indigo-700 dark:file:text-indigo-300
-                                            hover:file:bg-indigo-100 dark:hover:file:bg-indigo-800
-                                            dark:bg-gray-700 rounded-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                    />
-                                    {progress && data.imagen && (
-                                        <div className="mt-2 w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                                            <div
-                                                className="bg-blue-600 h-2.5 rounded-full"
-                                                style={{ width: `${progress.percentage}%` }}
-                                            ></div>
+                                    <InputLabel htmlFor="imagen_nueva" value="Imagen (Opcional: reemplazar actual)" />
+                                     {ep.imagen && !data.eliminar_imagen && (
+                                        <div className="mt-2 mb-4">
+                                            <p className="text-sm text-gray-500 mb-1">Imagen Actual:</p>
+                                            <img src={`/storage/${ep.imagen}`} alt="Imagen actual de la ep" className="h-24 w-24 object-cover rounded border border-gray-200" />
                                         </div>
                                     )}
-                                    {errors.imagen && (
-                                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.imagen}</p>
+                                    <input
+                                        type="file"
+                                        id="imagen_nueva"
+                                        name="imagen_nueva"
+                                        onChange={manejarCambioArchivo}
+                                        className={`mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 ${errors.imagen_nueva ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-indigo-500 focus:border-indigo-500`}
+                                        accept="image/jpeg,image/png,image/jpg"
+                                        disabled={data.eliminar_imagen}
+                                    />
+                                    {data.imagen_nueva && <span className="text-green-600 text-xs mt-1 block">Nueva imagen seleccionada: {data.imagen_nueva.name}</span>}
+                                    <InputError message={errors.imagen_nueva} className="mt-2" />
+
+
+                                     {ep.imagen && (
+                                        <div className="mt-2 flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                id="eliminar_imagen"
+                                                name="eliminar_imagen"
+                                                checked={data.eliminar_imagen}
+                                                onChange={manejarCambioCheckbox}
+                                                className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                            />
+                                            <label htmlFor="eliminar_imagen" className="ml-2 block text-sm text-gray-900">
+                                                Eliminar imagen actual (si no subes una nueva)
+                                            </label>
+                                        </div>
                                     )}
+                                     <InputError message={errors.eliminar_imagen} className="mt-2" />
                                 </div>
 
                                 <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
@@ -203,7 +252,6 @@ function AlbumCreate({ auth }) {
                                                 )}
                                             </div>
 
-                                            {/* Updated UL Styling Here */}
                                             {!isLoadingSearch && (searchTerm || showInitialUsers) && (
                                                 <ul className="mt-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 shadow-lg max-h-60 overflow-auto w-full">
                                                     {searchResults.length > 0 ? (
@@ -264,24 +312,19 @@ function AlbumCreate({ auth }) {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200 dark:border-gray-700 mt-6">
+
+                                <div className="flex items-center gap-4">
+                                    <PrimaryButton disabled={processing}>
+                                        {processing ? 'Actualizando...' : 'Actualizar EP'}
+                                    </PrimaryButton>
+
                                     <Link
-                                        href={route('albumes.index')}
-                                        className="inline-flex items-center px-4 py-2 bg-gray-300 dark:bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-gray-700 dark:text-gray-200 uppercase tracking-widest hover:bg-gray-400 dark:hover:bg-gray-500 focus:outline-none focus:border-gray-500 focus:ring focus:ring-gray-300 dark:focus:ring-gray-700 disabled:opacity-25 transition"
-                                        as="button"
-                                        disabled={processing}
+                                        href={route('eps.index')}
+                                        className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150"
                                     >
                                         Cancelar
                                     </Link>
-                                    <button
-                                        type="submit"
-                                        className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 active:bg-blue-900 focus:outline-none focus:border-blue-900 focus:ring focus:ring-blue-300 disabled:opacity-25 transition"
-                                        disabled={processing}
-                                    >
-                                        {processing ? 'Guardando...' : 'Guardar Album'}
-                                    </button>
                                 </div>
-
                             </form>
                         </div>
                     </div>
@@ -290,5 +333,3 @@ function AlbumCreate({ auth }) {
         </AuthenticatedLayout>
     );
 }
-
-export default AlbumCreate;

@@ -6,7 +6,7 @@ import { debounce } from 'lodash';
 
 // import InputError from '@/Components/InputError';
 
-function AlbumCreate({ auth }) {
+function EPCreate({ auth }) {
     const { data, setData, post, processing, errors, progress, reset } = useForm({
         nombre: '',
         descripcion: '',
@@ -33,7 +33,7 @@ function AlbumCreate({ auth }) {
 
     const removeUser = (userId) => {
         if (auth.user?.id === userId) {
-            console.warn("Cannot remove the album creator.");
+            console.warn("Cannot remove the ep creator.");
             return;
         }
         const newSelectedUsers = selectedUsers.filter(user => user.id !== userId);
@@ -91,7 +91,7 @@ function AlbumCreate({ auth }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        post(route('albumes.store'), {
+        post(route('eps.store'), {
             preserveScroll: true,
             onSuccess: () => {
                 reset();
@@ -108,7 +108,7 @@ function AlbumCreate({ auth }) {
                 setShowInitialUsers(false);
             },
              onError: (err) => {
-                 console.error("Album creation error:", err);
+                 console.error("EP creation error:", err);
              },
         });
     };
@@ -116,9 +116,9 @@ function AlbumCreate({ auth }) {
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Crear Nueva Album</h2>}
+            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Crear Nueva EP</h2>}
         >
-            <Head title="Crear Album" />
+            <Head title="Crear EP" />
 
             <div className="py-12">
                 <div className="max-w-2xl mx-auto sm:px-6 lg:px-8">
@@ -129,7 +129,7 @@ function AlbumCreate({ auth }) {
 
                                 <div>
                                     <label htmlFor="nombre" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Nombre de la Album *
+                                        Nombre de la EP *
                                     </label>
                                     <input
                                         type="text"
@@ -266,7 +266,7 @@ function AlbumCreate({ auth }) {
 
                                 <div className="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200 dark:border-gray-700 mt-6">
                                     <Link
-                                        href={route('albumes.index')}
+                                        href={route('eps.index')}
                                         className="inline-flex items-center px-4 py-2 bg-gray-300 dark:bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-gray-700 dark:text-gray-200 uppercase tracking-widest hover:bg-gray-400 dark:hover:bg-gray-500 focus:outline-none focus:border-gray-500 focus:ring focus:ring-gray-300 dark:focus:ring-gray-700 disabled:opacity-25 transition"
                                         as="button"
                                         disabled={processing}
@@ -278,7 +278,7 @@ function AlbumCreate({ auth }) {
                                         className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 active:bg-blue-900 focus:outline-none focus:border-blue-900 focus:ring focus:ring-blue-300 disabled:opacity-25 transition"
                                         disabled={processing}
                                     >
-                                        {processing ? 'Guardando...' : 'Guardar Album'}
+                                        {processing ? 'Guardando...' : 'Guardar EP'}
                                     </button>
                                 </div>
 
@@ -291,4 +291,4 @@ function AlbumCreate({ auth }) {
     );
 }
 
-export default AlbumCreate;
+export default EPCreate;

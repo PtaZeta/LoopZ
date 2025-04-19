@@ -52,7 +52,6 @@ class EPController extends Controller
 
     public function store(StoreEPRequest $request)
     {
-        // $this->authorize('create', EP::class);
         $datosValidados = $request->validated();
 
         if ($request->hasFile('imagen')) {

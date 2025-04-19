@@ -48,6 +48,9 @@ Route::middleware('auth')->get('/albumes/{album}/songs/search', [AlbumController
 Route::middleware('auth')->post('/albumes/{album}/songs', [AlbumController::class, 'anadirCancion'])->name('albumes.songs.add');
 Route::middleware('auth')->delete('/albumes/{album}/songs/{pivotId}', [AlbumController::class, 'quitarCancionPorPivot'])->name('albumes.songs.remove');
 
+Route::middleware('auth')->get('/eps/{ep}/songs/search', [EPController::class, 'buscarCanciones'])->name('eps.songs.search');
+Route::middleware('auth')->post('/eps/{ep}/songs', [EPController::class, 'anadirCancion'])->name('eps.songs.add');
+Route::middleware('auth')->delete('/eps/{ep}/songs/{pivotId}', [EPController::class, 'quitarCancionPorPivot'])->name('eps.songs.remove');
 
 Route::get('/users/search', [CancionController::class, 'searchUsers'])->name('users.search'); // Or point to UserController@search
 
