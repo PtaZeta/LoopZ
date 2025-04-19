@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AlbumController;
 use App\Http\Controllers\CancionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PlaylistController;
@@ -34,11 +35,17 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('canciones', CancionController::class);
     Route::resource('playlists', PlaylistController::class);
+    Route::resource('albumes', AlbumController::class);
 });
 
 Route::middleware('auth')->get('/playlists/{playlist}/songs/search', [PlaylistController::class, 'buscarCanciones'])->name('songs.search');
 Route::middleware('auth')->post('/playlists/{playlist}/songs', [PlaylistController::class, 'anadirCancion'])->name('playlists.songs.add');
 Route::middleware('auth')->delete('/playlists/{playlist}/songs/{pivotId}', [PlaylistController::class, 'quitarCancionPorPivot'])->name('playlists.songs.remove');
+
+Route::middleware('auth')->get('/albumes/{album}/songs/search', [AlbumController::class, 'buscarCanciones'])->name('albumes.songs.search');
+Route::middleware('auth')->post('/albumes/{album}/songs', [AlbumController::class, 'anadirCancion'])->name('albumes.songs.add');
+Route::middleware('auth')->delete('/albumes/{album}/songs/{pivotId}', [AlbumController::class, 'quitarCancionPorPivot'])->name('albumes.songs.remove');
+
 
 Route::get('/users/search', [CancionController::class, 'searchUsers'])->name('users.search'); // Or point to UserController@search
 

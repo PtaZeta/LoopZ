@@ -14,9 +14,7 @@ return new class extends Migration
         Schema::create('albumes', function (Blueprint $table) {
             $table->id();
             $table->string('nombre');
-            $table->string('genero')->nullable();
-            $table->string('portada_url')->nullable();
-            $table->text('descripcion');
+            $table->string('imagen')->nullable();
             $table->timestamps();
         });
     }
