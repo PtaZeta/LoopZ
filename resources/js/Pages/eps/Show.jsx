@@ -59,25 +59,25 @@ ImagenCancion.propTypes = {
 
 
 // Componente principal (Específico para Álbumes)
-export default function AlbumesShow({ auth, album: albumInicial }) {
+export default function EPesShow({ auth, ep: epInicial }) {
 
     const { flash: mensajeFlash } = usePage().props;
     const pagina = usePage();
 
-    const [album, setAlbum] = useState(albumInicial);
+    const [ep, setEP] = useState(epInicial);
     const [consultaBusqueda, setConsultaBusqueda] = useState('');
     const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
     const [estaBuscando, setEstaBuscando] = useState(false);
     const [anadiendoCancionId, setAnadiendoCancionId] = useState(null);
     const minQueryLength = 2;
 
-    const urlImagenPrincipal = obtenerUrlImagen(album);
+    const urlImagenPrincipal = obtenerUrlImagen(ep);
 
     const buscarCancionesApi = useCallback(async (consulta) => {
-        if (!album?.id) return;
+        if (!ep?.id) return;
         setEstaBuscando(true);
         try {
-            const urlBusqueda = route('albumes.songs.search', { album: album.id, query: consulta });
+            const urlBusqueda = route('eps.songs.search', { ep: ep.id, query: consulta });
             const respuesta = await fetch(urlBusqueda);
             if (!respuesta.ok) {
                 let errorMsg = `La respuesta de red no fue correcta (${respuesta.status})`;
@@ -95,22 +95,22 @@ export default function AlbumesShow({ auth, album: albumInicial }) {
         } finally {
             setEstaBuscando(false);
         }
-    }, [album?.id]);
+    }, [ep?.id]);
 
     const busquedaDebounced = useCallback(debounce(buscarCancionesApi, 300), [buscarCancionesApi]);
 
     const manejarEliminarCancion = (pivotId) => {
-        if (!pivotId || !album?.id) {
-            console.error("Error: Faltan datos para eliminar (pivotId, albumId).");
+        if (!pivotId || !ep?.id) {
+            console.error("Error: Faltan datos para eliminar (pivotId, epId).");
             alert("Error al intentar eliminar la canción. Refresca la página.");
             return;
         }
-        router.delete(route('albumes.songs.remove', { album: album.id, pivotId: pivotId }), {
+        router.delete(route('eps.songs.remove', { ep: ep.id, pivotId: pivotId }), {
             preserveScroll: true,
             preserveState: false,
             onSuccess: (page) => {
-                 if (page.props.album) {
-                     setAlbum(page.props.album);
+                 if (page.props.ep) {
+                     setEP(page.props.ep);
                  }
                  buscarCancionesApi(consultaBusqueda);
             },
@@ -129,16 +129,16 @@ export default function AlbumesShow({ auth, album: albumInicial }) {
     };
 
     const manejarAnadirCancion = (idCancion) => {
-        if (!album?.id) return;
+        if (!ep?.id) return;
         setAnadiendoCancionId(idCancion);
-        router.post(route('albumes.songs.add', { album: album.id }), {
+        router.post(route('eps.songs.add', { ep: ep.id }), {
             cancion_id: idCancion,
         }, {
             preserveScroll: true,
             preserveState: false,
             onSuccess: (page) => {
-                 if (page.props.album) {
-                    setAlbum(page.props.album);
+                 if (page.props.ep) {
+                    setEP(page.props.ep);
                  }
             },
             onFinish: () => setAnadiendoCancionId(null),
@@ -152,27 +152,27 @@ export default function AlbumesShow({ auth, album: albumInicial }) {
     };
 
     useEffect(() => {
-        if (album?.id) {
+        if (ep?.id) {
            buscarCancionesApi('');
         }
-    }, [buscarCancionesApi, album?.id]);
+    }, [buscarCancionesApi, ep?.id]);
 
      useEffect(() => {
-         const albumActualizado = pagina.props.album;
-         if (albumActualizado && albumActualizado.id === (album?.id || albumInicial?.id) ) {
-              if (!Array.isArray(albumActualizado.canciones)) {
-                  albumActualizado.canciones = [];
+         const epActualizado = pagina.props.ep;
+         if (epActualizado && epActualizado.id === (ep?.id || epInicial?.id) ) {
+              if (!Array.isArray(epActualizado.canciones)) {
+                  epActualizado.canciones = [];
               }
-              if (JSON.stringify(albumActualizado) !== JSON.stringify(album)) {
-                  setAlbum(albumActualizado);
+              if (JSON.stringify(epActualizado) !== JSON.stringify(ep)) {
+                  setEP(epActualizado);
               }
-         } else if (albumInicial && !album) {
-               if (!Array.isArray(albumInicial.canciones)) {
-                   albumInicial.canciones = [];
+         } else if (epInicial && !ep) {
+               if (!Array.isArray(epInicial.canciones)) {
+                   epInicial.canciones = [];
                }
-               setAlbum(albumInicial);
+               setEP(epInicial);
          }
-     }, [pagina.props.album, albumInicial, album]);
+     }, [pagina.props.ep, epInicial, ep]);
 
 
     return (
@@ -180,11 +180,11 @@ export default function AlbumesShow({ auth, album: albumInicial }) {
             user={auth.user}
             header={
                 <h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-                    Detalles del Álbum: {album?.nombre || 'Cargando...'}
+                    Detalles del Álbum: {ep?.nombre || 'Cargando...'}
                 </h2>
             }
         >
-            <Head title={`Álbum: ${album?.nombre || ''}`} />
+            <Head title={`Álbum: ${ep?.nombre || ''}`} />
 
             <div className="py-12">
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
@@ -204,34 +204,34 @@ export default function AlbumesShow({ auth, album: albumInicial }) {
                         <div className="p-6 md:p-8 text-gray-900 dark:text-gray-100">
 
                             <div className="mb-6">
-                                <Link href={route('albumes.index')} className="text-blue-600 dark:text-blue-400 hover:underline">
+                                <Link href={route('eps.index')} className="text-blue-600 dark:text-blue-400 hover:underline">
                                     &larr; Volver a Mis Álbumes
                                 </Link>
                             </div>
 
                             {urlImagenPrincipal ? (
                                 <div className="mb-6 flex justify-center">
-                                    <img src={urlImagenPrincipal} alt={`Portada de ${album?.nombre}`} className="max-w-sm w-full h-auto rounded-lg shadow-md object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                                    <img src={urlImagenPrincipal} alt={`Portada de ${ep?.nombre}`} className="max-w-sm w-full h-auto rounded-lg shadow-md object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
                                 </div>
                             ) : ( <div className="mb-6 text-center text-gray-500 dark:text-gray-400">(Sin imagen)</div> )}
 
-                            <h1 className="text-3xl font-bold mb-4 text-center text-gray-800 dark:text-gray-100">{album?.nombre}</h1>
-                            {(album?.created_at || album?.updated_at) && (
+                            <h1 className="text-3xl font-bold mb-4 text-center text-gray-800 dark:text-gray-100">{ep?.nombre}</h1>
+                            {(ep?.created_at || ep?.updated_at) && (
                                 <div className="text-sm text-gray-500 dark:text-gray-400 mb-8 border-t dark:border-gray-700 pt-4 text-center">
-                                    {album.created_at && <p>Creada el: {new Date(album.created_at).toLocaleString()}</p>}
-                                    {album.updated_at && album.updated_at !== album.created_at && <p>Última actualización: {new Date(album.updated_at).toLocaleString()}</p>}
+                                    {ep.created_at && <p>Creada el: {new Date(ep.created_at).toLocaleString()}</p>}
+                                    {ep.updated_at && ep.updated_at !== ep.created_at && <p>Última actualización: {new Date(ep.updated_at).toLocaleString()}</p>}
                                 </div>
                             )}
 
                             <div className="mb-10">
-                                <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Canciones en este Álbum ({album?.canciones?.length || 0})</h3>
-                                {album?.canciones && Array.isArray(album.canciones) && album.canciones.length > 0 ? (
+                                <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Canciones en este Álbum ({ep?.canciones?.length || 0})</h3>
+                                {ep?.canciones && Array.isArray(ep.canciones) && ep.canciones.length > 0 ? (
                                     <ul className="space-y-2">
-                                        {album.canciones.map((cancion) => (
+                                        {ep.canciones.map((cancion) => (
                                             <li key={cancion.pivot?.id ?? `fallback-${cancion.id}-${Math.random()}`} className="p-2 bg-gray-100 dark:bg-gray-700 rounded-md flex items-center space-x-3">
                                                 <ImagenCancion url={obtenerUrlImagen(cancion)} titulo={cancion.titulo} className="w-10 h-10" />
                                                 <span className="text-gray-800 dark:text-gray-200 flex-grow truncate" title={cancion.titulo}>{cancion.titulo}</span>
-                                                {album.can?.edit && (
+                                                {ep.can?.edit && (
                                                 <button
                                                     onClick={() => manejarEliminarCancion(cancion.pivot?.id)}
                                                     disabled={!cancion.pivot?.id}
@@ -249,7 +249,7 @@ export default function AlbumesShow({ auth, album: albumInicial }) {
                                 )}
                             </div>
 
-                            {album?.can?.edit && (
+                            {ep?.can?.edit && (
                                 <div className="mt-10 border-t dark:border-gray-700 pt-6">
                                     <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Añadir Canciones al Álbum</h3>
                                     <div className="mb-4">
@@ -259,7 +259,7 @@ export default function AlbumesShow({ auth, album: albumInicial }) {
                                             value={consultaBusqueda}
                                             onChange={manejarCambioInputBusqueda}
                                             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-gray-200"
-                                            disabled={!album?.id}
+                                            disabled={!ep?.id}
                                         />
                                     </div>
 
@@ -303,8 +303,8 @@ export default function AlbumesShow({ auth, album: albumInicial }) {
                             )}
 
                             <div className="mt-8 flex justify-center space-x-3">
-                                {album?.can?.edit && (
-                                    <Link href={route('albumes.edit', album.id)} className="inline-flex items-center px-4 py-2 bg-yellow-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-600 active:bg-yellow-700 focus:outline-none focus:border-yellow-700 focus:ring ring-yellow-300 disabled:opacity-25 transition ease-in-out duration-150">
+                                {ep?.can?.edit && (
+                                    <Link href={route('eps.edit', ep.id)} className="inline-flex items-center px-4 py-2 bg-yellow-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-600 active:bg-yellow-700 focus:outline-none focus:border-yellow-700 focus:ring ring-yellow-300 disabled:opacity-25 transition ease-in-out duration-150">
                                         Editar Álbum
                                     </Link>
                                 )}
