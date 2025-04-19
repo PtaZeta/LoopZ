@@ -28,11 +28,18 @@ class Cancion extends Model
 
     public function perteneceAlbumes()
     {
-        return $this->morphedByMany(Album::class, 'perteneceable', 'pertenece_album');
+        return $this->morphedByMany(Album::class, 'perteneceable', 'pertenece_cancion');
+    }
+
+    public function perteneceEps()
+    {
+        return $this->morphedByMany(Ep::class, 'perteneceable', 'pertenece_cancion');
     }
 
     public function usuarios()
     {
         return $this->morphToMany(User::class, 'perteneceable', 'pertenece_user');
     }
+
+
 }

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AlbumController;
 use App\Http\Controllers\CancionController;
+use App\Http\Controllers\EPController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PlaylistController;
 use Illuminate\Foundation\Application;
@@ -36,6 +37,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('canciones', CancionController::class);
     Route::resource('playlists', PlaylistController::class);
     Route::resource('albumes', AlbumController::class);
+    Route::resource('eps', EPController::class);
 });
 
 Route::middleware('auth')->get('/playlists/{playlist}/songs/search', [PlaylistController::class, 'buscarCanciones'])->name('songs.search');
