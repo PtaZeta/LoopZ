@@ -9,6 +9,7 @@ import { debounce } from 'lodash';
 function PlaylistCreate({ auth }) {
     const { data, setData, post, processing, errors, progress, reset } = useForm({
         nombre: '',
+        publico: false,
         descripcion: '',
         imagen: null,
         userIds: [],
@@ -143,6 +144,26 @@ function PlaylistCreate({ auth }) {
                                         <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.nombre}</p>
                                     )}
                                 </div>
+
+                                <div>
+                                     <label htmlFor="publico" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                         Visibilidad *
+                                     </label>
+                                     <select
+                                         id="publico"
+                                         name="publico"
+                                         value={data.publico}
+                                         onChange={(e) => setData('publico', e.target.value === 'true')}
+                                         className={`mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-200 sm:text-sm ${errors.publico ? 'border-red-500' : ''}`}
+                                         required
+                                     >
+                                         <option value="false">Privado (Solo colaboradores)</option>
+                                         <option value="true">Público (Visible para todos)</option>
+                                     </select>
+                                     {errors.publico && (
+                                         <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.publico}</p>
+                                     )}
+                                 </div>
 
                                 <div>
                                     <label htmlFor="descripcion" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

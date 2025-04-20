@@ -1,19 +1,26 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import PropTypes from 'prop-types'; // Aunque se quite propTypes, la importación puede quedar o quitarse
+import PropTypes from 'prop-types';
 import debounce from 'lodash.debounce';
 
-// Helper para obtener URL de imagen (sirve para álbum o canción)
 const obtenerUrlImagen = (item) => {
     if (!item) return null;
-    if (item.foto_url) { return item.foto_url; } // Canción
-    if (item.image_url) { return item.image_url; } // Accesor?
-    if (item.imagen) { return `/storage/${item.imagen}`; } // Campo DB
-    return null;
+
+    // Intenta obtener la ruta de cualquiera de estos campos
+    const imagePath = item.foto_url || item.imagen || item.image_url;
+
+    if (!imagePath) {
+        return null; // No hay ruta
+    }
+
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://') || imagePath.startsWith('/storage/')) {
+        return imagePath;
+    } else {
+        return `/storage/${imagePath}`;
+    }
 };
 
-// Componente Imagen con Fallback
 const ImagenCancion = ({ url, titulo, className = "w-10 h-10" }) => {
     const [src, setSrc] = useState(url);
     const [error, setError] = useState(false);
@@ -50,7 +57,6 @@ const ImagenCancion = ({ url, titulo, className = "w-10 h-10" }) => {
     );
 };
 
-// PropTypes de ImagenCancion (se mantienen si quieres)
 ImagenCancion.propTypes = {
     url: PropTypes.string,
     titulo: PropTypes.string.isRequired,
@@ -58,8 +64,7 @@ ImagenCancion.propTypes = {
 };
 
 
-// Componente principal (Específico para EPs)
-export default function EPesShow({ auth, ep: epInicial }) {
+export default function EPsShow({ auth, ep: epInicial }) {
 
     const { flash: mensajeFlash } = usePage().props;
     const pagina = usePage();
@@ -72,6 +77,11 @@ export default function EPesShow({ auth, ep: epInicial }) {
     const minQueryLength = 2;
 
     const urlImagenPrincipal = obtenerUrlImagen(ep);
+
+    const idsCancionesEnEP = useMemo(() =>
+        new Set((ep?.canciones || []).map(c => c.id)),
+        [ep?.canciones]
+    );
 
     const buscarCancionesApi = useCallback(async (consulta) => {
         if (!ep?.id) return;
@@ -110,7 +120,7 @@ export default function EPesShow({ auth, ep: epInicial }) {
             preserveState: false,
             onSuccess: (page) => {
                  if (page.props.ep) {
-                     setEP(page.props.ep);
+                      setEP(page.props.ep);
                  }
                  buscarCancionesApi(consultaBusqueda);
             },
@@ -129,7 +139,7 @@ export default function EPesShow({ auth, ep: epInicial }) {
     };
 
     const manejarAnadirCancion = (idCancion) => {
-        if (!ep?.id) return;
+        if (!ep?.id || idsCancionesEnEP.has(idCancion)) return;
         setAnadiendoCancionId(idCancion);
         router.post(route('eps.songs.add', { ep: ep.id }), {
             cancion_id: idCancion,
@@ -140,6 +150,7 @@ export default function EPesShow({ auth, ep: epInicial }) {
                  if (page.props.ep) {
                     setEP(page.props.ep);
                  }
+                 setResultadosBusqueda(prev => prev.filter(c => c.id !== idCancion));
             },
             onFinish: () => setAnadiendoCancionId(null),
             onError: (errores) => {
@@ -161,18 +172,22 @@ export default function EPesShow({ auth, ep: epInicial }) {
          const epActualizado = pagina.props.ep;
          if (epActualizado && epActualizado.id === (ep?.id || epInicial?.id) ) {
               if (!Array.isArray(epActualizado.canciones)) {
-                  epActualizado.canciones = [];
+                   epActualizado.canciones = [];
               }
               if (JSON.stringify(epActualizado) !== JSON.stringify(ep)) {
-                  setEP(epActualizado);
+                   setEP(epActualizado);
               }
          } else if (epInicial && !ep) {
-               if (!Array.isArray(epInicial.canciones)) {
+              if (!Array.isArray(epInicial.canciones)) {
                    epInicial.canciones = [];
-               }
-               setEP(epInicial);
+              }
+              setEP(epInicial);
          }
      }, [pagina.props.ep, epInicial, ep]);
+
+      const cancionesFiltradasParaAnadir = useMemo(() => {
+           return resultadosBusqueda.filter(cancion => !idsCancionesEnEP.has(cancion.id));
+       }, [resultadosBusqueda, idsCancionesEnEP]);
 
 
     return (
@@ -196,7 +211,7 @@ export default function EPesShow({ auth, ep: epInicial }) {
                     )}
                     {mensajeFlash && mensajeFlash.error && (
                          <div className="mb-4 p-4 bg-red-100 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 rounded-md shadow-sm" role="alert">
-                             {mensajeFlash.error}
+                              {mensajeFlash.error}
                          </div>
                      )}
 
@@ -205,7 +220,7 @@ export default function EPesShow({ auth, ep: epInicial }) {
 
                             <div className="mb-6">
                                 <Link href={route('eps.index')} className="text-blue-600 dark:text-blue-400 hover:underline">
-                                    &larr; Volver a Mis EPs
+                                    &larr; Volver a Mis Álbumes
                                 </Link>
                             </div>
 
@@ -265,13 +280,13 @@ export default function EPesShow({ auth, ep: epInicial }) {
 
                                     {estaBuscando && <p className="text-gray-500 dark:text-gray-400 italic text-center">Buscando...</p>}
 
-                                    {!estaBuscando && resultadosBusqueda.length > 0 && (
+                                    {!estaBuscando && (consultaBusqueda.length >= minQueryLength || resultadosBusqueda.length > 0) && cancionesFiltradasParaAnadir.length > 0 && (
                                         <div className="max-h-60 overflow-y-auto border dark:border-gray-600 rounded-md p-2 space-y-2 bg-gray-50 dark:bg-gray-700/50">
                                             <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">
-                                                {consultaBusqueda.length >= minQueryLength ? 'Resultados:' : 'Canciones Disponibles:'}
+                                                {consultaBusqueda.length >= minQueryLength ? 'Resultados para añadir:' : 'Canciones Disponibles para añadir:'}
                                             </h4>
                                             <ul>
-                                                {resultadosBusqueda.map((cancionEncontrada) => (
+                                                {cancionesFiltradasParaAnadir.map((cancionEncontrada) => (
                                                     <li key={cancionEncontrada.id} className="flex items-center justify-between p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded space-x-3">
                                                         <div className="flex items-center space-x-3 flex-grow overflow-hidden">
                                                             <ImagenCancion url={obtenerUrlImagen(cancionEncontrada)} titulo={cancionEncontrada.titulo} className="w-10 h-10" />
@@ -293,12 +308,15 @@ export default function EPesShow({ auth, ep: epInicial }) {
                                             </ul>
                                         </div>
                                     )}
-                                    {!estaBuscando && consultaBusqueda.length >= minQueryLength && resultadosBusqueda.length === 0 && (
-                                        <p className="text-gray-500 dark:text-gray-400 italic text-center">No se encontraron canciones que coincidan.</p>
+                                    {!estaBuscando && consultaBusqueda.length >= minQueryLength && cancionesFiltradasParaAnadir.length === 0 && (
+                                        <p className="text-gray-500 dark:text-gray-400 italic text-center">No se encontraron canciones nuevas que coincidan.</p>
                                     )}
-                                    {!estaBuscando && consultaBusqueda.length < minQueryLength && resultadosBusqueda.length === 0 && (
-                                        <p className="text-gray-500 dark:text-gray-400 italic text-center">No hay canciones disponibles o escribe más para buscar.</p>
-                                    )}
+                                    {!estaBuscando && consultaBusqueda.length < minQueryLength && cancionesFiltradasParaAnadir.length === 0 && resultadosBusqueda.length === 0 && (
+                                         <p className="text-gray-500 dark:text-gray-400 italic text-center">No hay canciones disponibles o escribe más para buscar.</p>
+                                     )}
+                                     {!estaBuscando && consultaBusqueda.length === 0 && resultadosBusqueda.length > 0 && cancionesFiltradasParaAnadir.length === 0 && (
+                                          <p className="text-gray-500 dark:text-gray-400 italic text-center">Todas las canciones disponibles ya están en el álbum.</p>
+                                      )}
                                 </div>
                             )}
 

@@ -153,7 +153,6 @@ class AlbumController extends Controller
 
         $this->authorize('update', $album);
 
-         // Ensure imagen_url is appended if needed (check Album model $appends)
          if ($album->imagen_url) {
              $album->imagen_url = $album->imagen_url;
          }
@@ -271,8 +270,7 @@ class AlbumController extends Controller
 
         $query = Cancion::whereHas('usuarios', function ($q) use ($collaboratorIds) {
             $q->whereIn('users.id', $collaboratorIds);
-        })
-;
+        });
 
         $limit = 30;
 
