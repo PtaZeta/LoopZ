@@ -15,6 +15,7 @@ export default function Editar({ auth, cancion, errors: serverErrors, success: s
         _method: 'PUT',
         titulo: cancion.titulo || '',
         genero: cancion.genero || '',
+        publico: cancion.publico ?? false,
         licencia: cancion.licencia || '',
         archivo_nuevo: null,
         foto_nueva: null,
@@ -224,6 +225,21 @@ export default function Editar({ auth, cancion, errors: serverErrors, success: s
                                         <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{cancion.duracion ? `${Math.round(cancion.duracion)} segundos` : 'No disponible'}</p>
                                         <small className="text-xs text-gray-500 dark:text-gray-400">(Se actualiza si subes un nuevo archivo de audio)</small>
                                     </div>
+
+                                    <div>
+                                        <select
+                                            id="publico"
+                                            name="publico"
+                                            value={data.publico} // Boolean value works here
+                                            onChange={(e) => setData('publico', e.target.value === 'true')} // Convert back to boolean
+                                            className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-200 sm:text-sm"
+                                            required
+                                        >
+                                            <option value="false">Privado (Solo colaboradores)</option>
+                                            <option value="true">Público (Visible para todos)</option>
+                                        </select>
+                                    </div>
+
 
                                      <div>
                                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Archivo de Audio Actual</label>
