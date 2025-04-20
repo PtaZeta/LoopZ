@@ -277,22 +277,40 @@ class PlaylistController extends Controller
 
     public function buscarCanciones(Request $request, Playlist $playlist)
     {
+        $user = Auth::user();
         $consulta = $request->input('query', '');
-        $resultados = [];
         $minQueryLength = 2;
+        $limit = 30;
+
+        $collaboratorIds = $playlist
+            ->usuarios()
+            ->pluck('users.id')
+            ->toArray();
+
+        $query = Cancion::query()
+            ->with('usuarios')
+            ->where(function ($q) use ($user, $collaboratorIds) {
+                $q->where('publico', true);
+                if ($user) {
+                    $q->orWhereHas('usuarios', function ($q2) use ($collaboratorIds) {
+                        $q2->whereIn('users.id', $collaboratorIds);
+                    });
+                }
+            });
 
         if (strlen($consulta) >= $minQueryLength) {
-            $resultados = Cancion::where('titulo', 'LIKE', "%{$consulta}%")
-                ->select('id', 'titulo', 'foto_url') // Select necessary fields
-                ->limit(15)
-                ->get();
+            $query->where('titulo', 'LIKE', "%{$consulta}%");
+            $limit = 15;
         } else {
-            $resultados = Cancion::query()
-                ->select('id', 'titulo', 'foto_url') // Select necessary fields
-                ->orderBy('titulo')
-                ->limit(30)
-                ->get();
+            $query->orderBy('titulo');
         }
+
+        $resultados = $query
+            ->select('id', 'titulo', 'foto_url')
+            ->limit($limit)
+            ->get();
+
         return response()->json($resultados);
     }
+
 }
