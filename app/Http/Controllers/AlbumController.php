@@ -108,6 +108,8 @@ class AlbumController extends Controller
         $user = Auth::user();
         $album = Album::findOrFail($id);
 
+
+
         if ($user) {
             $album->can = [
                 'view'   => true,
@@ -261,7 +263,6 @@ class AlbumController extends Controller
 
     public function buscarCanciones(Request $request, Album $album)
     {
-         $this->authorize('update', $album);
 
         $consulta = $request->input('query', '');
         $minQueryLength = 2;
@@ -271,9 +272,7 @@ class AlbumController extends Controller
         $query = Cancion::whereHas('usuarios', function ($q) use ($collaboratorIds) {
             $q->whereIn('users.id', $collaboratorIds);
         })
-        ->whereDoesntHave('albumes', function ($q) use ($album) {
-             $q->where('albumes.id', $album->id);
-         });
+;
 
         $limit = 30;
 
