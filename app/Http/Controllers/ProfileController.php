@@ -29,9 +29,27 @@ class ProfileController extends Controller
 
         $playlists = $playlistsQuery->get();
 
+        $albumesQuery = $user->perteneceAlbumes()
+                               ->orderBy('created_at', 'desc');
+
+        $albumes = $albumesQuery->get();
+
+        $epsQuery = $user->perteneceEps()
+                               ->orderBy('created_at', 'desc');
+
+        $eps = $epsQuery->get();
+
+        $singlesQuery = $user->perteneceSingles()
+                               ->orderBy('created_at', 'desc');
+
+        $singles = $singlesQuery->get();
+
         return Inertia::render('Profile/Index', [
             'cancionesUsuario' => $canciones,
             'playlistsUsuario' => $playlists,
+            'albumesUsuario' => $albumes,
+            'epsUsuario' => $eps,
+            'singlesUsuario' => $singles,
         ]);
     }
 

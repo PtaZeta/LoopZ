@@ -58,7 +58,7 @@ ImagenCancion.propTypes = {
 };
 
 
-// Componente principal (Específico para Álbumes)
+// Componente principal (Específico para EPs)
 export default function EPesShow({ auth, ep: epInicial }) {
 
     const { flash: mensajeFlash } = usePage().props;
@@ -205,7 +205,7 @@ export default function EPesShow({ auth, ep: epInicial }) {
 
                             <div className="mb-6">
                                 <Link href={route('eps.index')} className="text-blue-600 dark:text-blue-400 hover:underline">
-                                    &larr; Volver a Mis Álbumes
+                                    &larr; Volver a Mis EPs
                                 </Link>
                             </div>
 

@@ -58,7 +58,7 @@ ImagenCancion.propTypes = {
 };
 
 
-// Componente principal (Específico para Álbumes)
+// Componente principal (Específico para Singles)
 export default function SingleesShow({ auth, single: singleInicial }) {
 
     const { flash: mensajeFlash } = usePage().props;
@@ -205,7 +205,7 @@ export default function SingleesShow({ auth, single: singleInicial }) {
 
                             <div className="mb-6">
                                 <Link href={route('singles.index')} className="text-blue-600 dark:text-blue-400 hover:underline">
-                                    &larr; Volver a Mis Álbumes
+                                    &larr; Volver a Mis Singles
                                 </Link>
                             </div>
 
