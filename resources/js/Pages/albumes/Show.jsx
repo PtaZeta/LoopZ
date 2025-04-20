@@ -14,11 +14,9 @@ const obtenerUrlImagen = (item) => {
         return null; // No hay ruta
     }
 
-    // SI YA EMPIEZA con http://, https://, o /storage/, la devuelve tal cual
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://') || imagePath.startsWith('/storage/')) {
         return imagePath;
     } else {
-        // SI NO, asume que es una ruta relativa y añade /storage/
         return `/storage/${imagePath}`;
     }
 };

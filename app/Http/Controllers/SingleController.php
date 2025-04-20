@@ -1,4 +1,5 @@
 <?php
+// app/Http/Controllers/SingleController.php
 
 namespace App\Http\Controllers;
 
@@ -6,37 +7,54 @@ use App\Http\Requests\StoreSingleRequest;
 use App\Http\Requests\UpdateSingleRequest;
 use App\Models\Single;
 use App\Models\Cancion;
-use App\Models\User; // Import User model if needed for search, although search is separate
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\Redirect; // Import Redirect
+use Illuminate\Support\Facades\Redirect;
 
 class SingleController extends Controller
 {
     public function index()
     {
         $user = Auth::user();
-        $singles = Single::with(['usuarios' => function ($query) {
+        $singlesQuery = Single::with(['usuarios' => function ($query) {
             $query->select('users.id', 'users.name');
-        }])->withCount('canciones')->latest()->get();
+        }])->withCount('canciones')->latest();
+
+        if ($user) {
+             $singlesQuery->where('publico', true)
+                         ->orWhereHas('usuarios', function ($query) use ($user) {
+                             $query->where('users.id', $user->id);
+                         });
+        } else {
+            $singlesQuery->where('publico', true);
+        }
+
+        $singles = $singlesQuery->get();
 
 
         $singlesConPermisos = $singles->map(function ($single) use ($user) {
             if ($user) {
                 $single->can = [
-                    'edit' => $user->can('update', $single),
+                    'view'   => $user->can('view', $single),
+                    'edit'   => $user->can('update', $single),
                     'delete' => $user->can('delete', $single),
                 ];
             } else {
                  $single->can = [
-                    'edit' => false,
+                    'view'   => $single->publico,
+                    'edit'   => false,
                     'delete' => false,
-                ];
+                 ];
             }
+            // Ensure imagen_url is appended if needed (check Single model $appends)
+            if ($single->imagen_url) {
+                 $single->imagen_url = $single->imagen_url;
+             }
             return $single;
         });
         return Inertia::render('singles/Index', [
@@ -46,23 +64,21 @@ class SingleController extends Controller
 
     public function create()
     {
-        // $this->authorize('create', Single::class);
         return Inertia::render('singles/Create');
     }
 
     public function store(StoreSingleRequest $request)
     {
-        // $this->authorize('create', Single::class);
         $datosValidados = $request->validated();
 
         if ($request->hasFile('imagen')) {
             $ruta = $request->file('imagen')->store('single_images', 'public');
             $datosValidados['imagen'] = $ruta;
         } else {
-            unset($datosValidados['imagen']);
+             unset($datosValidados['imagen']);
         }
 
-        $request->validate([
+        $validatedUserIds = $request->validate([
             'userIds' => 'nullable|array',
             'userIds.*' => 'integer|exists:users,id',
         ]);
@@ -70,7 +86,7 @@ class SingleController extends Controller
         $single = Single::create($datosValidados);
 
         if (method_exists($single, 'usuarios')) {
-            $userIdsToAttach = $request->input('userIds', []);
+            $userIdsToAttach = $validatedUserIds['userIds'] ?? [];
             $creatorId = Auth::id();
             if ($creatorId && !in_array($creatorId, $userIdsToAttach)) {
                 $userIdsToAttach[] = $creatorId;
@@ -83,38 +99,45 @@ class SingleController extends Controller
              Log::warning('Method usuarios() does not exist on Single model for single ID ' . $single->id);
         }
 
-        return redirect()->route('singles.index')->with('success', 'Single creada exitosamente.');
+        return redirect()->route('singles.index')->with('success', 'Single creado exitosamente.');
     }
+
 
     public function show($id)
     {
         $user = Auth::user();
-        $single = Single::find($id);
+        $single = Single::findOrFail($id);
+
+
+
         if ($user) {
             $single->can = [
-                'view'   => $user->can('view', $single),
-                 'edit' => $user->can('update', $single),
-                 'delete' => $user->can('delete', $single),
+                'view'   => true,
+                'edit'   => $user->can('update', $single),
+                'delete' => $user->can('delete', $single),
             ];
         } else {
-            $single->can = [
-                'view'   => true,
-                 'edit' => false,
+             $single->can = [
+                 'view'   => true,
+                 'edit'   => false,
                  'delete' => false,
-            ];
+             ];
         }
 
-        // Eager load relationships with specific columns for efficiency
         $single->load([
             'canciones' => function ($query) {
                 $query->select('canciones.id', 'canciones.titulo', 'canciones.archivo_url', 'canciones.foto_url', 'canciones.duracion')
-                      ->withPivot('id as pivot_id'); // Alias pivot ID
+                      ->withPivot('id as pivot_id');
             },
             'usuarios' => function ($query) {
-                $query->select('users.id', 'users.name'); // Only load necessary user fields
+                $query->select('users.id', 'users.name');
             }
         ]);
 
+         // Ensure imagen_url is appended if needed (check Single model $appends)
+         if ($single->imagen_url) {
+             $single->imagen_url = $single->imagen_url;
+         }
 
         return Inertia::render('singles/Show', [
             'single' => $single,
@@ -124,12 +147,16 @@ class SingleController extends Controller
 
     public function edit($id)
     {
-        $single = Single::find($id);
-        $this->authorize('edit', $single);
-        // Eager load users for the edit form's initial state
-        $single->load(['usuarios' => function ($query) {
-            $query->select('users.id', 'users.name', 'users.email'); // Load necessary fields for display/state
-        }]);
+        $single = Single::with(['usuarios' => function ($query) {
+                 $query->select('users.id', 'users.name', 'users.email');
+             }])->findOrFail($id);
+
+        $this->authorize('update', $single);
+
+         if ($single->imagen_url) {
+             $single->imagen_url = $single->imagen_url;
+         }
+
         return Inertia::render('singles/Edit', [
             'single' => $single,
         ]);
@@ -137,24 +164,11 @@ class SingleController extends Controller
 
     public function update(UpdateSingleRequest $request, $id)
     {
-        $single = Single::find($id);
+        $single = Single::findOrFail($id);
         $this->authorize('update', $single);
 
-        // Log::info('Update Request Data:', $request->except(['_method', 'imagen_nueva']));
-        // Log::info('Update Request Files:', $request->allFiles());
-
-        // Use validated data from UpdateSingleRequest
         $datosValidados = $request->validated();
 
-        // Also validate userIds here or ensure it's in UpdateSingleRequest rules
-        $validatedUserIds = $request->validate([
-            'userIds' => 'nullable|array',
-            'userIds.*' => 'integer|exists:users,id',
-        ]);
-
-        $single = $single;
-
-        $single->nombre = $datosValidados['nombre'];
         $eliminarImagen = $request->boolean('eliminar_imagen');
         $carpetaDestino = 'single_images';
         $rutaImagenAntigua = $single->imagen;
@@ -165,109 +179,97 @@ class SingleController extends Controller
                 Storage::disk('public')->delete($rutaImagenAntigua);
             }
             $nuevaRutaImagen = $nuevoArchivoImagen->store($carpetaDestino, 'public');
-            $single->imagen = $nuevaRutaImagen;
+            $datosValidados['imagen'] = $nuevaRutaImagen;
         } elseif ($eliminarImagen) {
             if ($rutaImagenAntigua && Storage::disk('public')->exists($rutaImagenAntigua)) {
                 Storage::disk('public')->delete($rutaImagenAntigua);
-                $single->imagen = null;
-            } elseif ($single->imagen) {
-                $single->imagen = null;
-            }
+             }
+             $datosValidados['imagen'] = null;
+        } else {
+             unset($datosValidados['imagen']);
         }
 
-        $single->save();
+        $single->update($datosValidados);
 
-        // Sync users
         if (method_exists($single, 'usuarios')) {
+             $validatedUserIds = $request->validate([
+                'userIds' => 'nullable|array',
+                'userIds.*' => 'integer|exists:users,id',
+            ]);
             $userIdsToSync = $validatedUserIds['userIds'] ?? [];
 
-            // Optional: Ensure creator is always present if required by your app rules
-            // $creatorId = $single->usuarios()->wherePivot('is_creator', true)->value('id') ?? Auth::id(); // Example: Get creator ID
-            // if ($creatorId && !in_array($creatorId, $userIdsToSync)) {
-            //     $userIdsToSync[] = $creatorId;
-            // }
-
             $single->usuarios()->sync(array_unique($userIdsToSync));
-            // Log::info('Synced users for single ' . $single->id . ': ' . implode(', ', array_unique($userIdsToSync)));
-        } else {
-            // Log::warning('Method usuarios() does not exist on Single model for single ID ' . $single->id . ' during update.');
         }
 
-        // Redirect to show page which will have updated data
         return Redirect::route('singles.show', $single->id)
-                       ->with('success', 'Single actualizada exitosamente.');
+                        ->with('success', 'Single actualizado exitosamente.');
     }
 
 
     public function destroy($id)
     {
-        $single = Single::find($id);
+        $single = Single::findOrFail($id);
         $this->authorize('delete', $single);
+
         if (method_exists($single, 'usuarios')) {
-             $single->usuarios()->detach();
+            $single->usuarios()->detach();
         }
         if (method_exists($single, 'canciones')) {
-             $single->canciones()->detach();
+            $single->canciones()->detach();
         }
-        if ($single->imagen) {
+        if ($single->imagen && Storage::disk('public')->exists($single->imagen)) {
             Storage::disk('public')->delete($single->imagen);
         }
         $single->delete();
-        return redirect()->route('singles.index')->with('success', 'Single eliminada exitosamente.');
+        return redirect()->route('singles.index')->with('success', 'Single eliminado exitosamente.');
     }
 
     public function anadirCancion(Request $request, Single $single)
     {
-        $this->authorize('update', $single); // Recommended to authorize this
+        $this->authorize('update', $single);
         $valido = $request->validate([
             'cancion_id' => 'required|exists:canciones,id',
         ]);
         $idCancion = $valido['cancion_id'];
 
-        $single->canciones()->attach($idCancion);
-
-        $single->load(['canciones' => function ($query) {
-            $query->select('canciones.id', 'canciones.titulo', 'canciones.archivo_url', 'canciones.foto_url', 'canciones.duracion')
-                  ->withPivot('id as pivot_id'); // Re-load with pivot ID
-        }]);
+        if (!$single->canciones()->where('canciones.id', $idCancion)->exists()) {
+             $single->canciones()->attach($idCancion);
+             $message = 'Canción añadida al single.';
+        } else {
+            $message = 'Esta canción ya está en el single.';
+        }
 
         return redirect()->route('singles.show', $single->id)
-                         ->with('success', 'Canción añadida a la single.')
-                         ->with('single', $single); // Ensure single is passed if needed by view after redirect
+                         ->with('success', $message);
     }
 
     public function quitarCancionPorPivot(Request $request, Single $single, $pivotId)
     {
-        $this->authorize('update', $single); // Recommended to authorize this
+        $this->authorize('update', $single);
 
         $deleted = $single->canciones()
             ->wherePivot('id', $pivotId)
             ->detach();
 
-        $message = $deleted ? 'Canción eliminada de la single.' : 'Error: No se encontró la instancia de la canción.';
+        $message = $deleted ? 'Canción eliminada del single.' : 'Error: No se encontró la instancia de la canción.';
         if (!$deleted) {
-             Log::warning('Intento de eliminar registro pivot no encontrado', ['single_id' => $single->id, 'pivot_id' => $pivotId]);
+            Log::warning('Intento de eliminar registro pivot no encontrado', ['single_id' => $single->id, 'pivot_id' => $pivotId]);
         }
 
-        $single->load(['canciones' => function ($query) {
-            $query->select('canciones.id', 'canciones.titulo', 'canciones.archivo_url', 'canciones.foto_url', 'canciones.duracion')
-                  ->withPivot('id as pivot_id'); // Re-load with pivot ID
-        }]);
-
         return redirect()->route('singles.show', $single->id)
-                         ->with('success', $message)
-                         ->with('single', $single); // Ensure single is passed if needed
+                         ->with($deleted ? 'success' : 'error', $message);
     }
 
     public function buscarCanciones(Request $request, Single $single)
     {
+
         $consulta = $request->input('query', '');
         $minQueryLength = 2;
 
-        $artistIds = $single->usuarios()->pluck('users.id')->toArray();
+        $collaboratorIds = $single->usuarios()->pluck('users.id')->toArray();
 
-        $query = Cancion::whereHas('usuarios', function ($q) use ($artistIds) {
-            $q->whereIn('users.id', $artistIds);
+        $query = Cancion::whereHas('usuarios', function ($q) use ($collaboratorIds) {
+            $q->whereIn('users.id', $collaboratorIds);
         });
 
         $limit = 30;
@@ -276,7 +278,7 @@ class SingleController extends Controller
             $query->where('titulo', 'LIKE', "%{$consulta}%");
             $limit = 15;
         } else {
-            $query->orderBy('titulo');
+             $query->orderBy('titulo');
         }
 
         $resultados = $query->select('id', 'titulo', 'foto_url')

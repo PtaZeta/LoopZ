@@ -1,19 +1,26 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import PropTypes from 'prop-types'; // Aunque se quite propTypes, la importación puede quedar o quitarse
+import PropTypes from 'prop-types';
 import debounce from 'lodash.debounce';
 
-// Helper para obtener URL de imagen (sirve para álbum o canción)
 const obtenerUrlImagen = (item) => {
     if (!item) return null;
-    if (item.foto_url) { return item.foto_url; } // Canción
-    if (item.image_url) { return item.image_url; } // Accesor?
-    if (item.imagen) { return `/storage/${item.imagen}`; } // Campo DB
-    return null;
+
+    // Intenta obtener la ruta de cualquiera de estos campos
+    const imagePath = item.foto_url || item.imagen || item.image_url;
+
+    if (!imagePath) {
+        return null; // No hay ruta
+    }
+
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://') || imagePath.startsWith('/storage/')) {
+        return imagePath;
+    } else {
+        return `/storage/${imagePath}`;
+    }
 };
 
-// Componente Imagen con Fallback
 const ImagenCancion = ({ url, titulo, className = "w-10 h-10" }) => {
     const [src, setSrc] = useState(url);
     const [error, setError] = useState(false);
@@ -50,7 +57,6 @@ const ImagenCancion = ({ url, titulo, className = "w-10 h-10" }) => {
     );
 };
 
-// PropTypes de ImagenCancion (se mantienen si quieres)
 ImagenCancion.propTypes = {
     url: PropTypes.string,
     titulo: PropTypes.string.isRequired,
@@ -58,8 +64,7 @@ ImagenCancion.propTypes = {
 };
 
 
-// Componente principal (Específico para Singles)
-export default function SingleesShow({ auth, single: singleInicial }) {
+export default function SinglesShow({ auth, single: singleInicial }) {
 
     const { flash: mensajeFlash } = usePage().props;
     const pagina = usePage();
@@ -72,6 +77,11 @@ export default function SingleesShow({ auth, single: singleInicial }) {
     const minQueryLength = 2;
 
     const urlImagenPrincipal = obtenerUrlImagen(single);
+
+    const idsCancionesEnSingle = useMemo(() =>
+        new Set((single?.canciones || []).map(c => c.id)),
+        [single?.canciones]
+    );
 
     const buscarCancionesApi = useCallback(async (consulta) => {
         if (!single?.id) return;
@@ -110,7 +120,7 @@ export default function SingleesShow({ auth, single: singleInicial }) {
             preserveState: false,
             onSuccess: (page) => {
                  if (page.props.single) {
-                     setSingle(page.props.single);
+                      setSingle(page.props.single);
                  }
                  buscarCancionesApi(consultaBusqueda);
             },
@@ -129,7 +139,7 @@ export default function SingleesShow({ auth, single: singleInicial }) {
     };
 
     const manejarAnadirCancion = (idCancion) => {
-        if (!single?.id) return;
+        if (!single?.id || idsCancionesEnSingle.has(idCancion)) return;
         setAnadiendoCancionId(idCancion);
         router.post(route('singles.songs.add', { single: single.id }), {
             cancion_id: idCancion,
@@ -140,6 +150,7 @@ export default function SingleesShow({ auth, single: singleInicial }) {
                  if (page.props.single) {
                     setSingle(page.props.single);
                  }
+                 setResultadosBusqueda(prev => prev.filter(c => c.id !== idCancion));
             },
             onFinish: () => setAnadiendoCancionId(null),
             onError: (errores) => {
@@ -161,18 +172,22 @@ export default function SingleesShow({ auth, single: singleInicial }) {
          const singleActualizado = pagina.props.single;
          if (singleActualizado && singleActualizado.id === (single?.id || singleInicial?.id) ) {
               if (!Array.isArray(singleActualizado.canciones)) {
-                  singleActualizado.canciones = [];
+                   singleActualizado.canciones = [];
               }
               if (JSON.stringify(singleActualizado) !== JSON.stringify(single)) {
-                  setSingle(singleActualizado);
+                   setSingle(singleActualizado);
               }
          } else if (singleInicial && !single) {
-               if (!Array.isArray(singleInicial.canciones)) {
+              if (!Array.isArray(singleInicial.canciones)) {
                    singleInicial.canciones = [];
-               }
-               setSingle(singleInicial);
+              }
+              setSingle(singleInicial);
          }
      }, [pagina.props.single, singleInicial, single]);
+
+      const cancionesFiltradasParaAnadir = useMemo(() => {
+           return resultadosBusqueda.filter(cancion => !idsCancionesEnSingle.has(cancion.id));
+       }, [resultadosBusqueda, idsCancionesEnSingle]);
 
 
     return (
@@ -180,11 +195,11 @@ export default function SingleesShow({ auth, single: singleInicial }) {
             user={auth.user}
             header={
                 <h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-                    Detalles del Álbum: {single?.nombre || 'Cargando...'}
+                    Detalles del Single: {single?.nombre || 'Cargando...'}
                 </h2>
             }
         >
-            <Head title={`Álbum: ${single?.nombre || ''}`} />
+            <Head title={`Single: ${single?.nombre || ''}`} />
 
             <div className="py-12">
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
@@ -196,7 +211,7 @@ export default function SingleesShow({ auth, single: singleInicial }) {
                     )}
                     {mensajeFlash && mensajeFlash.error && (
                          <div className="mb-4 p-4 bg-red-100 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 rounded-md shadow-sm" role="alert">
-                             {mensajeFlash.error}
+                              {mensajeFlash.error}
                          </div>
                      )}
 
@@ -224,7 +239,7 @@ export default function SingleesShow({ auth, single: singleInicial }) {
                             )}
 
                             <div className="mb-10">
-                                <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Canciones en este Álbum ({single?.canciones?.length || 0})</h3>
+                                <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Canciones en este Single ({single?.canciones?.length || 0})</h3>
                                 {single?.canciones && Array.isArray(single.canciones) && single.canciones.length > 0 ? (
                                     <ul className="space-y-2">
                                         {single.canciones.map((cancion) => (
@@ -236,7 +251,7 @@ export default function SingleesShow({ auth, single: singleInicial }) {
                                                     onClick={() => manejarEliminarCancion(cancion.pivot?.id)}
                                                     disabled={!cancion.pivot?.id}
                                                     className="ml-2 px-3 py-1 text-xs font-semibold rounded-md bg-red-500 text-white hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    title={!cancion.pivot?.id ? "Error" : "Quitar del Álbum"}
+                                                    title={!cancion.pivot?.id ? "Error" : "Quitar del Single"}
                                                 >
                                                     Quitar
                                                 </button>
@@ -251,7 +266,7 @@ export default function SingleesShow({ auth, single: singleInicial }) {
 
                             {single?.can?.edit && (
                                 <div className="mt-10 border-t dark:border-gray-700 pt-6">
-                                    <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Añadir Canciones al Álbum</h3>
+                                    <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Añadir Canciones al Single</h3>
                                     <div className="mb-4">
                                         <input
                                             type="text"
@@ -265,13 +280,13 @@ export default function SingleesShow({ auth, single: singleInicial }) {
 
                                     {estaBuscando && <p className="text-gray-500 dark:text-gray-400 italic text-center">Buscando...</p>}
 
-                                    {!estaBuscando && resultadosBusqueda.length > 0 && (
+                                    {!estaBuscando && (consultaBusqueda.length >= minQueryLength || resultadosBusqueda.length > 0) && cancionesFiltradasParaAnadir.length > 0 && (
                                         <div className="max-h-60 overflow-y-auto border dark:border-gray-600 rounded-md p-2 space-y-2 bg-gray-50 dark:bg-gray-700/50">
                                             <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">
-                                                {consultaBusqueda.length >= minQueryLength ? 'Resultados:' : 'Canciones Disponibles:'}
+                                                {consultaBusqueda.length >= minQueryLength ? 'Resultados para añadir:' : 'Canciones Disponibles para añadir:'}
                                             </h4>
                                             <ul>
-                                                {resultadosBusqueda.map((cancionEncontrada) => (
+                                                {cancionesFiltradasParaAnadir.map((cancionEncontrada) => (
                                                     <li key={cancionEncontrada.id} className="flex items-center justify-between p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded space-x-3">
                                                         <div className="flex items-center space-x-3 flex-grow overflow-hidden">
                                                             <ImagenCancion url={obtenerUrlImagen(cancionEncontrada)} titulo={cancionEncontrada.titulo} className="w-10 h-10" />
@@ -293,19 +308,22 @@ export default function SingleesShow({ auth, single: singleInicial }) {
                                             </ul>
                                         </div>
                                     )}
-                                    {!estaBuscando && consultaBusqueda.length >= minQueryLength && resultadosBusqueda.length === 0 && (
-                                        <p className="text-gray-500 dark:text-gray-400 italic text-center">No se encontraron canciones que coincidan.</p>
+                                    {!estaBuscando && consultaBusqueda.length >= minQueryLength && cancionesFiltradasParaAnadir.length === 0 && (
+                                        <p className="text-gray-500 dark:text-gray-400 italic text-center">No se encontraron canciones nuevas que coincidan.</p>
                                     )}
-                                    {!estaBuscando && consultaBusqueda.length < minQueryLength && resultadosBusqueda.length === 0 && (
-                                        <p className="text-gray-500 dark:text-gray-400 italic text-center">No hay canciones disponibles o escribe más para buscar.</p>
-                                    )}
+                                    {!estaBuscando && consultaBusqueda.length < minQueryLength && cancionesFiltradasParaAnadir.length === 0 && resultadosBusqueda.length === 0 && (
+                                         <p className="text-gray-500 dark:text-gray-400 italic text-center">No hay canciones disponibles o escribe más para buscar.</p>
+                                     )}
+                                     {!estaBuscando && consultaBusqueda.length === 0 && resultadosBusqueda.length > 0 && cancionesFiltradasParaAnadir.length === 0 && (
+                                          <p className="text-gray-500 dark:text-gray-400 italic text-center">Todas las canciones disponibles ya están en el álbum.</p>
+                                      )}
                                 </div>
                             )}
 
                             <div className="mt-8 flex justify-center space-x-3">
                                 {single?.can?.edit && (
                                     <Link href={route('singles.edit', single.id)} className="inline-flex items-center px-4 py-2 bg-yellow-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-600 active:bg-yellow-700 focus:outline-none focus:border-yellow-700 focus:ring ring-yellow-300 disabled:opacity-25 transition ease-in-out duration-150">
-                                        Editar Álbum
+                                        Editar Single
                                     </Link>
                                 )}
                             </div>

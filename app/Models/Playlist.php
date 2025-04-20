@@ -14,6 +14,7 @@ class Playlist extends Model
         'nombre',
         'descripcion',
         'imagen',
+        'publico',
     ];
 
     protected $appends = ['imagen_url'];
