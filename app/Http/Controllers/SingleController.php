@@ -262,21 +262,27 @@ class SingleController extends Controller
     public function buscarCanciones(Request $request, Single $single)
     {
         $consulta = $request->input('query', '');
-        $resultados = [];
         $minQueryLength = 2;
 
+        $artistIds = $single->usuarios()->pluck('users.id')->toArray();
+
+        $query = Cancion::whereHas('usuarios', function ($q) use ($artistIds) {
+            $q->whereIn('users.id', $artistIds);
+        });
+
+        $limit = 30;
+
         if (strlen($consulta) >= $minQueryLength) {
-            $resultados = Cancion::where('titulo', 'LIKE', "%{$consulta}%")
-                ->select('id', 'titulo', 'foto_url') // Select necessary fields
-                ->limit(15)
-                ->get();
+            $query->where('titulo', 'LIKE', "%{$consulta}%");
+            $limit = 15;
         } else {
-            $resultados = Cancion::query()
-                ->select('id', 'titulo', 'foto_url') // Select necessary fields
-                ->orderBy('titulo')
-                ->limit(30)
-                ->get();
+            $query->orderBy('titulo');
         }
+
+        $resultados = $query->select('id', 'titulo', 'foto_url')
+                             ->limit($limit)
+                             ->get();
+
         return response()->json($resultados);
     }
 }
