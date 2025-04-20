@@ -38,7 +38,7 @@ const SongImage = ({ src, alt, placeholderClass, imageClass }) => {
 
 
 export default function Index() {
-    const { auth, cancionesUsuario, playlistsUsuario } = usePage().props;
+    const { auth, cancionesUsuario, playlistsUsuario, albumesUsuario, epsUsuario, singlesUsuario } = usePage().props;
     const user = auth.user;
 
     const getInitials = (name) => {
@@ -194,8 +194,123 @@ export default function Index() {
                             </p>
                         )}
                     </div>
-
-
+                    <div className="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+                            My Albumes
+                        </h3>
+                        {albumesUsuario && albumesUsuario.length > 0 ? (
+                            <ul className="space-y-4">
+                                {albumesUsuario.map((album) => (
+                                    <li key={album.id} className="flex items-center space-x-4 p-3 border dark:border-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-150 ease-in-out">
+                                        <div className="flex-shrink-0">
+                                             <ProfileImage
+                                                 src={album.imagen}
+                                                 alt={`${album.nombre} cover`}
+                                                 imageClass="w-12 h-12 rounded object-cover bg-gray-200 dark:bg-gray-600"
+                                                 placeholderClass="w-12 h-12 rounded bg-gray-300 dark:bg-gray-600 flex items-center justify-center"
+                                             />
+                                        </div>
+                                        <div className="flex-grow">
+                                            {route().has('albumes.show') ? (
+                                                <Link
+                                                    href={route('albumes.show', album.id)}
+                                                    className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                                                >
+                                                    {album.nombre}
+                                                </Link>
+                                            ) : (
+                                                <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                                                    {album.nombre}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                You haven't added any playlists yet.
+                            </p>
+                        )}
+                    </div>
+                    <div className="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+                            My Extended Plays
+                        </h3>
+                        {epsUsuario && epsUsuario.length > 0 ? (
+                            <ul className="space-y-4">
+                                {epsUsuario.map((ep) => (
+                                    <li key={ep.id} className="flex items-center space-x-4 p-3 border dark:border-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-150 ease-in-out">
+                                        <div className="flex-shrink-0">
+                                             <ProfileImage
+                                                 src={ep.imagen}
+                                                 alt={`${ep.nombre} cover`}
+                                                 imageClass="w-12 h-12 rounded object-cover bg-gray-200 dark:bg-gray-600"
+                                                 placeholderClass="w-12 h-12 rounded bg-gray-300 dark:bg-gray-600 flex items-center justify-center"
+                                             />
+                                        </div>
+                                        <div className="flex-grow">
+                                            {route().has('eps.show') ? (
+                                                <Link
+                                                    href={route('eps.show', ep.id)}
+                                                    className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                                                >
+                                                    {ep.nombre}
+                                                </Link>
+                                            ) : (
+                                                <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                                                    {ep.nombre}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                You haven't added any playlists yet.
+                            </p>
+                        )}
+                    </div>
+                    <div className="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+                            My Singles
+                        </h3>
+                        {singlesUsuario && singlesUsuario.length > 0 ? (
+                            <ul className="space-y-4">
+                                {singlesUsuario.map((single) => (
+                                    <li key={single.id} className="flex items-center space-x-4 p-3 border dark:border-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-150 ease-in-out">
+                                        <div className="flex-shrink-0">
+                                             <ProfileImage
+                                                 src={single.imagen}
+                                                 alt={`${single.nombre} cover`}
+                                                 imageClass="w-12 h-12 rounded object-cover bg-gray-200 dark:bg-gray-600"
+                                                 placeholderClass="w-12 h-12 rounded bg-gray-300 dark:bg-gray-600 flex items-center justify-center"
+                                             />
+                                        </div>
+                                        <div className="flex-grow">
+                                            {route().has('singles.show') ? (
+                                                <Link
+                                                    href={route('singles.show', single.id)}
+                                                    className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                                                >
+                                                    {single.nombre}
+                                                </Link>
+                                            ) : (
+                                                <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                                                    {single.nombre}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                You haven't added any playlists yet.
+                            </p>
+                        )}
+                    </div>
                 </div>
             </div>
         </AuthenticatedLayout>
