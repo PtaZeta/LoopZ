@@ -19,6 +19,7 @@ class Cancion extends Model
         'licencia',
         'foto_url',
         'archivo_url',
+        'publico',
     ];
 
     public function pertenecePlaylists()

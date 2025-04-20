@@ -13,6 +13,7 @@ class Single extends Model
     protected $fillable = [
         'nombre',
         'imagen',
+        'publico',
     ];
 
     protected $appends = ['imagen_url'];

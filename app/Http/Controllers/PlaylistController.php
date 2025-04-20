@@ -20,27 +20,44 @@ class PlaylistController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $listasReproduccion = Playlist::with(['usuarios' => function ($query) {
+        $playlistsQuery = Playlist::with(['usuarios' => function ($query) {
             $query->select('users.id', 'users.name');
-        }])->withCount('canciones')->latest()->get();
+        }])->withCount('canciones')->latest();
+
+        if ($user) {
+             $playlistsQuery->where('publico', true)
+                         ->orWhereHas('usuarios', function ($query) use ($user) {
+                             $query->where('users.id', $user->id);
+                         });
+        } else {
+            $playlistsQuery->where('publico', true);
+        }
+
+        $playlists = $playlistsQuery->get();
 
 
-        $listasConPermisos = $listasReproduccion->map(function ($playlist) use ($user) {
+        $playlistsConPermisos = $playlists->map(function ($playlist) use ($user) {
             if ($user) {
                 $playlist->can = [
-                    'edit' => $user->can('update', $playlist),
+                    'view'   => $user->can('view', $playlist),
+                    'edit'   => $user->can('update', $playlist),
                     'delete' => $user->can('delete', $playlist),
                 ];
             } else {
                  $playlist->can = [
-                    'edit' => false,
+                    'view'   => $playlist->publico,
+                    'edit'   => false,
                     'delete' => false,
-                ];
+                 ];
             }
+            // Ensure imagen_url is appended if needed (check Playlist model $appends)
+            if ($playlist->imagen_url) {
+                 $playlist->imagen_url = $playlist->imagen_url;
+             }
             return $playlist;
         });
         return Inertia::render('playlists/Index', [
-            'playlists' => $listasConPermisos,
+            'playlists' => $playlistsConPermisos,
         ]);
     }
 
@@ -175,7 +192,7 @@ class PlaylistController extends Controller
             }
         }
 
-        $listaReproduccion->save();
+        $listaReproduccion->update($datosValidados);
 
         // Sync users
         if (method_exists($listaReproduccion, 'usuarios')) {
