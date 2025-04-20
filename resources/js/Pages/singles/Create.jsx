@@ -1,16 +1,16 @@
+// resources/js/Pages/singles/Create.jsx
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useForm, Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import axios from 'axios';
 import { debounce } from 'lodash';
 
-// import InputError from '@/Components/InputError';
-
 function SingleCreate({ auth }) {
     const { data, setData, post, processing, errors, progress, reset } = useForm({
         nombre: '',
-        descripcion: '',
         imagen: null,
+        publico: false, // Default to private
         userIds: [],
     });
 
@@ -40,7 +40,7 @@ function SingleCreate({ auth }) {
         setSelectedUsers(newSelectedUsers);
         setData('userIds', newSelectedUsers.map(u => u.id));
         if (!searchTerm.trim()) {
-             performSearch('');
+            performSearch('');
         }
     };
 
@@ -76,18 +76,23 @@ function SingleCreate({ auth }) {
             const creatorUser = { id: auth.user.id, name: auth.user.name, email: auth.user.email };
             const newSelectedUsers = [creatorUser];
             setSelectedUsers(newSelectedUsers);
-            setData('userIds', newSelectedUsers.map(u => u.id));
+            setData(prevData => ({
+                ...prevData,
+                userIds: newSelectedUsers.map(u => u.id)
+            }));
         }
     }, [auth.user]);
 
     useEffect(() => {
-        if (!searchTerm.trim() && !showInitialUsers && selectedUsers.some(u => u.id === auth.user?.id)) {
+        const shouldRunInitialSearch = !searchTerm.trim() && !showInitialUsers && selectedUsers.some(u => u.id === auth.user?.id);
+        if (shouldRunInitialSearch) {
              performSearch('');
         }
         return () => {
             performSearch.cancel();
         };
     }, [performSearch, searchTerm, showInitialUsers, selectedUsers, auth.user?.id]);
+
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -98,10 +103,22 @@ function SingleCreate({ auth }) {
                 if (auth.user) {
                     const creatorUser = { id: auth.user.id, name: auth.user.name, email: auth.user.email };
                     setSelectedUsers([creatorUser]);
-                    setData('userIds', [creatorUser.id]);
+                    setData(prevData => ({
+                         ...prevData,
+                         nombre: '',
+                         imagen: null,
+                         publico: false,
+                         userIds: [creatorUser.id]
+                    }));
                 } else {
                     setSelectedUsers([]);
-                    setData('userIds', []);
+                     setData(prevData => ({
+                        ...prevData,
+                        nombre: '',
+                        imagen: null,
+                        publico: false,
+                        userIds: []
+                    }));
                 }
                 setSearchTerm('');
                 setSearchResults([]);
@@ -116,7 +133,7 @@ function SingleCreate({ auth }) {
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Crear Nueva Single</h2>}
+            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Crear Nuevo Single</h2>}
         >
             <Head title="Crear Single" />
 
@@ -129,7 +146,7 @@ function SingleCreate({ auth }) {
 
                                 <div>
                                     <label htmlFor="nombre" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                        Nombre de la Single *
+                                        Nombre del Single *
                                     </label>
                                     <input
                                         type="text"
@@ -143,6 +160,27 @@ function SingleCreate({ auth }) {
                                         <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.nombre}</p>
                                     )}
                                 </div>
+
+                                <div>
+                                     <label htmlFor="publico" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                         Visibilidad *
+                                     </label>
+                                     <select
+                                         id="publico"
+                                         name="publico"
+                                         value={data.publico}
+                                         onChange={(e) => setData('publico', e.target.value === 'true')}
+                                         className={`mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-200 sm:text-sm ${errors.publico ? 'border-red-500' : ''}`}
+                                         required
+                                     >
+                                         <option value="false">Privado (Solo colaboradores)</option>
+                                         <option value="true">Público (Visible para todos)</option>
+                                     </select>
+                                     {errors.publico && (
+                                         <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.publico}</p>
+                                     )}
+                                 </div>
+
                                 <div>
                                     <label htmlFor="imagen" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                         Imagen de Portada (Opcional)
@@ -256,13 +294,13 @@ function SingleCreate({ auth }) {
                                                 </ul>
                                                 {errors.userIds && typeof errors.userIds === 'string' && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.userIds}</p>}
                                                 {Object.keys(errors).filter(key => key.startsWith('userIds.')).map(key => (
-                                                     <p key={key} className="mt-1 text-xs text-red-600 dark:text-red-400">{errors[key]}</p>
-                                                 ))}
+                                                    <p key={key} className="mt-1 text-xs text-red-600 dark:text-red-400">{errors[key]}</p>
+                                                ))}
                                             </div>
                                         )}
-                                         {selectedUsers.length === 0 && errors.userIds && typeof errors.userIds === 'string' && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.userIds}</p>}
+                                        {selectedUsers.length === 0 && errors.userIds && typeof errors.userIds === 'string' && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.userIds}</p>}
                                     </div>
-                                </div>
+                                    </div>
 
                                 <div className="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200 dark:border-gray-700 mt-6">
                                     <Link
@@ -292,3 +330,5 @@ function SingleCreate({ auth }) {
 }
 
 export default SingleCreate;
+
+

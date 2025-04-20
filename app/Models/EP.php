@@ -14,9 +14,11 @@ class EP extends Model
     protected $fillable = [
         'nombre',
         'imagen',
+        'publico',
     ];
 
     protected $table = 'eps';
+
     protected $appends = ['imagen_url'];
 
     public function getImagenUrlAttribute()

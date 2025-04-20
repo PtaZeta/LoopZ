@@ -186,20 +186,20 @@ export default function Edit({ auth, album, errors: erroresSesion, success: mens
                                 </div>
 
                                 <div>
-                                     <InputLabel htmlFor="publico" value="Visibilidad *" />
-                                     <select
-                                         id="publico"
-                                         name="publico"
-                                         value={data.publico} // Boolean value works here
-                                         onChange={(e) => setData('publico', e.target.value === 'true')} // Convert back to boolean
-                                         className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-200 sm:text-sm"
-                                         required
-                                     >
-                                         <option value="false">Privado (Solo colaboradores)</option>
-                                         <option value="true">Público (Visible para todos)</option>
-                                     </select>
-                                     <InputError message={errors.publico} className="mt-2" />
-                                 </div>
+                                    <InputLabel htmlFor="publico" value="Visibilidad *" />
+                                    <select
+                                        id="publico"
+                                        name="publico"
+                                        value={data.publico} // Boolean value works here
+                                        onChange={(e) => setData('publico', e.target.value === 'true')} // Convert back to boolean
+                                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-200 sm:text-sm"
+                                        required
+                                    >
+                                        <option value="false">Privado (Solo colaboradores)</option>
+                                        <option value="true">Público (Visible para todos)</option>
+                                    </select>
+                                    <InputError message={errors.publico} className="mt-2" />
+                                </div>
 
 
                                 <div>

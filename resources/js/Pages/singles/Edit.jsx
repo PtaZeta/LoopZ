@@ -16,6 +16,7 @@ export default function Edit({ auth, single, errors: erroresSesion, success: men
     const { data, setData, post, processing, errors, reset, recentlySuccessful } = useForm({
         _method: 'PUT',
         nombre: single.nombre || '',
+        publico: single.publico ?? false,
         imagen_nueva: null,
         eliminar_imagen: false,
         userIds: initialUserIds,
@@ -40,7 +41,7 @@ export default function Edit({ auth, single, errors: erroresSesion, success: men
 
     const removeUser = (userId) => {
         // Example: Prevent removing the original creator if needed
-        // Replace Auth::id() check if creator status is stored differently
+        // Rsinglelace Auth::id() check if creator status is stored differently
         if (auth.user?.id === userId) { // Assuming auth user is the creator for this check
             console.warn("Cannot remove the single creator.");
             return;
@@ -102,7 +103,7 @@ export default function Edit({ auth, single, errors: erroresSesion, success: men
                 }));
                 const inputArchivoImagen = document.getElementById('imagen_nueva');
                 if(inputArchivoImagen) inputArchivoImagen.value = null;
-                // Reset search state on success, but keep selectedUsers as they are now saved
+                // Reset search state on success, but kesingle selectedUsers as they are now saved
                 setSearchTerm('');
                 setSearchResults([]);
                 setShowInitialUsers(false);
@@ -185,6 +186,23 @@ export default function Edit({ auth, single, errors: erroresSesion, success: men
                                 </div>
 
                                 <div>
+                                    <InputLabel htmlFor="publico" value="Visibilidad *" />
+                                    <select
+                                        id="publico"
+                                        name="publico"
+                                        value={data.publico} // Boolean value works here
+                                        onChange={(e) => setData('publico', e.target.value === 'true')} // Convert back to boolean
+                                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-200 sm:text-sm"
+                                        required
+                                    >
+                                        <option value="false">Privado (Solo colaboradores)</option>
+                                        <option value="true">Público (Visible para todos)</option>
+                                    </select>
+                                    <InputError message={errors.publico} className="mt-2" />
+                                </div>
+
+
+                                <div>
                                     <InputLabel htmlFor="imagen_nueva" value="Imagen (Opcional: reemplazar actual)" />
                                      {single.imagen && !data.eliminar_imagen && (
                                         <div className="mt-2 mb-4">
@@ -198,7 +216,7 @@ export default function Edit({ auth, single, errors: erroresSesion, success: men
                                         name="imagen_nueva"
                                         onChange={manejarCambioArchivo}
                                         className={`mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 ${errors.imagen_nueva ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-indigo-500 focus:border-indigo-500`}
-                                        accept="image/jpeg,image/png,image/jpg"
+                                        accsinglet="image/jpeg,image/png,image/jpg"
                                         disabled={data.eliminar_imagen}
                                     />
                                     {data.imagen_nueva && <span className="text-green-600 text-xs mt-1 block">Nueva imagen seleccionada: {data.imagen_nueva.name}</span>}

@@ -23,6 +23,7 @@ class UpdateSingleRequest extends FormRequest
     {
         return [
             'nombre' => 'required|string|max:255',
+            'publico' => 'required|boolean',
             'imagen' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
             'eliminar_imagen' => 'nullable|boolean',
         ];

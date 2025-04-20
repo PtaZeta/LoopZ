@@ -19,19 +19,33 @@ class CancionController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $canciones = Cancion::with('usuarios')->latest()->get();
+
+        $query = Cancion::with('usuarios')->latest();
+
+        if ($user) {
+            $query->where(function ($q) use ($user) {
+                $q->where('publico', true)
+                  ->orWhereHas('usuarios', function ($q2) use ($user) {
+                      $q2->where('user_id', $user->id);
+                  });
+            });
+        } else {
+            $query->where('publico', true);
+        }
+
+        $canciones = $query->get();
 
         $cancionesConPermisos = $canciones->map(function ($cancion) use ($user) {
             if ($user && method_exists($user, 'can')) {
                 $cancion->can = [
-                    'edit' => $user->can('update', $cancion),
+                    'edit'   => $user->can('update', $cancion),
                     'delete' => $user->can('delete', $cancion),
                 ];
             } else {
-                 $cancion->can = [
-                     'edit' => false,
-                     'delete' => false,
-                 ];
+                $cancion->can = [
+                    'edit'   => false,
+                    'delete' => false,
+                ];
             }
             return $cancion;
         });
@@ -40,6 +54,7 @@ class CancionController extends Controller
             'canciones' => $cancionesConPermisos,
         ]);
     }
+
 
     public function create()
     {
@@ -51,6 +66,7 @@ class CancionController extends Controller
         $validated = $request->validate([
             'titulo' => 'required|string|max:255',
             'genero' => 'nullable|string|max:255',
+            'publico' => 'required|boolean',
             'archivo' => 'required|file|mimes:mp3,wav|max:10024',
             'foto' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
             'licencia' => 'nullable|string|max:255',
@@ -61,6 +77,7 @@ class CancionController extends Controller
         $cancion = new Cancion();
         $cancion->titulo = $request->input('titulo');
         $cancion->genero = $request->input('genero');
+        $cancion->publico = $request->input('publico');
         $cancion->licencia = $request->input('licencia');
 
         $randomNumber = rand(1, 10000000000);
@@ -146,6 +163,7 @@ class CancionController extends Controller
          $validated = $request->validate([
              'titulo' => 'required|string|max:255',
              'genero' => 'nullable|string|max:255',
+             'publico' => 'required|boolean',
              'archivo_nuevo' => 'nullable|file|mimes:mp3,wav|max:10024',
              'foto_nueva' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
              'eliminar_foto' => 'nullable|boolean',
@@ -159,6 +177,7 @@ class CancionController extends Controller
          $cancion->titulo = $validated['titulo'];
          $cancion->genero = $validated['genero'] ?? null;
          $cancion->licencia = $validated['licencia'] ?? null;
+         $cancion->publico = $validated['publico'];
 
          $randomNumber = rand(1, 10000000000);
 
