@@ -89,6 +89,7 @@ export default function Index() {
                                     claseImagen="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white dark:border-gray-800 object-cover shadow-lg bg-white dark:bg-gray-700"
                                     clasePlaceholder="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white dark:border-gray-800 bg-gray-500 dark:bg-gray-600 flex items-center justify-center text-white text-3xl sm:text-4xl shadow-lg"
                                 />
+
                                 {!usuario.foto_perfil && (
                                      <div className="absolute inset-0 flex items-center justify-center text-white text-4xl font-semibold pointer-events-none rounded-full">
                                           {obtenerIniciales(usuario.name)}
