@@ -15,30 +15,29 @@ export default function Create({ auth }) {
         userIds: [],
     });
 
-    const [searchTerm, setSearchTerm] = useState('');
-    const [searchResults, setSearchResults] = useState([]);
-    const [selectedUsers, setSelectedUsers] = useState([]);
-    const [isLoadingSearch, setIsLoadingSearch] = useState(false);
-    const [showInitialUsers, setShowInitialUsers] = useState(false); // Control initial list display
+    const [terminoBusqueda, setTerminoBusqueda] = useState('');
+    const [resultadosBusqueda, setSearchResults] = useState([]);
+    const [usuariosSeleccionados, setSelectedUsers] = useState([]);
+    const [cargandoBusqueda, setIsLoadingSearch] = useState(false);
+    const [mostrarUsuariosIniciales, setShowInitialUsers] = useState(false);
 
     const addUser = (user) => {
-        if (!selectedUsers.some(selected => selected.id === user.id)) {
-            const newSelectedUsers = [...selectedUsers, user];
+        if (!usuariosSeleccionados.some(selected => selected.id === user.id)) {
+            const newSelectedUsers = [...usuariosSeleccionados, user];
             setSelectedUsers(newSelectedUsers);
             setData('userIds', newSelectedUsers.map(u => u.id));
-            setSearchTerm('');
+            setTerminoBusqueda('');
             setSearchResults([]);
-            setShowInitialUsers(false); // Hide list after adding
+            setShowInitialUsers(false);
         }
     };
 
     const removeUser = (userId) => {
-        const newSelectedUsers = selectedUsers.filter(user => user.id !== userId);
+        const newSelectedUsers = usuariosSeleccionados.filter(user => user.id !== userId);
         setSelectedUsers(newSelectedUsers);
         setData('userIds', newSelectedUsers.map(u => u.id));
-        // Re-fetch default users if search term is now empty
-        if (!searchTerm.trim()) {
-            performSearch('');
+        if (!terminoBusqueda.trim()) {
+             performSearch('');
         }
     };
 
@@ -48,75 +47,65 @@ export default function Create({ auth }) {
             try {
                 const response = await axios.get(`/users/search?q=${encodeURIComponent(term)}`);
                 const availableUsers = response.data.filter(
-                    user => !selectedUsers.some(selected => selected.id === user.id) && user.id !== auth.user?.id // Also filter out the auth user from suggestions
+                     user => !usuariosSeleccionados.some(selected => selected.id === user.id) && user.id !== auth.user?.id
                 );
                 setSearchResults(availableUsers);
-                // Show the list if the term is empty and we got results
-                setShowInitialUsers(!term.trim() && availableUsers.length > 0);
+                 setShowInitialUsers(!term.trim() && availableUsers.length > 0);
             } catch (error) {
-                console.error("Error searching users:", error);
                 setSearchResults([]);
-                setShowInitialUsers(false);
+                 setShowInitialUsers(false);
             } finally {
                 setIsLoadingSearch(false);
             }
         }, 300),
-        [selectedUsers, auth.user?.id] // Add auth.user.id dependency
+         [usuariosSeleccionados, auth.user?.id]
     );
 
     const handleSearchChange = (e) => {
         const term = e.target.value;
-        setSearchTerm(term);
+        setTerminoBusqueda(term);
         performSearch(term);
     };
 
-    // Add Authenticated User on initial load
-    useEffect(() => {
-        if (auth.user && !selectedUsers.some(u => u.id === auth.user.id)) {
-            const creatorUser = { id: auth.user.id, name: auth.user.name, email: auth.user.email };
-             // Add auth user without duplicates
-             const newSelectedUsers = [creatorUser, ...selectedUsers.filter(u => u.id !== creatorUser.id)];
-            setSelectedUsers(newSelectedUsers);
-            setData('userIds', newSelectedUsers.map(u => u.id));
-        }
-    }, [auth.user]); // Run only when auth.user changes
-
-     // Fetch initial users when the component mounts and the user is added
      useEffect(() => {
-         // Only fetch initial if no term and the list isn't already shown
-         if (!searchTerm.trim() && !showInitialUsers && selectedUsers.length > 0) {
-            // Check if the auth user is already in selectedUsers before fetching
-             performSearch('');
+         if (auth.user && !usuariosSeleccionados.some(u => u.id === auth.user.id)) {
+             const creatorUser = { id: auth.user.id, name: auth.user.name, email: auth.user.email };
+              const newSelectedUsers = [creatorUser, ...usuariosSeleccionados.filter(u => u.id !== creatorUser.id)];
+             setSelectedUsers(newSelectedUsers);
+             setData('userIds', newSelectedUsers.map(u => u.id));
          }
-         // Cleanup debounce on unmount
-         return () => {
-             performSearch.cancel();
-         };
-     }, [performSearch, searchTerm, showInitialUsers, selectedUsers]); // Depend on selectedUsers to trigger after auth user is added
+     }, [auth.user]);
+
+     useEffect(() => {
+          if (!terminoBusqueda.trim() && !mostrarUsuariosIniciales && usuariosSeleccionados.length > 0) {
+               performSearch('');
+          }
+          return () => {
+              performSearch.cancel();
+          };
+     }, [performSearch, terminoBusqueda, mostrarUsuariosIniciales, usuariosSeleccionados]);
 
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        post(route('canciones.store'), { // Corrected route name
+        post(route('canciones.store'), {
             preserveState: true,
             onSuccess: () => {
-                reset(); // Reset form fields
-                if (auth.user) {
-                    const creatorUser = { id: auth.user.id, name: auth.user.name, email: auth.user.email };
-                    setSelectedUsers([creatorUser]); // Reset selected users to only the creator
-                    setData('userIds', [creatorUser.id]); // Reset form userIds
-                } else {
-                    setSelectedUsers([]);
-                    setData('userIds', []);
-                }
-                setSearchTerm('');
-                setSearchResults([]); // Clear results
-                setShowInitialUsers(false); // Hide list
-                // Optionally fetch initial users again after reset
-                 // performSearch('');
+                 reset();
+                 if (auth.user) {
+                     const creatorUser = { id: auth.user.id, name: auth.user.name, email: auth.user.email };
+                     setSelectedUsers([creatorUser]);
+                     setData('userIds', [creatorUser.id]);
+                 } else {
+                     setSelectedUsers([]);
+                     setData('userIds', []);
+                 }
+                 setTerminoBusqueda('');
+                 setSearchResults([]);
+                 setShowInitialUsers(false);
             },
             onError: (err) => {
-                console.error("Form submission error:", err);
+
             },
         });
     };
@@ -178,7 +167,7 @@ export default function Create({ auth }) {
 
                                     <div>
                                         <label htmlFor="publico" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                            Visibilidad *
+                                             Visibilidad *
                                         </label>
                                         <select
                                             id="publico"
@@ -188,13 +177,13 @@ export default function Create({ auth }) {
                                             className={`mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-200 sm:text-sm ${errors.publico ? 'border-red-500' : ''}`}
                                             required
                                         >
-                                            <option value="false">Privado (Solo colaboradores)</option>
-                                            <option value="true">Público (Visible para todos)</option>
+                                             <option value="false">Privado (Solo colaboradores)</option>
+                                             <option value="true">Público (Visible para todos)</option>
                                         </select>
                                         {errors.publico && (
-                                            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.publico}</p>
+                                             <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.publico}</p>
                                         )}
-                                     </div>
+                                    </div>
 
                                     <div>
                                         <label htmlFor="foto" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Foto (JPG, PNG)</label>
@@ -228,7 +217,7 @@ export default function Create({ auth }) {
 
                                 <div className="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
                                     <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100 mb-4">
-                                        Asociar Usuarios (Colaboradores)
+                                         Asociar Usuarios (Colaboradores)
                                     </h3>
                                     <div className="sm:col-span-6">
                                         <label htmlFor="user-search" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Buscar Usuario por Nombre o Email</label>
@@ -237,79 +226,77 @@ export default function Create({ auth }) {
                                                 id="user-search"
                                                 type="search"
                                                 name="user-search"
-                                                value={searchTerm}
+                                                value={terminoBusqueda}
                                                 onChange={handleSearchChange}
-                                                 onFocus={() => {if(!searchTerm) performSearch('')}} // Fetch initial on focus if empty
-                                                className="block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-10"
-                                                placeholder="Escribe para buscar..."
-                                                autoComplete="off"
+                                                 onFocus={() => {if(!terminoBusqueda) performSearch('')}}
+                                                 className="block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-10"
+                                                 placeholder="Escribe para buscar..."
+                                                 autoComplete="off"
                                             />
-                                            {isLoadingSearch && (
+                                            {cargandoBusqueda && (
                                                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                                                     <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                     </svg>
                                                 </div>
                                             )}
                                         </div>
 
-                                        {!isLoadingSearch && (searchTerm || showInitialUsers) && (
-                                            <ul className="mt-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 shadow-lg max-h-60 overflow-auto z-10">
-                                                {searchResults.length > 0 ? (
-                                                    searchResults.map(user => (
-                                                        <li key={user.id} className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 flex justify-between items-center cursor-pointer" onClick={() => addUser(user)}>
-                                                            <div>
-                                                                <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{user.name}</span>
-                                                                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({user.email})</span>
-                                                            </div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => { e.stopPropagation(); addUser(user); }}
-                                                                className="ml-4 text-xs bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-2 rounded"
-                                                            >
-                                                                Añadir
-                                                            </button>
-                                                        </li>
-                                                    ))
-                                                ) : (
-                                                    searchTerm && <li className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">No se encontraron usuarios.</li>
-                                                    // Optional: Add message if initial list is empty and term is empty
-                                                    // !searchTerm && showInitialUsers && <li className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">No hay usuarios sugeridos.</li>
-                                                )}
-                                            </ul>
+                                        {!cargandoBusqueda && (terminoBusqueda || mostrarUsuariosIniciales) && (
+                                             <ul className="mt-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 shadow-lg max-h-60 overflow-auto z-10">
+                                                {resultadosBusqueda.length > 0 ? (
+                                                     resultadosBusqueda.map(user => (
+                                                         <li key={user.id} className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 flex justify-between items-center cursor-pointer" onClick={() => addUser(user)}>
+                                                             <div>
+                                                                  <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{user.name}</span>
+                                                                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({user.email})</span>
+                                                             </div>
+                                                             <button
+                                                                 type="button"
+                                                                 onClick={(e) => { e.stopPropagation(); addUser(user); }}
+                                                                 className="ml-4 text-xs bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-2 rounded"
+                                                             >
+                                                                  Añadir
+                                                             </button>
+                                                         </li>
+                                                     ))
+                                                 ) : (
+                                                      terminoBusqueda && <li className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">No se encontraron usuarios.</li>
+                                                 )}
+                                             </ul>
                                         )}
                                     </div>
 
-                                    {selectedUsers.length > 0 && (
+                                    {usuariosSeleccionados.length > 0 && (
                                         <div className="mt-4">
                                             <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Usuarios Seleccionados:</h4>
                                             <ul className="space-y-2">
-                                                {selectedUsers.map(user => (
+                                                {usuariosSeleccionados.map(user => (
                                                     <li key={user.id} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded border border-gray-200 dark:border-gray-600">
                                                         <div>
-                                                            <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{user.name}</span>
-                                                            <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({user.email})</span>
+                                                             <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{user.name}</span>
+                                                             <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({user.email})</span>
                                                         </div>
                                                         {auth.user?.id !== user.id && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => removeUser(user.id)}
-                                                                className="ml-4 text-xs bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded"
-                                                                title="Quitar usuario"
-                                                            >
-                                                                Quitar
-                                                            </button>
+                                                             <button
+                                                                 type="button"
+                                                                 onClick={() => removeUser(user.id)}
+                                                                 className="ml-4 text-xs bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded"
+                                                                 title="Quitar usuario"
+                                                             >
+                                                                  Quitar
+                                                             </button>
                                                         )}
-                                                        {auth.user?.id === user.id && (
-                                                             <span className="ml-4 text-xs text-gray-500 dark:text-gray-400 font-medium">(Tú)</span>
+                                                         {auth.user?.id === user.id && (
+                                                              <span className="ml-4 text-xs text-gray-500 dark:text-gray-400 font-medium">(Tú)</span>
                                                          )}
                                                     </li>
                                                 ))}
                                             </ul>
                                             {errors.userIds && typeof errors.userIds === 'string' && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.userIds}</p>}
                                             {Object.keys(errors).filter(key => key.startsWith('userIds.')).map(key => (
-                                                <p key={key} className="mt-1 text-xs text-red-600 dark:text-red-400">{errors[key]}</p>
+                                                 <p key={key} className="mt-1 text-xs text-red-600 dark:text-red-400">{errors[key]}</p>
                                             ))}
                                         </div>
                                     )}

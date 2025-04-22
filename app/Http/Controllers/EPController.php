@@ -1,5 +1,4 @@
 <?php
-// app/Http/Controllers/EPController.php
 
 namespace App\Http\Controllers;
 
@@ -10,8 +9,6 @@ use App\Models\Cancion;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Redirect;
@@ -20,43 +17,39 @@ class EPController extends Controller
 {
     public function index()
     {
-        $user = Auth::user();
-        $epsQuery = EP::with(['usuarios' => function ($query) {
+        $usuario = Auth::user();
+        $consultaEPs = EP::with(['usuarios' => function ($query) {
             $query->select('users.id', 'users.name');
         }])->withCount('canciones')->latest();
 
-        if ($user) {
-             $epsQuery->where('publico', true)
-                         ->orWhereHas('usuarios', function ($query) use ($user) {
-                             $query->where('users.id', $user->id);
-                         });
+        if ($usuario) {
+            $consultaEPs->where('publico', true)
+                            ->orWhereHas('usuarios', function ($query) use ($usuario) {
+                                $query->where('users.id', $usuario->id);
+                            });
         } else {
-            $epsQuery->where('publico', true);
+            $consultaEPs->where('publico', true);
         }
 
-        $eps = $epsQuery->get();
+        $eps = $consultaEPs->get();
 
-
-        $epsConPermisos = $eps->map(function ($ep) use ($user) {
-            if ($user) {
+        $epsConPermisos = $eps->map(function ($ep) use ($usuario) {
+            if ($usuario) {
                 $ep->can = [
-                    'view'   => $user->can('view', $ep),
-                    'edit'   => $user->can('update', $ep),
-                    'delete' => $user->can('delete', $ep),
+                    'view'   => $usuario->can('view', $ep),
+                    'edit'   => $usuario->can('update', $ep),
+                    'delete' => $usuario->can('delete', $ep),
                 ];
             } else {
-                 $ep->can = [
+                $ep->can = [
                     'view'   => $ep->publico,
                     'edit'   => false,
                     'delete' => false,
-                 ];
+                ];
             }
-            // Ensure imagen_url is appended if needed (check EP model $appends)
-            if ($ep->imagen_url) {
-                 $ep->imagen_url = $ep->imagen_url;
-             }
             return $ep;
         });
+
         return Inertia::render('eps/Index', [
             'eps' => $epsConPermisos,
         ]);
@@ -71,60 +64,39 @@ class EPController extends Controller
     {
         $datosValidados = $request->validated();
 
-        if ($request->hasFile('imagen')) {
-            $ruta = $request->file('imagen')->store('ep_images', 'public');
-            $datosValidados['imagen'] = $ruta;
-        } else {
-             unset($datosValidados['imagen']);
-        }
-
-        $validatedUserIds = $request->validate([
+        $request->validate([
             'userIds' => 'nullable|array',
             'userIds.*' => 'integer|exists:users,id',
         ]);
 
+
+        if ($request->hasFile('imagen')) {
+            $ruta = $request->file('imagen')->store('ep_images', 'public');
+            $datosValidados['imagen'] = $ruta;
+        } else {
+            unset($datosValidados['imagen']);
+        }
+
         $ep = EP::create($datosValidados);
 
         if (method_exists($ep, 'usuarios')) {
-            $userIdsToAttach = $validatedUserIds['userIds'] ?? [];
-            $creatorId = Auth::id();
-            if ($creatorId && !in_array($creatorId, $userIdsToAttach)) {
-                $userIdsToAttach[] = $creatorId;
+            $idsUsuarios = $request->input('userIds', []);
+            $idCreador = Auth::id();
+            if ($idCreador && !in_array($idCreador, $idsUsuarios)) {
+                $idsUsuarios[] = $idCreador;
             }
-            if (!empty($userIdsToAttach)) {
-                $ep->usuarios()->attach(array_unique($userIdsToAttach));
-                Log::info('Attached users to ep ' . $ep->id . ': ' . implode(', ', array_unique($userIdsToAttach)));
+            if (!empty($idsUsuarios)) {
+                $ep->usuarios()->attach(array_unique($idsUsuarios));
             }
-        } else {
-             Log::warning('Method usuarios() does not exist on EP model for ep ID ' . $ep->id);
         }
 
-        return redirect()->route('eps.index')->with('success', 'EP creado exitosamente.');
+        return redirect()->route('eps.index')->with('success', 'Álbum creado exitosamente.');
     }
-
 
     public function show($id)
     {
-        $user = Auth::user();
-        $ep = EP::findOrFail($id);
-
-
-
-        if ($user) {
-            $ep->can = [
-                'view'   => true,
-                'edit'   => $user->can('update', $ep),
-                'delete' => $user->can('delete', $ep),
-            ];
-        } else {
-             $ep->can = [
-                 'view'   => true,
-                 'edit'   => false,
-                 'delete' => false,
-             ];
-        }
-
-        $ep->load([
+        $usuario = Auth::user();
+        $ep = EP::with([
             'canciones' => function ($query) {
                 $query->select('canciones.id', 'canciones.titulo', 'canciones.archivo_url', 'canciones.foto_url', 'canciones.duracion')
                       ->withPivot('id as pivot_id');
@@ -132,30 +104,37 @@ class EPController extends Controller
             'usuarios' => function ($query) {
                 $query->select('users.id', 'users.name');
             }
-        ]);
+        ])->findOrFail($id);
 
-         // Ensure imagen_url is appended if needed (check EP model $appends)
-         if ($ep->imagen_url) {
-             $ep->imagen_url = $ep->imagen_url;
-         }
+        if ($usuario) {
+             $ep->can = [
+                'view'   => true,
+                'edit'   => $usuario->can('update', $ep),
+                'delete' => $usuario->can('delete', $ep),
+            ];
+        } else {
+             if (!$ep->publico) {
+                 abort(403);
+             }
+            $ep->can = [
+                'view'   => true,
+                'edit'   => false,
+                'delete' => false,
+            ];
+        }
 
         return Inertia::render('eps/Show', [
             'ep' => $ep,
         ]);
     }
 
-
     public function edit($id)
     {
         $ep = EP::with(['usuarios' => function ($query) {
-                 $query->select('users.id', 'users.name', 'users.email');
-             }])->findOrFail($id);
+            $query->select('users.id', 'users.name', 'users.email');
+        }])->findOrFail($id);
 
         $this->authorize('update', $ep);
-
-         if ($ep->imagen_url) {
-             $ep->imagen_url = $ep->imagen_url;
-         }
 
         return Inertia::render('eps/Edit', [
             'ep' => $ep,
@@ -168,6 +147,11 @@ class EPController extends Controller
         $this->authorize('update', $ep);
 
         $datosValidados = $request->validated();
+
+        $request->validate([
+            'userIds' => 'nullable|array',
+            'userIds.*' => 'integer|exists:users,id',
+        ]);
 
         $eliminarImagen = $request->boolean('eliminar_imagen');
         $carpetaDestino = 'ep_images';
@@ -183,28 +167,26 @@ class EPController extends Controller
         } elseif ($eliminarImagen) {
             if ($rutaImagenAntigua && Storage::disk('public')->exists($rutaImagenAntigua)) {
                 Storage::disk('public')->delete($rutaImagenAntigua);
-             }
-             $datosValidados['imagen'] = null;
+            }
+            $datosValidados['imagen'] = null;
         } else {
-             unset($datosValidados['imagen']);
+            unset($datosValidados['imagen']);
         }
 
         $ep->update($datosValidados);
 
         if (method_exists($ep, 'usuarios')) {
-             $validatedUserIds = $request->validate([
-                'userIds' => 'nullable|array',
-                'userIds.*' => 'integer|exists:users,id',
-            ]);
-            $userIdsToSync = $validatedUserIds['userIds'] ?? [];
-
-            $ep->usuarios()->sync(array_unique($userIdsToSync));
+            $idsUsuarios = $request->input('userIds', []);
+            $idCreador = Auth::id();
+             if ($idCreador && !in_array($idCreador, $idsUsuarios)) {
+                 $idsUsuarios[] = $idCreador;
+             }
+            $ep->usuarios()->sync(array_unique($idsUsuarios));
         }
 
         return Redirect::route('eps.show', $ep->id)
-                        ->with('success', 'EP actualizado exitosamente.');
+                        ->with('success', 'Álbum actualizado exitosamente.');
     }
-
 
     public function destroy($id)
     {
@@ -221,69 +203,72 @@ class EPController extends Controller
             Storage::disk('public')->delete($ep->imagen);
         }
         $ep->delete();
-        return redirect()->route('eps.index')->with('success', 'EP eliminado exitosamente.');
+
+        return redirect()->route('eps.index')->with('success', 'Álbum eliminado exitosamente.');
     }
 
     public function anadirCancion(Request $request, EP $ep)
     {
         $this->authorize('update', $ep);
-        $valido = $request->validate([
+        $validacionCancion = $request->validate([
             'cancion_id' => 'required|exists:canciones,id',
         ]);
-        $idCancion = $valido['cancion_id'];
+        $idCancion = $validacionCancion['cancion_id'];
 
+        $mensaje = 'Esta canción ya está en el álbum.';
         if (!$ep->canciones()->where('canciones.id', $idCancion)->exists()) {
-             $ep->canciones()->attach($idCancion);
-             $message = 'Canción añadida al ep.';
-        } else {
-            $message = 'Esta canción ya está en el ep.';
+            $ep->canciones()->attach($idCancion);
+            $mensaje = 'Canción añadida al álbum.';
         }
 
-        return redirect()->route('eps.show', $ep->id)
-                         ->with('success', $message);
+        return redirect()->back()->with('success', $mensaje);
     }
 
     public function quitarCancionPorPivot(Request $request, EP $ep, $pivotId)
     {
         $this->authorize('update', $ep);
 
-        $deleted = $ep->canciones()
+        $eliminado = $ep->canciones()
             ->wherePivot('id', $pivotId)
             ->detach();
 
-        $message = $deleted ? 'Canción eliminada del ep.' : 'Error: No se encontró la instancia de la canción.';
-        if (!$deleted) {
-            Log::warning('Intento de eliminar registro pivot no encontrado', ['ep_id' => $ep->id, 'pivot_id' => $pivotId]);
-        }
+        $mensaje = $eliminado ? 'Canción eliminada del álbum.' : 'Error al eliminar la canción.';
 
-        return redirect()->route('eps.show', $ep->id)
-                         ->with($deleted ? 'success' : 'error', $message);
+        return redirect()->back()->with($eliminado ? 'success' : 'error', $mensaje);
     }
 
     public function buscarCanciones(Request $request, EP $ep)
     {
+        $this->authorize('update', $ep);
 
-        $consulta = $request->input('query', '');
-        $minQueryLength = 2;
+        $terminoBusquedaCancion = $request->input('query', '');
+        $longitudMinimaBusquedaCancion = 1;
+        $limite = 30;
 
-        $collaboratorIds = $ep->usuarios()->pluck('users.id')->toArray();
+        $idsCancionesEnEP = $ep->canciones()->pluck('canciones.id')->toArray();
 
-        $query = Cancion::whereHas('usuarios', function ($q) use ($collaboratorIds) {
-            $q->whereIn('users.id', $collaboratorIds);
-        });
+        $idsColaboradores = $ep->usuarios()->pluck('users.id')->toArray();
 
-        $limit = 30;
+        $consultaCanciones = Cancion::query()
+             ->with('usuarios:id,name')
+             ->whereNotIn('canciones.id', $idsCancionesEnEP)
+             ->where(function ($q) use ($idsColaboradores) {
+                 $q->where('publico', true)
+                   ->orWhereHas('usuarios', function ($q2) use ($idsColaboradores) {
+                       $q2->whereIn('users.id', $idsColaboradores);
+                   });
+             });
 
-        if (strlen($consulta) >= $minQueryLength) {
-            $query->where('titulo', 'LIKE', "%{$consulta}%");
-            $limit = 15;
+        if (strlen($terminoBusquedaCancion) >= $longitudMinimaBusquedaCancion) {
+            $consultaCanciones->where('titulo', 'LIKE', "%{$terminoBusquedaCancion}%");
+            $limite = 15;
         } else {
-             $query->orderBy('titulo');
+            $consultaCanciones->orderBy('titulo');
         }
 
-        $resultados = $query->select('id', 'titulo', 'foto_url')
-                             ->limit($limit)
-                             ->get();
+        $resultados = $consultaCanciones->select('id', 'titulo', 'foto_url')
+                              ->limit($limite)
+                              ->get();
 
         return response()->json($resultados);
     }

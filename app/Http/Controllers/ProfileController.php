@@ -17,39 +17,39 @@ class ProfileController extends Controller
 {
     public function index(Request $request): Response
     {
-        $user = $request->user();
+        $usuario = $request->user();
 
-        $cancionesQuery = $user->perteneceCanciones()
-                               ->orderBy('created_at', 'desc');
+        $consultaCanciones = $usuario->perteneceCanciones()
+                                     ->orderBy('created_at', 'desc')
+                                     ->limit(10)
+                                     ->get();
 
-        $canciones = $cancionesQuery->get();
+        $consultaPlaylists = $usuario->pertenecePlaylists()
+                                     ->orderBy('created_at', 'desc')
+                                     ->limit(10)
+                                     ->get();
 
-        $playlistsQuery = $user->pertenecePlaylists()
-                               ->orderBy('created_at', 'desc');
+        $consultaAlbumes = $usuario->perteneceAlbumes()
+                                   ->orderBy('created_at', 'desc')
+                                   ->limit(10)
+                                   ->get();
 
-        $playlists = $playlistsQuery->get();
+        $consultaEps = $usuario->perteneceEps()
+                               ->orderBy('created_at', 'desc')
+                               ->limit(10)
+                               ->get();
 
-        $albumesQuery = $user->perteneceAlbumes()
-                               ->orderBy('created_at', 'desc');
-
-        $albumes = $albumesQuery->get();
-
-        $epsQuery = $user->perteneceEps()
-                               ->orderBy('created_at', 'desc');
-
-        $eps = $epsQuery->get();
-
-        $singlesQuery = $user->perteneceSingles()
-                               ->orderBy('created_at', 'desc');
-
-        $singles = $singlesQuery->get();
+        $consultaSingles = $usuario->perteneceSingles()
+                                   ->orderBy('created_at', 'desc')
+                                   ->limit(10)
+                                   ->get();
 
         return Inertia::render('Profile/Index', [
-            'cancionesUsuario' => $canciones,
-            'playlistsUsuario' => $playlists,
-            'albumesUsuario' => $albumes,
-            'epsUsuario' => $eps,
-            'singlesUsuario' => $singles,
+            'cancionesUsuario' => $consultaCanciones,
+            'playlistsUsuario' => $consultaPlaylists,
+            'albumesUsuario' => $consultaAlbumes,
+            'epsUsuario' => $consultaEps,
+            'singlesUsuario' => $consultaSingles,
         ]);
     }
 
@@ -63,43 +63,41 @@ class ProfileController extends Controller
 
     public function update(Request $request): RedirectResponse
     {
-        $user = $request->user();
+        $usuario = $request->user();
 
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-            'foto_perfil' => 'nullable|image|max:2048',
-            'banner_perfil' => 'nullable|image|max:4096',
+        $datosValidados = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class.',email,'.$usuario->id],
+            'foto_perfil' => ['nullable', 'image', 'max:2048'],
+            'banner_perfil' => ['nullable', 'image', 'max:4096'],
         ]);
 
-        $user->name = $validatedData['name'];
-        $user->email = $validatedData['email'];
+        $usuario->fill($datosValidados);
 
         if ($request->hasFile('foto_perfil')) {
-            if ($user->foto_perfil && Storage::disk('public')->exists($user->foto_perfil)) {
-                Storage::disk('public')->delete($user->foto_perfil);
+            if ($usuario->foto_perfil && Storage::disk('public')->exists($usuario->foto_perfil)) {
+                Storage::disk('public')->delete($usuario->foto_perfil);
             }
-            $path = $request->file('foto_perfil')->store('foto_perfil', 'public');
-            $user->foto_perfil = $path;
+            $ruta = $request->file('foto_perfil')->store('foto_perfil', 'public');
+            $usuario->foto_perfil = $ruta;
         }
 
-        if ($request->hasFile('banner_perfil')) {
-            if ($user->banner_perfil && Storage::disk('public')->exists($user->banner_perfil)) {
-                Storage::disk('public')->delete($user->banner_perfil);
-            }
-            $path = $request->file('banner_perfil')->store('banner_perfil', 'public');
-            $user->banner_perfil = $path;
+         if ($request->hasFile('banner_perfil')) {
+             if ($usuario->banner_perfil && Storage::disk('public')->exists($usuario->banner_perfil)) {
+                 Storage::disk('public')->delete($usuario->banner_perfil);
+             }
+             $ruta = $request->file('banner_perfil')->store('banner_perfil', 'public');
+             $usuario->banner_perfil = $ruta;
+         }
+
+        if ($usuario->isDirty('email') && $usuario instanceof MustVerifyEmail) {
+            $usuario->email_verified_at = null;
         }
 
-        if ($user->isDirty('email') && $user instanceof MustVerifyEmail) {
-            $user->email_verified_at = null;
-        }
+        $usuario->save();
 
-        $user->save();
-
-        return back()->with('status', 'profile-updated');
+        return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }
-
 
     public function destroy(Request $request): RedirectResponse
     {
@@ -107,15 +105,14 @@ class ProfileController extends Controller
             'password' => ['required', 'current_password'],
         ]);
 
-        $user = $request->user();
+        $usuario = $request->user();
 
-        $rutaFotoPerfil = $user->foto_perfil;
-        $rutaBanner = $user->banner_perfil;
+        $rutaFotoPerfil = $usuario->foto_perfil;
+        $rutaBanner = $usuario->banner_perfil;
 
         Auth::logout();
 
-        // $user->perteneceCanciones()->detach();
-        $user->delete();
+        $usuario->delete();
 
         if ($rutaFotoPerfil && Storage::disk('public')->exists($rutaFotoPerfil)) {
             Storage::disk('public')->delete($rutaFotoPerfil);
@@ -128,5 +125,31 @@ class ProfileController extends Controller
         $request->session()->regenerateToken();
 
         return Redirect::to('/');
+    }
+
+    public function searchUsers(Request $request)
+    {
+        $termino = $request->input('q', '');
+        $limite = 10;
+
+        if (empty($termino)) {
+             return response()->json([]);
+        }
+
+        $consulta = User::query()
+            ->where(function($q) use ($termino) {
+                $q->where('name', 'LIKE', "%{$termino}%")
+                  ->orWhere('email', 'LIKE', "%{$termino}%");
+            })
+            ->select('id', 'name', 'email')
+            ->limit($limite);
+
+         if (Auth::check()) {
+            $consulta->where('id', '!=', Auth::id());
+         }
+
+        $usuarios = $consulta->get();
+
+        return response()->json($usuarios);
     }
 }

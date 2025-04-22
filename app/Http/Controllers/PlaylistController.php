@@ -6,14 +6,12 @@ use App\Http\Requests\StorePlaylistRequest;
 use App\Http\Requests\UpdatePlaylistRequest;
 use App\Models\Playlist;
 use App\Models\Cancion;
-use App\Models\User; // Import User model if needed for search, although search is separate
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
-use Illuminate\Support\Facades\Redirect; // Import Redirect
+use Illuminate\Support\Facades\Redirect;
 
 class PlaylistController extends Controller
 {
@@ -50,7 +48,6 @@ class PlaylistController extends Controller
                     'delete' => false,
                  ];
             }
-            // Ensure imagen_url is appended if needed (check Playlist model $appends)
             if ($playlist->imagen_url) {
                  $playlist->imagen_url = $playlist->imagen_url;
              }
@@ -63,13 +60,11 @@ class PlaylistController extends Controller
 
     public function create()
     {
-        // $this->authorize('create', Playlist::class);
         return Inertia::render('playlists/Create');
     }
 
     public function store(StorePlaylistRequest $request)
     {
-        // $this->authorize('create', Playlist::class);
         $datosValidados = $request->validated();
 
         if ($request->hasFile('imagen')) {
@@ -121,14 +116,13 @@ class PlaylistController extends Controller
             ];
         }
 
-        // Eager load relationships with specific columns for efficiency
         $playlist->load([
             'canciones' => function ($query) {
                 $query->select('canciones.id', 'canciones.titulo', 'canciones.archivo_url', 'canciones.foto_url', 'canciones.duracion')
-                      ->withPivot('id as pivot_id'); // Alias pivot ID
+                      ->withPivot('id as pivot_id');
             },
             'usuarios' => function ($query) {
-                $query->select('users.id', 'users.name'); // Only load necessary user fields
+                $query->select('users.id', 'users.name');
             }
         ]);
 
@@ -142,9 +136,8 @@ class PlaylistController extends Controller
     public function edit(Playlist $playlist)
     {
         $this->authorize('update', $playlist);
-        // Eager load users for the edit form's initial state
         $playlist->load(['usuarios' => function ($query) {
-            $query->select('users.id', 'users.name', 'users.email'); // Load necessary fields for display/state
+            $query->select('users.id', 'users.name', 'users.email');
         }]);
         return Inertia::render('playlists/Edit', [
             'playlist' => $playlist,
@@ -154,15 +147,9 @@ class PlaylistController extends Controller
     public function update(UpdatePlaylistRequest $request, Playlist $playlist)
     {
         $this->authorize('update', $playlist);
-
-        // Log::info('Update Request Data:', $request->except(['_method', 'imagen_nueva']));
-        // Log::info('Update Request Files:', $request->allFiles());
-
-        // Use validated data from UpdatePlaylistRequest
         $datosValidados = $request->validated();
 
-        // Also validate userIds here or ensure it's in UpdatePlaylistRequest rules
-        $validatedUserIds = $request->validate([
+        $usersIdsValidadas = $request->validate([
             'userIds' => 'nullable|array',
             'userIds.*' => 'integer|exists:users,id',
         ]);
@@ -194,23 +181,11 @@ class PlaylistController extends Controller
 
         $listaReproduccion->update($datosValidados);
 
-        // Sync users
         if (method_exists($listaReproduccion, 'usuarios')) {
-            $userIdsToSync = $validatedUserIds['userIds'] ?? [];
-
-            // Optional: Ensure creator is always present if required by your app rules
-            // $creatorId = $listaReproduccion->usuarios()->wherePivot('is_creator', true)->value('id') ?? Auth::id(); // Example: Get creator ID
-            // if ($creatorId && !in_array($creatorId, $userIdsToSync)) {
-            //     $userIdsToSync[] = $creatorId;
-            // }
-
-            $listaReproduccion->usuarios()->sync(array_unique($userIdsToSync));
-            // Log::info('Synced users for playlist ' . $listaReproduccion->id . ': ' . implode(', ', array_unique($userIdsToSync)));
-        } else {
-            // Log::warning('Method usuarios() does not exist on Playlist model for playlist ID ' . $listaReproduccion->id . ' during update.');
+            $usersIds = $usersIdsValidadas['userIds'] ?? [];
+            $listaReproduccion->usuarios()->sync(array_unique($usersIds));
         }
 
-        // Redirect to show page which will have updated data
         return Redirect::route('playlists.show', $listaReproduccion->id)
                        ->with('success', 'Playlist actualizada exitosamente.');
     }
@@ -219,22 +194,22 @@ class PlaylistController extends Controller
     public function destroy(Playlist $playlist)
     {
         $this->authorize('delete', $playlist);
-        if (method_exists($playlist, 'usuarios')) {
-             $playlist->usuarios()->detach();
-        }
-        if (method_exists($playlist, 'canciones')) {
-             $playlist->canciones()->detach();
-        }
+
+        $playlist->usuarios()->detach();
+        $playlist->canciones()->detach();
+
         if ($playlist->imagen) {
             Storage::disk('public')->delete($playlist->imagen);
         }
+
         $playlist->delete();
+
         return redirect()->route('playlists.index')->with('success', 'Playlist eliminada exitosamente.');
     }
 
     public function anadirCancion(Request $request, Playlist $playlist)
     {
-        $this->authorize('update', $playlist); // Recommended to authorize this
+        $this->authorize('update', $playlist);
         $valido = $request->validate([
             'cancion_id' => 'required|exists:canciones,id',
         ]);
@@ -244,17 +219,17 @@ class PlaylistController extends Controller
 
         $playlist->load(['canciones' => function ($query) {
             $query->select('canciones.id', 'canciones.titulo', 'canciones.archivo_url', 'canciones.foto_url', 'canciones.duracion')
-                  ->withPivot('id as pivot_id'); // Re-load with pivot ID
+                  ->withPivot('id as pivot_id');
         }]);
 
         return redirect()->route('playlists.show', $playlist->id)
                          ->with('success', 'Canción añadida a la playlist.')
-                         ->with('playlist', $playlist); // Ensure playlist is passed if needed by view after redirect
+                         ->with('playlist', $playlist);
     }
 
     public function quitarCancionPorPivot(Request $request, Playlist $playlist, $pivotId)
     {
-        $this->authorize('update', $playlist); // Recommended to authorize this
+        $this->authorize('update', $playlist);
 
         $deleted = $playlist->canciones()
             ->wherePivot('id', $pivotId)
@@ -267,19 +242,19 @@ class PlaylistController extends Controller
 
         $playlist->load(['canciones' => function ($query) {
             $query->select('canciones.id', 'canciones.titulo', 'canciones.archivo_url', 'canciones.foto_url', 'canciones.duracion')
-                  ->withPivot('id as pivot_id'); // Re-load with pivot ID
+                  ->withPivot('id as pivot_id');
         }]);
 
         return redirect()->route('playlists.show', $playlist->id)
                          ->with('success', $message)
-                         ->with('playlist', $playlist); // Ensure playlist is passed if needed
+                         ->with('playlist', $playlist);
     }
 
     public function buscarCanciones(Request $request, Playlist $playlist)
     {
         $user = Auth::user();
         $consulta = $request->input('query', '');
-        $minQueryLength = 2;
+        $minimoBusqueda = 1;
         $limit = 30;
 
         $collaboratorIds = $playlist
@@ -298,7 +273,7 @@ class PlaylistController extends Controller
                 }
             });
 
-        if (strlen($consulta) >= $minQueryLength) {
+        if (strlen($consulta) >= $minimoBusqueda) {
             $query->where('titulo', 'LIKE', "%{$consulta}%");
             $limit = 15;
         } else {

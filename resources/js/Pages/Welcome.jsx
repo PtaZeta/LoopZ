@@ -1,9 +1,12 @@
 import { Head, Link } from '@inertiajs/react';
 import { useState, useRef, useEffect } from 'react';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import GuestLayout from '@/Layouts/GuestLayout';
 
 const PlayIcon = () => <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd"></path></svg>;
 const PauseIcon = () => <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd"></path></svg>;
 const MusicNoteIcon = () => <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20"><path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z"></path></svg>;
+
 
 export default function Welcome({ auth, cancionesAleatorias }) {
 
@@ -37,7 +40,7 @@ export default function Welcome({ auth, cancionesAleatorias }) {
 
     const manejarReproducirPausa = (cancion) => {
         if (idCancionSonando === cancion.id) {
-            referenciaAudio.current?.pause(); // Optional chaining for safety
+            referenciaAudio.current?.pause();
             setIdCancionSonando(null);
             setUrlCancionActual(null);
         } else {
@@ -50,53 +53,14 @@ export default function Welcome({ auth, cancionesAleatorias }) {
         }
     };
 
+    const Layout = auth.user ? AuthenticatedLayout : GuestLayout;
+
     return (
-        <>
+        <Layout>
             <Head title="Bienvenido - Música al Azar" />
 
-            <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-gray-300 font-sans">
 
-                <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md shadow-lg">
-                    <div className="container mx-auto px-6 py-3 flex justify-between items-center">
-                        <Link href="/" className="text-2xl font-bold text-blue-500 hover:text-blue-400 transition-colors">
-                            LoopZ
-                        </Link>
-
-                        <nav className="hidden md:flex space-x-6 items-center">
-                            <Link href="#explore" className="hover:text-blue-400 transition-colors">Explorar</Link>
-                            <Link href="#genres" className="hover:text-blue-400 transition-colors">Géneros</Link>
-                            <Link href="#artists" className="hover:text-blue-400 transition-colors">Artistas</Link>
-                        </nav>
-
-                        <div className="flex items-center space-x-4">
-                            {auth.user ? (
-                                <Link
-                                    href={route('dashboard')}
-                                    className="px-4 py-2 rounded-md text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-                                >
-                                    Dashboard
-                                </Link>
-                            ) : (
-                                <>
-                                    <Link
-                                        href={route('login')}
-                                        className="hover:text-blue-400 transition-colors text-sm"
-                                    >
-                                        Iniciar Sesión
-                                    </Link>
-                                    <Link
-                                        href={route('register')}
-                                        className="px-4 py-2 rounded-md text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-                                    >
-                                        Registrarse
-                                    </Link>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                </header>
-
-                <main className="pt-24">
+                <main className='pt-0'>
                     <section className="container mx-auto px-6 py-20 md:py-28 text-center flex flex-col items-center relative overflow-hidden">
                         <div className="absolute inset-0 -z-10 opacity-10">
                             <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-900 rounded-full filter blur-3xl animate-pulse"></div>
@@ -109,10 +73,10 @@ export default function Welcome({ auth, cancionesAleatorias }) {
                             Sumérgete en un universo de sonidos. Descubre, reproduce y conecta con la música que moverá tu mundo. Tu próxima obsesión está a un play de distancia.
                         </p>
                         <Link
-                            href={auth && auth.user ? route('dashboard') : route('register')}
+                            href={auth.user ? route('dashboard') : route('register')}
                             className="relative z-10 px-10 py-4 rounded-full text-lg font-semibold bg-gradient-to-r from-blue-600 to-pink-600 hover:from-blue-500 hover:to-pink-500 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105 duration-300 ease-in-out"
                         >
-                            {auth && auth.user ? 'Ir a Mi Música' : 'Explorar Ahora'}
+                            {auth.user ? 'Ir a Mi Música' : 'Explorar Ahora'}
                         </Link>
                     </section>
 
@@ -161,7 +125,7 @@ export default function Welcome({ auth, cancionesAleatorias }) {
                         <h2 className="text-3xl font-bold mb-8 text-center text-white">Explora por Género</h2>
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
                             {['Pop', 'Rock', 'Electrónica', 'Hip Hop', 'Techno', 'House', 'Dance', 'Indie', 'Synthwave', 'EDM'].map(genero => (
-                                <Link key={genero} href={`/genres/${genero.toLowerCase()}`} // Consider using route() helper if available for genres too
+                                <Link key={genero} href={`/genres/${genero.toLowerCase()}`}
                                     className="block p-6 rounded-lg text-center font-semibold text-white bg-gradient-to-br from-gray-700 to-gray-800 hover:from-blue-600 hover:to-pink-600 transition-all transform hover:scale-105 shadow-md"
                                 >
                                     {genero}
@@ -172,7 +136,7 @@ export default function Welcome({ auth, cancionesAleatorias }) {
                 </main>
 
                 <audio ref={referenciaAudio} className="hidden" />
-            </div>
-        </>
+
+        </Layout>
     );
 }
