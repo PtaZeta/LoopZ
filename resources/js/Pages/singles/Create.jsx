@@ -1,118 +1,110 @@
-// resources/js/Pages/singles/Create.jsx
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useForm, Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import axios from 'axios';
 import { debounce } from 'lodash';
 
-function SingleCreate({ auth }) {
+function CrearSingle({ auth }) {
     const { data, setData, post, processing, errors, progress, reset } = useForm({
         nombre: '',
         imagen: null,
-        publico: false, // Default to private
+        publico: false,
         userIds: [],
     });
 
-    const [searchTerm, setSearchTerm] = useState('');
-    const [searchResults, setSearchResults] = useState([]);
-    const [selectedUsers, setSelectedUsers] = useState([]);
-    const [isLoadingSearch, setIsLoadingSearch] = useState(false);
-    const [showInitialUsers, setShowInitialUsers] = useState(false);
+    const [terminoBusqueda, setTerminoBusqueda] = useState('');
+    const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
+    const [usuariosSeleccionados, setUsuariosSeleccionados] = useState([]);
+    const [cargandoBusqueda, setCargandoBusqueda] = useState(false);
+    const [mostrarUsuariosIniciales, setMostrarUsuariosIniciales] = useState(false);
 
-    const addUser = (user) => {
-        if (!selectedUsers.some(selected => selected.id === user.id)) {
-            const newSelectedUsers = [...selectedUsers, user];
-            setSelectedUsers(newSelectedUsers);
-            setData('userIds', newSelectedUsers.map(u => u.id));
-            setSearchTerm('');
-            setSearchResults([]);
-            setShowInitialUsers(false);
+    const agregarUsuario = (usuario) => {
+        if (!usuariosSeleccionados.some(seleccionado => seleccionado.id === usuario.id)) {
+            const nuevosUsuariosSeleccionados = [...usuariosSeleccionados, usuario];
+            setUsuariosSeleccionados(nuevosUsuariosSeleccionados);
+            setData('userIds', nuevosUsuariosSeleccionados.map(u => u.id));
+            setTerminoBusqueda('');
+            setResultadosBusqueda([]);
+            setMostrarUsuariosIniciales(false);
         }
     };
 
-    const removeUser = (userId) => {
-        if (auth.user?.id === userId) {
-            console.warn("Cannot remove the single creator.");
+    const quitarUsuario = (usuarioId) => {
+        if (auth.user?.id === usuarioId) {
             return;
         }
-        const newSelectedUsers = selectedUsers.filter(user => user.id !== userId);
-        setSelectedUsers(newSelectedUsers);
-        setData('userIds', newSelectedUsers.map(u => u.id));
-        if (!searchTerm.trim()) {
-            performSearch('');
+        const nuevosUsuariosSeleccionados = usuariosSeleccionados.filter(usuario => usuario.id !== usuarioId);
+        setUsuariosSeleccionados(nuevosUsuariosSeleccionados);
+        setData('userIds', nuevosUsuariosSeleccionados.map(u => u.id));
+        if (!terminoBusqueda.trim()) {
+            realizarBusqueda('');
         }
     };
 
-    const performSearch = useCallback(
-        debounce(async (term) => {
-            setIsLoadingSearch(true);
+    const realizarBusqueda = useCallback(
+        debounce(async (termino) => {
+            setCargandoBusqueda(true);
             try {
-                const response = await axios.get(route('users.search', { q: term }));
-                const availableUsers = response.data.filter(
-                    user => !selectedUsers.some(selected => selected.id === user.id)
+                const respuesta = await axios.get(route('users.search', { q: termino }));
+                const usuariosDisponibles = respuesta.data.filter(
+                    usuario => !usuariosSeleccionados.some(seleccionado => seleccionado.id === usuario.id)
                 );
-                setSearchResults(availableUsers);
-                setShowInitialUsers(!term.trim() && availableUsers.length > 0);
-            } catch (error) {
-                console.error("Error searching users:", error);
-                setSearchResults([]);
-                setShowInitialUsers(false);
+                setResultadosBusqueda(usuariosDisponibles);
+                setMostrarUsuariosIniciales(!termino.trim() && usuariosDisponibles.length > 0);
             } finally {
-                setIsLoadingSearch(false);
+                setCargandoBusqueda(false);
             }
         }, 300),
-        [selectedUsers, auth.user?.id]
+        [usuariosSeleccionados, auth.user?.id]
     );
 
-    const handleSearchChange = (e) => {
-        const term = e.target.value;
-        setSearchTerm(term);
-        performSearch(term);
+    const manejarCambioBusqueda = (e) => {
+        const termino = e.target.value;
+        setTerminoBusqueda(termino);
+        realizarBusqueda(termino);
     };
 
     useEffect(() => {
-        if (auth.user && !selectedUsers.some(u => u.id === auth.user.id)) {
-            const creatorUser = { id: auth.user.id, name: auth.user.name, email: auth.user.email };
-            const newSelectedUsers = [creatorUser];
-            setSelectedUsers(newSelectedUsers);
+        if (auth.user && !usuariosSeleccionados.some(u => u.id === auth.user.id)) {
+            const usuarioCreador = { id: auth.user.id, name: auth.user.name, email: auth.user.email };
+            const nuevosUsuariosSeleccionados = [usuarioCreador];
+            setUsuariosSeleccionados(nuevosUsuariosSeleccionados);
             setData(prevData => ({
                 ...prevData,
-                userIds: newSelectedUsers.map(u => u.id)
+                userIds: nuevosUsuariosSeleccionados.map(u => u.id)
             }));
         }
     }, [auth.user]);
 
     useEffect(() => {
-        const shouldRunInitialSearch = !searchTerm.trim() && !showInitialUsers && selectedUsers.some(u => u.id === auth.user?.id);
-        if (shouldRunInitialSearch) {
-             performSearch('');
+        const ejecutarBusquedaInicial = !terminoBusqueda.trim() && !mostrarUsuariosIniciales && usuariosSeleccionados.some(u => u.id === auth.user?.id);
+        if (ejecutarBusquedaInicial) {
+            realizarBusqueda('');
         }
         return () => {
-            performSearch.cancel();
+            realizarBusqueda.cancel();
         };
-    }, [performSearch, searchTerm, showInitialUsers, selectedUsers, auth.user?.id]);
+    }, [realizarBusqueda, terminoBusqueda, mostrarUsuariosIniciales, usuariosSeleccionados, auth.user?.id]);
 
-
-    const handleSubmit = (e) => {
+    const manejarEnvio = (e) => {
         e.preventDefault();
         post(route('singles.store'), {
             preserveScroll: true,
             onSuccess: () => {
                 reset();
                 if (auth.user) {
-                    const creatorUser = { id: auth.user.id, name: auth.user.name, email: auth.user.email };
-                    setSelectedUsers([creatorUser]);
+                    const usuarioCreador = { id: auth.user.id, name: auth.user.name, email: auth.user.email };
+                    setUsuariosSeleccionados([usuarioCreador]);
                     setData(prevData => ({
-                         ...prevData,
-                         nombre: '',
-                         imagen: null,
-                         publico: false,
-                         userIds: [creatorUser.id]
+                        ...prevData,
+                        nombre: '',
+                        imagen: null,
+                        publico: false,
+                        userIds: [usuarioCreador.id]
                     }));
                 } else {
-                    setSelectedUsers([]);
-                     setData(prevData => ({
+                    setUsuariosSeleccionados([]);
+                    setData(prevData => ({
                         ...prevData,
                         nombre: '',
                         imagen: null,
@@ -120,13 +112,10 @@ function SingleCreate({ auth }) {
                         userIds: []
                     }));
                 }
-                setSearchTerm('');
-                setSearchResults([]);
-                setShowInitialUsers(false);
+                setTerminoBusqueda('');
+                setResultadosBusqueda([]);
+                setMostrarUsuariosIniciales(false);
             },
-             onError: (err) => {
-                 console.error("Single creation error:", err);
-             },
         });
     };
 
@@ -136,14 +125,11 @@ function SingleCreate({ auth }) {
             header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Crear Nuevo Single</h2>}
         >
             <Head title="Crear Single" />
-
             <div className="py-12">
                 <div className="max-w-2xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                         <div className="p-6 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-
-                            <form onSubmit={handleSubmit} className="space-y-6">
-
+                            <form onSubmit={manejarEnvio} className="space-y-6">
                                 <div>
                                     <label htmlFor="nombre" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                         Nombre del Single *
@@ -224,14 +210,14 @@ function SingleCreate({ auth }) {
                                                     id="user-search"
                                                     type="search"
                                                     name="user-search"
-                                                    value={searchTerm}
-                                                    onChange={handleSearchChange}
-                                                    onFocus={() => { if(!searchTerm && !showInitialUsers) performSearch('') }}
+                                                    value={terminoBusqueda}
+                                                    onChange={manejarCambioBusqueda}
+                                                    onFocus={() => { if(!terminoBusqueda && !mostrarUsuariosIniciales) realizarBusqueda('') }}
                                                     className="block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-10"
                                                     placeholder="Escribe para buscar..."
                                                     autoComplete="off"
                                                 />
-                                                {isLoadingSearch && (
+                                                {cargandoBusqueda && (
                                                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                                                         <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -241,19 +227,18 @@ function SingleCreate({ auth }) {
                                                 )}
                                             </div>
 
-                                            {/* Updated UL Styling Here */}
-                                            {!isLoadingSearch && (searchTerm || showInitialUsers) && (
+                                            {!cargandoBusqueda && (terminoBusqueda || mostrarUsuariosIniciales) && (
                                                 <ul className="mt-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 shadow-lg max-h-60 overflow-auto w-full">
-                                                    {searchResults.length > 0 ? (
-                                                        searchResults.map(user => (
-                                                            <li key={user.id} className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 flex justify-between items-center cursor-pointer group" onClick={() => addUser(user)}>
+                                                    {resultadosBusqueda.length > 0 ? (
+                                                        resultadosBusqueda.map(usuario => (
+                                                            <li key={usuario.id} className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 flex justify-between items-center cursor-pointer group" onClick={() => agregarUsuario(usuario)}>
                                                                 <div>
-                                                                    <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{user.name}</span>
-                                                                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({user.email})</span>
+                                                                    <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{usuario.name}</span>
+                                                                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({usuario.email})</span>
                                                                 </div>
                                                                 <button
                                                                     type="button"
-                                                                    onClick={(e) => { e.stopPropagation(); addUser(user); }}
+                                                                    onClick={(e) => { e.stopPropagation(); agregarUsuario(usuario); }}
                                                                     className="ml-4 text-xs bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity"
                                                                 >
                                                                     Añadir
@@ -261,28 +246,28 @@ function SingleCreate({ auth }) {
                                                             </li>
                                                         ))
                                                     ) : (
-                                                        searchTerm && <li className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">No se encontraron usuarios.</li>
+                                                        terminoBusqueda && <li className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">No se encontraron usuarios.</li>
                                                     )}
                                                 </ul>
                                             )}
                                         </div>
 
-                                        {selectedUsers.length > 0 && (
+                                        {usuariosSeleccionados.length > 0 && (
                                             <div className="mt-4">
                                                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Usuarios Seleccionados:</h4>
                                                 <ul className="space-y-2">
-                                                    {selectedUsers.map(user => (
-                                                        <li key={user.id} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded border border-gray-200 dark:border-gray-600">
+                                                    {usuariosSeleccionados.map(usuario => (
+                                                        <li key={usuario.id} className="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded border border-gray-200 dark:border-gray-600">
                                                             <div>
-                                                                <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{user.name}</span>
-                                                                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({user.email})</span>
+                                                                <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{usuario.name}</span>
+                                                                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({usuario.email})</span>
                                                             </div>
-                                                            {auth.user?.id === user.id ? (
+                                                            {auth.user?.id === usuario.id ? (
                                                                 <span className="ml-4 text-xs text-gray-500 dark:text-gray-400 font-medium">(Tú - Creador)</span>
                                                             ) : (
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => removeUser(user.id)}
+                                                                    onClick={() => quitarUsuario(usuario.id)}
                                                                     className="ml-4 text-xs bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded"
                                                                     title="Quitar usuario"
                                                                 >
@@ -298,7 +283,7 @@ function SingleCreate({ auth }) {
                                                 ))}
                                             </div>
                                         )}
-                                        {selectedUsers.length === 0 && errors.userIds && typeof errors.userIds === 'string' && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.userIds}</p>}
+                                        {usuariosSeleccionados.length === 0 && errors.userIds && typeof errors.userIds === 'string' && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.userIds}</p>}
                                     </div>
                                     </div>
 
@@ -329,6 +314,6 @@ function SingleCreate({ auth }) {
     );
 }
 
-export default SingleCreate;
+export default CrearSingle;
 
 

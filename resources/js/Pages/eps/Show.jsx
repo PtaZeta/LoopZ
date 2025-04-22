@@ -7,11 +7,10 @@ import debounce from 'lodash.debounce';
 const obtenerUrlImagen = (item) => {
     if (!item) return null;
 
-    // Intenta obtener la ruta de cualquiera de estos campos
     const imagePath = item.foto_url || item.imagen || item.image_url;
 
     if (!imagePath) {
-        return null; // No hay ruta
+        return null;
     }
 
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://') || imagePath.startsWith('/storage/')) {
@@ -195,11 +194,11 @@ export default function EPsShow({ auth, ep: epInicial }) {
             user={auth.user}
             header={
                 <h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-                    Detalles del Álbum: {ep?.nombre || 'Cargando...'}
+                    Detalles del EP: {ep?.nombre || 'Cargando...'}
                 </h2>
             }
         >
-            <Head title={`Álbum: ${ep?.nombre || ''}`} />
+            <Head title={`EP: ${ep?.nombre || ''}`} />
 
             <div className="py-12">
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
@@ -220,7 +219,7 @@ export default function EPsShow({ auth, ep: epInicial }) {
 
                             <div className="mb-6">
                                 <Link href={route('eps.index')} className="text-blue-600 dark:text-blue-400 hover:underline">
-                                    &larr; Volver a Mis Álbumes
+                                    &larr; Volver a Mis EPs
                                 </Link>
                             </div>
 
@@ -239,7 +238,7 @@ export default function EPsShow({ auth, ep: epInicial }) {
                             )}
 
                             <div className="mb-10">
-                                <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Canciones en este Álbum ({ep?.canciones?.length || 0})</h3>
+                                <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Canciones en este EP ({ep?.canciones?.length || 0})</h3>
                                 {ep?.canciones && Array.isArray(ep.canciones) && ep.canciones.length > 0 ? (
                                     <ul className="space-y-2">
                                         {ep.canciones.map((cancion) => (
@@ -251,7 +250,7 @@ export default function EPsShow({ auth, ep: epInicial }) {
                                                     onClick={() => manejarEliminarCancion(cancion.pivot?.id)}
                                                     disabled={!cancion.pivot?.id}
                                                     className="ml-2 px-3 py-1 text-xs font-semibold rounded-md bg-red-500 text-white hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    title={!cancion.pivot?.id ? "Error" : "Quitar del Álbum"}
+                                                    title={!cancion.pivot?.id ? "Error" : "Quitar del EP"}
                                                 >
                                                     Quitar
                                                 </button>
@@ -266,7 +265,7 @@ export default function EPsShow({ auth, ep: epInicial }) {
 
                             {ep?.can?.edit && (
                                 <div className="mt-10 border-t dark:border-gray-700 pt-6">
-                                    <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Añadir Canciones al Álbum</h3>
+                                    <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Añadir Canciones al EP</h3>
                                     <div className="mb-4">
                                         <input
                                             type="text"
@@ -323,7 +322,7 @@ export default function EPsShow({ auth, ep: epInicial }) {
                             <div className="mt-8 flex justify-center space-x-3">
                                 {ep?.can?.edit && (
                                     <Link href={route('eps.edit', ep.id)} className="inline-flex items-center px-4 py-2 bg-yellow-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-600 active:bg-yellow-700 focus:outline-none focus:border-yellow-700 focus:ring ring-yellow-300 disabled:opacity-25 transition ease-in-out duration-150">
-                                        Editar Álbum
+                                        Editar EP
                                     </Link>
                                 )}
                             </div>

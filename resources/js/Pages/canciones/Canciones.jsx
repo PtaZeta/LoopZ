@@ -54,40 +54,40 @@ export default function Canciones({ auth, canciones, success: mensajeExitoSesion
                                                 {cancion.foto_url ? (
                                                     <div className="flex-shrink-0 mb-4 md:mb-0">
                                                         <Link href={route('canciones.show', cancion.id)} title="Ver Detalles">
-                                                            <img src={cancion.foto_url} alt={`Portada de ${cancion.titulo}`} className="w-24 h-24 md:w-32 md:h-32 rounded-md object-cover border border-gray-100"/>
+                                                             <img src={cancion.foto_url} alt={`Portada de ${cancion.titulo}`} className="w-24 h-24 md:w-32 md:h-32 rounded-md object-cover border border-gray-100"/>
                                                         </Link>
                                                     </div>
                                                 ) : (
                                                     <Link href={route('canciones.show', cancion.id)} title="Ver Detalles">
-                                                        <div className="flex-shrink-0 mb-4 md:mb-0 w-24 h-24 md:w-32 md:h-32 rounded-md bg-gray-100 flex items-center justify-center text-gray-400">
-                                                            Sin foto
-                                                        </div>
+                                                         <div className="flex-shrink-0 mb-4 md:mb-0 w-24 h-24 md:w-32 md:h-32 rounded-md bg-gray-100 flex items-center justify-center text-gray-400">
+                                                             Sin foto
+                                                         </div>
                                                     </Link>
                                                 )}
 
                                                 <div className="flex-grow min-w-0">
                                                     <h3 className="text-xl font-bold text-gray-800 truncate mb-1">{cancion.titulo}</h3>
                                                     <p className="text-sm text-gray-600 mb-1">
-                                                        <span className="font-medium">Género:</span> {cancion.genero || 'No especificado'}
+                                                         <span className="font-medium">Género:</span> {cancion.genero || 'No especificado'}
                                                     </p>
                                                     <p className="text-sm text-gray-600 mb-1">
-                                                        <span className="font-medium">Duración:</span> {cancion.duracion ? `${cancion.duracion} seg.` : 'N/A'}
+                                                         <span className="font-medium">Duración:</span> {cancion.duracion ? `${cancion.duracion} seg.` : 'N/A'}
                                                     </p>
                                                     <p className="text-sm text-gray-600 mb-3">
-                                                        <span className="font-medium">Visualizaciones:</span> {cancion.visualizaciones || 0}
+                                                         <span className="font-medium">Visualizaciones:</span> {cancion.visualizaciones || 0}
                                                     </p>
                                                     <p className="text-sm text-gray-600 mb-3">
-                                                        <span className="font-medium">Artista(s):</span>
-                                                        {' '}
+                                                         <span className="font-medium">Artista(s):</span>
+                                                         {' '}
                                                         {cancion.usuarios && cancion.usuarios.length > 0
-                                                            ? cancion.usuarios.map(user => user.name).join(', ')
-                                                            : ' No asignado'}
+                                                             ? cancion.usuarios.map(user => user.name).join(', ')
+                                                             : ' No asignado'}
                                                     </p>
                                                     {cancion.archivo_url && (
                                                         <div className="mt-2 max-w-md">
                                                             <audio controls controlsList="nodownload" className="w-full h-10">
-                                                                <source src={cancion.archivo_url} type="audio/mpeg" />
-                                                                Tu navegador no soporta la reproducción de audio.
+                                                                 <source src={cancion.archivo_url} type="audio/mpeg" />
+                                                                 Tu navegador no soporta la reproducción de audio.
                                                             </audio>
                                                         </div>
                                                     )}
@@ -96,21 +96,21 @@ export default function Canciones({ auth, canciones, success: mensajeExitoSesion
                                                 <div className="flex-shrink-0 flex flex-row md:flex-col space-x-2 md:space-x-0 md:space-y-2 mt-4 md:mt-0 self-start md:self-center">
                                                     {cancion.can?.edit && (
                                                         <Link
-                                                            href={route('canciones.edit', cancion.id)}
-                                                            className="inline-flex items-center px-3 py-1.5 bg-yellow-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-600 active:bg-yellow-700 focus:outline-none focus:border-yellow-700 focus:ring ring-yellow-300 disabled:opacity-25 transition ease-in-out duration-150"
-                                                            title="Editar"
+                                                             href={route('canciones.edit', cancion.id)}
+                                                             className="inline-flex items-center px-3 py-1.5 bg-yellow-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-600 active:bg-yellow-700 focus:outline-none focus:border-yellow-700 focus:ring ring-yellow-300 disabled:opacity-25 transition ease-in-out duration-150"
+                                                             title="Editar"
                                                         >
-                                                            Editar
+                                                             Editar
                                                         </Link>
                                                     )}
                                                     {cancion.can?.delete && (
                                                         <button
-                                                            onClick={() => manejarEliminar(cancion.id)}
-                                                            disabled={processing}
-                                                            className="inline-flex items-center px-3 py-1.5 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 active:bg-red-800 focus:outline-none focus:border-red-900 focus:ring ring-red-300 disabled:opacity-50 transition ease-in-out duration-150"
-                                                            title="Eliminar"
+                                                             onClick={() => manejarEliminar(cancion.id)}
+                                                             disabled={processing}
+                                                             className="inline-flex items-center px-3 py-1.5 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 active:bg-red-800 focus:outline-none focus:border-red-900 focus:ring ring-red-300 disabled:opacity-50 transition ease-in-out duration-150"
+                                                             title="Eliminar"
                                                         >
-                                                            Eliminar
+                                                             Eliminar
                                                         </button>
                                                     )}
                                                 </div>

@@ -7,11 +7,10 @@ import debounce from 'lodash.debounce';
 const obtenerUrlImagen = (item) => {
     if (!item) return null;
 
-    // Intenta obtener la ruta de cualquiera de estos campos
     const imagePath = item.foto_url || item.imagen || item.image_url;
 
     if (!imagePath) {
-        return null; // No hay ruta
+        return null;
     }
 
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://') || imagePath.startsWith('/storage/')) {

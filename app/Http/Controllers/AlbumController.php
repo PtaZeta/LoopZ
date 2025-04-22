@@ -1,5 +1,4 @@
 <?php
-// app/Http/Controllers/AlbumController.php
 
 namespace App\Http\Controllers;
 
@@ -10,8 +9,6 @@ use App\Models\Cancion;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Redirect;
@@ -20,43 +17,39 @@ class AlbumController extends Controller
 {
     public function index()
     {
-        $user = Auth::user();
-        $albumesQuery = Album::with(['usuarios' => function ($query) {
+        $usuario = Auth::user();
+        $consultaAlbumes = Album::with(['usuarios' => function ($query) {
             $query->select('users.id', 'users.name');
         }])->withCount('canciones')->latest();
 
-        if ($user) {
-             $albumesQuery->where('publico', true)
-                         ->orWhereHas('usuarios', function ($query) use ($user) {
-                             $query->where('users.id', $user->id);
-                         });
+        if ($usuario) {
+            $consultaAlbumes->where('publico', true)
+                            ->orWhereHas('usuarios', function ($query) use ($usuario) {
+                                $query->where('users.id', $usuario->id);
+                            });
         } else {
-            $albumesQuery->where('publico', true);
+            $consultaAlbumes->where('publico', true);
         }
 
-        $albumes = $albumesQuery->get();
+        $albumes = $consultaAlbumes->get();
 
-
-        $albumesConPermisos = $albumes->map(function ($album) use ($user) {
-            if ($user) {
+        $albumesConPermisos = $albumes->map(function ($album) use ($usuario) {
+            if ($usuario) {
                 $album->can = [
-                    'view'   => $user->can('view', $album),
-                    'edit'   => $user->can('update', $album),
-                    'delete' => $user->can('delete', $album),
+                    'view'   => $usuario->can('view', $album),
+                    'edit'   => $usuario->can('update', $album),
+                    'delete' => $usuario->can('delete', $album),
                 ];
             } else {
-                 $album->can = [
+                $album->can = [
                     'view'   => $album->publico,
                     'edit'   => false,
                     'delete' => false,
-                 ];
+                ];
             }
-            // Ensure imagen_url is appended if needed (check Album model $appends)
-            if ($album->imagen_url) {
-                 $album->imagen_url = $album->imagen_url;
-             }
             return $album;
         });
+
         return Inertia::render('albumes/Index', [
             'albumes' => $albumesConPermisos,
         ]);
@@ -71,60 +64,39 @@ class AlbumController extends Controller
     {
         $datosValidados = $request->validated();
 
-        if ($request->hasFile('imagen')) {
-            $ruta = $request->file('imagen')->store('album_images', 'public');
-            $datosValidados['imagen'] = $ruta;
-        } else {
-             unset($datosValidados['imagen']);
-        }
-
-        $validatedUserIds = $request->validate([
+        $request->validate([
             'userIds' => 'nullable|array',
             'userIds.*' => 'integer|exists:users,id',
         ]);
 
+
+        if ($request->hasFile('imagen')) {
+            $ruta = $request->file('imagen')->store('album_images', 'public');
+            $datosValidados['imagen'] = $ruta;
+        } else {
+            unset($datosValidados['imagen']);
+        }
+
         $album = Album::create($datosValidados);
 
         if (method_exists($album, 'usuarios')) {
-            $userIdsToAttach = $validatedUserIds['userIds'] ?? [];
-            $creatorId = Auth::id();
-            if ($creatorId && !in_array($creatorId, $userIdsToAttach)) {
-                $userIdsToAttach[] = $creatorId;
+            $idsUsuarios = $request->input('userIds', []);
+            $idCreador = Auth::id();
+            if ($idCreador && !in_array($idCreador, $idsUsuarios)) {
+                $idsUsuarios[] = $idCreador;
             }
-            if (!empty($userIdsToAttach)) {
-                $album->usuarios()->attach(array_unique($userIdsToAttach));
-                Log::info('Attached users to album ' . $album->id . ': ' . implode(', ', array_unique($userIdsToAttach)));
+            if (!empty($idsUsuarios)) {
+                $album->usuarios()->attach(array_unique($idsUsuarios));
             }
-        } else {
-             Log::warning('Method usuarios() does not exist on Album model for album ID ' . $album->id);
         }
 
-        return redirect()->route('albumes.index')->with('success', 'Album creado exitosamente.');
+        return redirect()->route('albumes.index')->with('success', 'Álbum creado exitosamente.');
     }
-
 
     public function show($id)
     {
-        $user = Auth::user();
-        $album = Album::findOrFail($id);
-
-
-
-        if ($user) {
-            $album->can = [
-                'view'   => true,
-                'edit'   => $user->can('update', $album),
-                'delete' => $user->can('delete', $album),
-            ];
-        } else {
-             $album->can = [
-                 'view'   => true,
-                 'edit'   => false,
-                 'delete' => false,
-             ];
-        }
-
-        $album->load([
+        $usuario = Auth::user();
+        $album = Album::with([
             'canciones' => function ($query) {
                 $query->select('canciones.id', 'canciones.titulo', 'canciones.archivo_url', 'canciones.foto_url', 'canciones.duracion')
                       ->withPivot('id as pivot_id');
@@ -132,30 +104,37 @@ class AlbumController extends Controller
             'usuarios' => function ($query) {
                 $query->select('users.id', 'users.name');
             }
-        ]);
+        ])->findOrFail($id);
 
-         // Ensure imagen_url is appended if needed (check Album model $appends)
-         if ($album->imagen_url) {
-             $album->imagen_url = $album->imagen_url;
-         }
+        if ($usuario) {
+             $album->can = [
+                'view'   => true,
+                'edit'   => $usuario->can('update', $album),
+                'delete' => $usuario->can('delete', $album),
+            ];
+        } else {
+             if (!$album->publico) {
+                 abort(403);
+             }
+            $album->can = [
+                'view'   => true,
+                'edit'   => false,
+                'delete' => false,
+            ];
+        }
 
         return Inertia::render('albumes/Show', [
             'album' => $album,
         ]);
     }
 
-
     public function edit($id)
     {
         $album = Album::with(['usuarios' => function ($query) {
-                 $query->select('users.id', 'users.name', 'users.email');
-             }])->findOrFail($id);
+            $query->select('users.id', 'users.name', 'users.email');
+        }])->findOrFail($id);
 
         $this->authorize('update', $album);
-
-         if ($album->imagen_url) {
-             $album->imagen_url = $album->imagen_url;
-         }
 
         return Inertia::render('albumes/Edit', [
             'album' => $album,
@@ -168,6 +147,11 @@ class AlbumController extends Controller
         $this->authorize('update', $album);
 
         $datosValidados = $request->validated();
+
+        $request->validate([
+            'userIds' => 'nullable|array',
+            'userIds.*' => 'integer|exists:users,id',
+        ]);
 
         $eliminarImagen = $request->boolean('eliminar_imagen');
         $carpetaDestino = 'album_images';
@@ -183,28 +167,26 @@ class AlbumController extends Controller
         } elseif ($eliminarImagen) {
             if ($rutaImagenAntigua && Storage::disk('public')->exists($rutaImagenAntigua)) {
                 Storage::disk('public')->delete($rutaImagenAntigua);
-             }
-             $datosValidados['imagen'] = null;
+            }
+            $datosValidados['imagen'] = null;
         } else {
-             unset($datosValidados['imagen']);
+            unset($datosValidados['imagen']);
         }
 
         $album->update($datosValidados);
 
         if (method_exists($album, 'usuarios')) {
-             $validatedUserIds = $request->validate([
-                'userIds' => 'nullable|array',
-                'userIds.*' => 'integer|exists:users,id',
-            ]);
-            $userIdsToSync = $validatedUserIds['userIds'] ?? [];
-
-            $album->usuarios()->sync(array_unique($userIdsToSync));
+            $idsUsuarios = $request->input('userIds', []);
+            $idCreador = Auth::id();
+             if ($idCreador && !in_array($idCreador, $idsUsuarios)) {
+                 $idsUsuarios[] = $idCreador;
+             }
+            $album->usuarios()->sync(array_unique($idsUsuarios));
         }
 
         return Redirect::route('albumes.show', $album->id)
-                        ->with('success', 'Album actualizado exitosamente.');
+                        ->with('success', 'Álbum actualizado exitosamente.');
     }
-
 
     public function destroy($id)
     {
@@ -221,69 +203,72 @@ class AlbumController extends Controller
             Storage::disk('public')->delete($album->imagen);
         }
         $album->delete();
-        return redirect()->route('albumes.index')->with('success', 'Album eliminado exitosamente.');
+
+        return redirect()->route('albumes.index')->with('success', 'Álbum eliminado exitosamente.');
     }
 
     public function anadirCancion(Request $request, Album $album)
     {
         $this->authorize('update', $album);
-        $valido = $request->validate([
+        $validacionCancion = $request->validate([
             'cancion_id' => 'required|exists:canciones,id',
         ]);
-        $idCancion = $valido['cancion_id'];
+        $idCancion = $validacionCancion['cancion_id'];
 
+        $mensaje = 'Esta canción ya está en el álbum.';
         if (!$album->canciones()->where('canciones.id', $idCancion)->exists()) {
-             $album->canciones()->attach($idCancion);
-             $message = 'Canción añadida al album.';
-        } else {
-            $message = 'Esta canción ya está en el album.';
+            $album->canciones()->attach($idCancion);
+            $mensaje = 'Canción añadida al álbum.';
         }
 
-        return redirect()->route('albumes.show', $album->id)
-                         ->with('success', $message);
+        return redirect()->back()->with('success', $mensaje);
     }
 
     public function quitarCancionPorPivot(Request $request, Album $album, $pivotId)
     {
         $this->authorize('update', $album);
 
-        $deleted = $album->canciones()
+        $eliminado = $album->canciones()
             ->wherePivot('id', $pivotId)
             ->detach();
 
-        $message = $deleted ? 'Canción eliminada del album.' : 'Error: No se encontró la instancia de la canción.';
-        if (!$deleted) {
-            Log::warning('Intento de eliminar registro pivot no encontrado', ['album_id' => $album->id, 'pivot_id' => $pivotId]);
-        }
+        $mensaje = $eliminado ? 'Canción eliminada del álbum.' : 'Error al eliminar la canción.';
 
-        return redirect()->route('albumes.show', $album->id)
-                         ->with($deleted ? 'success' : 'error', $message);
+        return redirect()->back()->with($eliminado ? 'success' : 'error', $mensaje);
     }
 
     public function buscarCanciones(Request $request, Album $album)
     {
+        $this->authorize('update', $album);
 
-        $consulta = $request->input('query', '');
-        $minQueryLength = 2;
+        $terminoBusquedaCancion = $request->input('query', '');
+        $longitudMinimaBusquedaCancion = 1;
+        $limite = 30;
 
-        $collaboratorIds = $album->usuarios()->pluck('users.id')->toArray();
+        $idsCancionesEnAlbum = $album->canciones()->pluck('canciones.id')->toArray();
 
-        $query = Cancion::whereHas('usuarios', function ($q) use ($collaboratorIds) {
-            $q->whereIn('users.id', $collaboratorIds);
-        });
+        $idsColaboradores = $album->usuarios()->pluck('users.id')->toArray();
 
-        $limit = 30;
+        $consultaCanciones = Cancion::query()
+             ->with('usuarios:id,name')
+             ->whereNotIn('canciones.id', $idsCancionesEnAlbum)
+             ->where(function ($q) use ($idsColaboradores) {
+                 $q->where('publico', true)
+                   ->orWhereHas('usuarios', function ($q2) use ($idsColaboradores) {
+                       $q2->whereIn('users.id', $idsColaboradores);
+                   });
+             });
 
-        if (strlen($consulta) >= $minQueryLength) {
-            $query->where('titulo', 'LIKE', "%{$consulta}%");
-            $limit = 15;
+        if (strlen($terminoBusquedaCancion) >= $longitudMinimaBusquedaCancion) {
+            $consultaCanciones->where('titulo', 'LIKE', "%{$terminoBusquedaCancion}%");
+            $limite = 15;
         } else {
-             $query->orderBy('titulo');
+            $consultaCanciones->orderBy('titulo');
         }
 
-        $resultados = $query->select('id', 'titulo', 'foto_url')
-                             ->limit($limit)
-                             ->get();
+        $resultados = $consultaCanciones->select('id', 'titulo', 'foto_url')
+                              ->limit($limite)
+                              ->get();
 
         return response()->json($resultados);
     }
