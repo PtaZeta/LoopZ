@@ -67,7 +67,7 @@ export default function Welcome({ auth, cancionesAleatorias }) {
                             <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-pink-900 rounded-full filter blur-3xl animate-pulse animation-delay-2000"></div>
                         </div>
                         <h1 className="text-4xl md:text-6xl font-extrabold mb-4 text-white relative z-10">
-                            <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-pink-500">LoopZ:</span> El Ritmo Que Te Encuentra
+                            <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-pink-500">LoopZ:</span> El like que suena
                         </h1>
                         <p className="text-lg md:text-xl text-gray-400 mb-10 max-w-3xl relative z-10">
                             Sumérgete en un universo de sonidos. Descubre, reproduce y conecta con la música que moverá tu mundo. Tu próxima obsesión está a un play de distancia.
