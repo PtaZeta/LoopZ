@@ -90,7 +90,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/singles/{single}/songs', [SingleController::class, 'anadirCancion'])->name('singles.songs.add');
     Route::delete('/singles/{single}/songs/{pivotId}', [SingleController::class, 'quitarCancionPorPivot'])->name('singles.songs.remove');
 
-    Route::get('/users/search', [CancionController::class, 'searchUsers'])->name('users.search');
+    Route::get('/usuarios/buscar', [CancionController::class, 'buscarUsuarios'])->name('usuarios.buscar');
 
 });
 

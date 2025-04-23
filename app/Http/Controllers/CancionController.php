@@ -259,12 +259,16 @@ class CancionController extends Controller
         return redirect()->route('canciones.index')->with('success', 'Canción eliminada correctamente');
     }
 
-
-    public function searchUsers(Request $request)
+    public function buscarUsuarios(Request $request)
     {
         $termino = $request->query('q', '');
-        $query = User::query();
         $limite = 10;
+        $query = User::query();
+
+        $usuarioActualId = Auth::id();
+        if ($usuarioActualId) {
+             $query->where('id', '!=', $usuarioActualId);
+        }
 
         if (!empty($termino)) {
             $query->where(function ($q) use ($termino) {
@@ -272,34 +276,33 @@ class CancionController extends Controller
                   ->orWhere('email', 'like', '%' . $termino . '%');
             });
         } else {
-             $query->orderBy('name', 'asc');
+            $query->orderBy('name', 'asc');
         }
 
-        $users = $query->select('id', 'name', 'email')
+        $usuarios = $query->select('id', 'name', 'email')
                         ->take($limite)
                         ->get();
 
-        return response()->json($users);
+        return response()->json($usuarios);
     }
 
+       private function getRelativePath(?string $url): ?string
+       {
+           if (!$url) return null;
+           try {
+               $path = parse_url($url, PHP_URL_PATH) ?: '';
+               $prefijoStorage = '/storage/';
+               if (Str::startsWith($path, $prefijoStorage)) {
+                   return Str::after($path, $prefijoStorage);
+               }
+               $rutaRecortada = ltrim($path, '/');
+               if (Str::startsWith($rutaRecortada, 'canciones/') || Str::startsWith($rutaRecortada, 'imagenes/')) {
+                    return $rutaRecortada;
+               }
+               return null;
 
-    private function getRelativePath(?string $url): ?string
-    {
-        if (!$url) return null;
-        try {
-            $path = parse_url($url, PHP_URL_PATH) ?: '';
-            $prefijoStorage = '/storage/';
-            if (Str::startsWith($path, $prefijoStorage)) {
-                return Str::after($path, $prefijoStorage);
-            }
-             $rutaRecortada = ltrim($path, '/');
-             if (Str::startsWith($rutaRecortada, 'canciones/') || Str::startsWith($rutaRecortada, 'imagenes/')) {
-                  return $rutaRecortada;
-             }
-             return null;
-
-        } catch (\Exception $e) {
-             return null;
-        }
-    }
+           } catch (\Exception $e) {
+               return null;
+           }
+       }
 }
