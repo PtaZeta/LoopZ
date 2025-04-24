@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('playlists', function (Blueprint $table) {
+        Schema::table('contenedores', function (Blueprint $table) {
             $table->boolean('publico')->default(false);
         });
     }
@@ -21,7 +21,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('playlists', function (Blueprint $table) {
+        Schema::table('contenedores', function (Blueprint $table) {
             $table->dropColumn('publico');
         });
     }
