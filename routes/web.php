@@ -2,9 +2,9 @@
 
 use App\Http\Controllers\AlbumController;
 use App\Http\Controllers\CancionController;
+use App\Http\Controllers\ContenedorController;
 use App\Http\Controllers\EPController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\PlaylistController;
 use App\Http\Controllers\SingleController;
 use App\Models\Cancion;
 use Illuminate\Foundation\Application;
@@ -70,6 +70,13 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('canciones', CancionController::class);
     Route::get('/usuarios/buscar', [CancionController::class, 'buscarUsuarios'])->name('usuarios.buscar');
+
+
+    Route::resource('playlists', ContenedorController::class);
+
+    Route::get('/playlists/{contenedor}/songs/search', [ContenedorController::class, 'buscarCanciones'])->name('playlists.songs.search');
+    Route::post('/playlists/{contenedor}/songs', [ContenedorController::class, 'anadirCancion'])->name('playlists.songs.add');
+    Route::delete('/playlists/{contenedor}/songs/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('playlists.songs.remove');
 
 });
 

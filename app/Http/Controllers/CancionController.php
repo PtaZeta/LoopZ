@@ -11,21 +11,23 @@ use getID3;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Redirect;
-
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class CancionController extends Controller
 {
     public function index()
     {
-        $user = Auth::user();
+        $usuarioAutenticado = Auth::user();
 
-        $query = Cancion::with('usuarios')->latest();
+        $query = Cancion::with(['usuarios' => function ($query) {
+            $query->withPivot('propietario');
+        }])->latest();
 
-        if ($user) {
-            $query->where(function ($q) use ($user) {
+        if ($usuarioAutenticado) {
+            $query->where(function ($q) use ($usuarioAutenticado) {
                 $q->where('publico', true)
-                  ->orWhereHas('usuarios', function ($q2) use ($user) {
-                      $q2->where('user_id', $user->id);
+                  ->orWhereHas('usuarios', function ($q2) use ($usuarioAutenticado) {
+                      $q2->where('user_id', $usuarioAutenticado->id);
                   });
             });
         } else {
@@ -34,11 +36,11 @@ class CancionController extends Controller
 
         $canciones = $query->get();
 
-        $cancionesConPermisos = $canciones->map(function ($cancion) use ($user) {
-            if ($user && method_exists($user, 'can')) {
+        $cancionesConPermisos = $canciones->map(function ($cancion) use ($usuarioAutenticado) {
+            if ($usuarioAutenticado && method_exists($usuarioAutenticado, 'can')) {
                 $cancion->can = [
-                    'edit'   => $user->can('update', $cancion),
-                    'delete' => $user->can('delete', $cancion),
+                    'edit'   => $usuarioAutenticado->can('update', $cancion),
+                    'delete' => $usuarioAutenticado->can('delete', $cancion),
                 ];
             } else {
                 $cancion->can = [
@@ -57,7 +59,7 @@ class CancionController extends Controller
 
     public function create()
     {
-        return Inertia::render('canciones/Create');
+         return Inertia::render('canciones/Create');
     }
 
     public function store(Request $request)
@@ -79,13 +81,10 @@ class CancionController extends Controller
         $cancion->publico = $request->input('publico');
         $cancion->licencia = $request->input('licencia');
 
-        $numeroAleatorio = rand(1, 10000000000);
-
-
         if ($request->hasFile('archivo')) {
             $archivoAudio = $request->file('archivo');
             $extensionAudio = $archivoAudio->getClientOriginalExtension();
-            $nombreAudio = "{$numeroAleatorio}_song.{$extensionAudio}";
+            $nombreAudio = Str::uuid() . "_song.{$extensionAudio}";
 
             try {
                 $getID3 = new getID3;
@@ -95,168 +94,252 @@ class CancionController extends Controller
                 $cancion->duracion = 0;
             }
 
-            $archivoAudio->storeAs('canciones', $nombreAudio, 'public');
-            $cancion->archivo_url = asset("storage/canciones/{$nombreAudio}");
+            $pathAudio = $archivoAudio->storeAs('canciones', $nombreAudio, 'public');
+            if ($pathAudio) {
+                 $cancion->archivo_url = Storage::disk('public')->url($pathAudio);
+            } else {
+                 return back()->withErrors(['archivo' => 'No se pudo guardar el archivo de audio.'])->withInput();
+            }
         } else {
             return back()->withErrors(['archivo' => 'El archivo de audio es obligatorio.'])->withInput();
         }
 
-
         if ($request->hasFile('foto')) {
             $archivoFoto = $request->file('foto');
             $extensionFoto = $archivoFoto->getClientOriginalExtension();
-            $nombreFoto = "{$numeroAleatorio}_pic.{$extensionFoto}";
-            $archivoFoto->storeAs('imagenes', $nombreFoto, 'public');
-            $cancion->foto_url = asset("storage/imagenes/{$nombreFoto}");
+            $nombreFoto = Str::uuid() . "_pic.{$extensionFoto}";
+            $pathFoto = $archivoFoto->storeAs('imagenes', $nombreFoto, 'public');
+             if ($pathFoto) {
+                 $cancion->foto_url = Storage::disk('public')->url($pathFoto);
+             }
         }
 
         $cancion->save();
 
-
-        $idsUsuariosAsociar = $request->input('userIds', []);
         $idCreador = Auth::id();
-        if ($idCreador && !in_array($idCreador, $idsUsuariosAsociar)) {
-            $idsUsuariosAsociar[] = $idCreador;
-        }
-        if (!empty($idsUsuariosAsociar) && method_exists($cancion, 'usuarios')) {
-             $cancion->usuarios()->attach(array_unique($idsUsuariosAsociar));
+        $idsColaboradores = $request->input('userIds', []);
+        $usuariosParaAsociar = [];
+
+        if ($idCreador) {
+            $usuariosParaAsociar[$idCreador] = ['propietario' => true];
         }
 
+        foreach (array_unique($idsColaboradores) as $colaboradorId) {
+            $colaboradorIdInt = (int)$colaboradorId;
+            if ($colaboradorIdInt !== $idCreador) {
+                $usuariosParaAsociar[$colaboradorIdInt] = ['propietario' => false];
+            }
+        }
+
+        if (!empty($usuariosParaAsociar) && method_exists($cancion, 'usuarios')) {
+            $cancion->usuarios()->attach($usuariosParaAsociar);
+        }
 
         return redirect()->route('canciones.index')->with('success', 'Canción creada exitosamente.');
     }
 
     public function show($id)
     {
-        $cancion = Cancion::with('usuarios')->findOrFail($id);
-        return Inertia::render('canciones/Show', [
-            'cancion' => $cancion
-        ]);
+        try {
+            $cancion = Cancion::with(['usuarios' => function ($query) {
+                $query->withPivot('propietario');
+            }])->findOrFail($id);
+
+             $cancion->usuarios_mapeados = $cancion->usuarios->map(function($u) {
+                 return [
+                     'id' => $u->id,
+                     'name' => $u->name,
+                     'email' => $u->email,
+                     'es_propietario' => (bool) $u->pivot->propietario
+                 ];
+             })->all();
+             unset($cancion->usuarios);
+
+            return Inertia::render('canciones/Show', [
+                'cancion' => $cancion
+            ]);
+        } catch (ModelNotFoundException $e) {
+             return redirect()->route('canciones.index')->with('error', 'Canción no encontrada.');
+        }
     }
 
-     public function edit($id)
-     {
-         $cancion = Cancion::with('usuarios')->findOrFail($id);
-         $this->authorize('update', $cancion);
+    public function edit($id)
+    {
+        try {
+            $cancion = Cancion::with(['usuarios' => function ($query) {
+                $query->withPivot('propietario');
+            }])->findOrFail($id);
 
-         return Inertia::render('canciones/Edit', [
-             'cancion' => $cancion,
-         ]);
-     }
+            $this->authorize('update', $cancion);
 
+             $usuariosMapeados = $cancion->usuarios->map(function ($usuario) {
+                 return [
+                     'id' => $usuario->id,
+                     'name' => $usuario->name,
+                     'email' => $usuario->email,
+                     'es_propietario' => (bool) $usuario->pivot->propietario,
+                 ];
+             })->all();
+
+             $cancionData = $cancion->toArray();
+             unset($cancionData['usuarios']);
+             $cancionData['usuarios'] = $usuariosMapeados;
+
+            return Inertia::render('canciones/Edit', [
+                'cancion' => $cancionData,
+                'success' => session('success'),
+                'error' => session('error')
+            ]);
+        } catch (ModelNotFoundException $e) {
+            return redirect()->route('canciones.index')->with('error', 'Canción no encontrada.');
+        }
+    }
 
      public function update(Request $request, $id)
      {
+         try {
+             $cancion = Cancion::with(['usuarios' => fn($q) => $q->withPivot('propietario')])
+                                 ->findOrFail($id);
+             $this->authorize('update', $cancion);
 
-         $cancion = Cancion::with('usuarios')->findOrFail($id);
-         $this->authorize('update', $cancion);
+             $validated = $request->validate([
+                 'titulo' => 'required|string|max:255',
+                 'genero' => 'nullable|string|max:255',
+                 'publico' => 'required|boolean',
+                 'archivo_nuevo' => 'nullable|file|mimes:mp3,wav|max:10024',
+                 'foto_nueva' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
+                 'eliminar_foto' => 'nullable|boolean',
+                 'licencia' => 'nullable|string|max:255',
+                 'userIds' => 'nullable|array',
+                 'userIds.*' => 'integer|exists:users,id',
+             ]);
 
-         $validated = $request->validate([
-             'titulo' => 'required|string|max:255',
-             'genero' => 'nullable|string|max:255',
-             'publico' => 'required|boolean',
-             'archivo_nuevo' => 'nullable|file|mimes:mp3,wav|max:10024',
-             'foto_nueva' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
-             'eliminar_foto' => 'nullable|boolean',
-             'licencia' => 'nullable|string|max:255',
-             'userIds' => 'nullable|array',
-             'userIds.*' => 'integer|exists:users,id',
-         ]);
+             $cancion->titulo = $validated['titulo'];
+             $cancion->genero = $validated['genero'] ?? null;
+             $cancion->licencia = $validated['licencia'] ?? null;
+             $cancion->publico = $validated['publico'];
 
+             if ($request->hasFile('archivo_nuevo')) {
+                 $nuevoArchivoAudio = $request->file('archivo_nuevo');
+                 $urlAudioAntiguo = $cancion->archivo_url;
+                 $rutaAudioAntiguo = $this->getRelativePath($urlAudioAntiguo);
 
-         $cancion->titulo = $validated['titulo'];
-         $cancion->genero = $validated['genero'] ?? null;
-         $cancion->licencia = $validated['licencia'] ?? null;
-         $cancion->publico = $validated['publico'];
+                 if ($rutaAudioAntiguo && Storage::disk('public')->exists($rutaAudioAntiguo)) {
+                     Storage::disk('public')->delete($rutaAudioAntiguo);
+                 }
 
-         $numeroAleatorio = rand(1, 10000000000);
+                 $extensionAudio = $nuevoArchivoAudio->getClientOriginalExtension();
+                 $nombreAudio = Str::uuid() . "_song.{$extensionAudio}";
 
-         if ($request->hasFile('archivo_nuevo')) {
-             $nuevoArchivoAudio = $request->file('archivo_nuevo');
-             $urlAudioAntiguo = $cancion->archivo_url;
-             $rutaAudioAntiguo = $this->getRelativePath($urlAudioAntiguo);
+                 try {
+                     $getID3 = new getID3;
+                     $infoAudio = $getID3->analyze($nuevoArchivoAudio->getRealPath());
+                     $cancion->duracion = isset($infoAudio['playtime_seconds']) ? round($infoAudio['playtime_seconds']) : ($cancion->duracion ?? 0);
+                 } catch (\Exception $e) {
+                     $cancion->duracion = $cancion->duracion ?? 0;
+                 }
 
-             if ($rutaAudioAntiguo && Storage::disk('public')->exists($rutaAudioAntiguo)) {
-                 Storage::disk('public')->delete($rutaAudioAntiguo);
+                 $pathAudio = $nuevoArchivoAudio->storeAs('canciones', $nombreAudio, 'public');
+                  if ($pathAudio) {
+                      $cancion->archivo_url = Storage::disk('public')->url($pathAudio);
+                  } else {
+                      return back()->withErrors(['archivo_nuevo' => 'No se pudo guardar el nuevo archivo de audio.'])->withInput();
+                  }
              }
 
-             $extensionAudio = $nuevoArchivoAudio->getClientOriginalExtension();
-             $nombreAudio = "{$numeroAleatorio}_song.{$extensionAudio}";
+             $eliminarFoto = $request->boolean('eliminar_foto');
+             $urlFotoAntigua = $cancion->foto_url;
+             $rutaFotoAntigua = $this->getRelativePath($urlFotoAntigua);
 
-             try {
-                 $getID3 = new getID3;
-                 $infoAudio = $getID3->analyze($nuevoArchivoAudio->getRealPath());
-                 $cancion->duracion = isset($infoAudio['playtime_seconds']) ? round($infoAudio['playtime_seconds']) : ($cancion->duracion ?? 0);
-             } catch (\Exception $e) {
-                 $cancion->duracion = $cancion->duracion ?? 0;
+             if ($request->hasFile('foto_nueva')) {
+                 $nuevoArchivoFoto = $request->file('foto_nueva');
+                 if ($rutaFotoAntigua && Storage::disk('public')->exists($rutaFotoAntigua)) {
+                     Storage::disk('public')->delete($rutaFotoAntigua);
+                 }
+
+                 $extensionFoto = $nuevoArchivoFoto->getClientOriginalExtension();
+                 $nombreFoto = Str::uuid() . "_pic.{$extensionFoto}";
+                 $pathFoto = $nuevoArchivoFoto->storeAs('imagenes', $nombreFoto, 'public');
+                  if ($pathFoto) {
+                     $cancion->foto_url = Storage::disk('public')->url($pathFoto);
+                  }
+
+             } elseif ($eliminarFoto) {
+                 if ($rutaFotoAntigua && Storage::disk('public')->exists($rutaFotoAntigua)) {
+                     Storage::disk('public')->delete($rutaFotoAntigua);
+                 }
+                 $cancion->foto_url = null;
              }
 
-             $nuevoArchivoAudio->storeAs('canciones', $nombreAudio, 'public');
-             $cancion->archivo_url = asset("storage/canciones/{$nombreAudio}");
+             $cancion->save();
+
+             if (method_exists($cancion, 'usuarios')) {
+
+                 $propietario = $cancion->usuarios()->wherePivot('propietario', true)->first();
+                 $propietarioId = $propietario ? $propietario->id : null;
+
+                 if (!$propietarioId) {
+                      return Redirect::route('canciones.edit', $cancion->id)->with('error', 'Error: No se encontró propietario para esta canción.');
+                 }
+
+                 $idsUsuariosSincronizarInput = $request->input('userIds', []);
+                  if (!is_array($idsUsuariosSincronizarInput)) {
+                      $idsUsuariosSincronizarInput = [];
+                  }
+                  $idsUsuariosSincronizar = array_map('intval', $idsUsuariosSincronizarInput);
+
+
+                 if (!in_array($propietarioId, $idsUsuariosSincronizar)) {
+                     $idsUsuariosSincronizar[] = $propietarioId;
+                 }
+                 $idsUsuariosUnicos = array_unique($idsUsuariosSincronizar);
+
+                 $usuariosParaSincronizar = [];
+                 foreach ($idsUsuariosUnicos as $userId) {
+                     $esPropietario = ($userId === $propietarioId);
+                     $usuariosParaSincronizar[$userId] = ['propietario' => $esPropietario];
+                 }
+
+                 $cancion->usuarios()->sync($usuariosParaSincronizar);
+             }
+
+             return Redirect::route('canciones.index')->with('success', 'Canción actualizada exitosamente.');
+
+         } catch (ModelNotFoundException $e) {
+             return redirect()->route('canciones.index')->with('error', 'Canción no encontrada.');
+         } catch (\Exception $e) {
+             return Redirect::route('canciones.edit', $id)->with('error', 'Ocurrió un error al actualizar la canción: ' . $e->getMessage());
          }
-
-         $eliminarFoto = $request->boolean('eliminar_foto');
-         $urlFotoAntigua = $cancion->foto_url;
-         $rutaFotoAntigua = $this->getRelativePath($urlFotoAntigua);
-
-         if ($request->hasFile('foto_nueva')) {
-             $nuevoArchivoFoto = $request->file('foto_nueva');
-             if ($rutaFotoAntigua && Storage::disk('public')->exists($rutaFotoAntigua)) {
-                 Storage::disk('public')->delete($rutaFotoAntigua);
-             }
-
-             $extensionFoto = $nuevoArchivoFoto->getClientOriginalExtension();
-             $nombreFoto = "{$numeroAleatorio}_pic.{$extensionFoto}";
-             $nuevoArchivoFoto->storeAs('imagenes', $nombreFoto, 'public');
-             $cancion->foto_url = asset("storage/imagenes/{$nombreFoto}");
-
-         } elseif ($eliminarFoto) {
-             if ($rutaFotoAntigua && Storage::disk('public')->exists($rutaFotoAntigua)) {
-                 Storage::disk('public')->delete($rutaFotoAntigua);
-             }
-             $cancion->foto_url = null;
-         }
-
-         $cancion->save();
-
-
-         if (method_exists($cancion, 'usuarios')) {
-              $idsUsuariosSincronizar = $validated['userIds'] ?? ($request->input('userIds', []));
-              if (!is_array($idsUsuariosSincronizar)) {
-                  $idsUsuariosSincronizar = [];
-              }
-
-             $idsUsuariosUnicos = array_unique(array_map('intval', $idsUsuariosSincronizar));
-
-              $cancion->usuarios()->sync($idsUsuariosUnicos);
-         }
-
-
-         return Redirect::route('canciones.index')->with('success', 'Canción actualizada exitosamente.');
      }
 
     public function destroy($id)
     {
-        $cancion = Cancion::findOrFail($id);
-        $this->authorize('delete', $cancion);
+        try {
+            $cancion = Cancion::findOrFail($id);
+            $this->authorize('delete', $cancion);
 
-        if (method_exists($cancion, 'usuarios')) {
-            $cancion->usuarios()->detach();
-        }
+            if (method_exists($cancion, 'usuarios')) {
+                $cancion->usuarios()->detach();
+            }
 
-        $rutaAudio = $this->getRelativePath($cancion->archivo_url);
-        if ($rutaAudio && Storage::disk('public')->exists($rutaAudio)) {
-             Storage::disk('public')->delete($rutaAudio);
-        }
+            $rutaAudio = $this->getRelativePath($cancion->archivo_url);
+            if ($rutaAudio && Storage::disk('public')->exists($rutaAudio)) {
+                Storage::disk('public')->delete($rutaAudio);
+            }
 
-        $rutaFoto = $this->getRelativePath($cancion->foto_url);
-         if ($rutaFoto && Storage::disk('public')->exists($rutaFoto)) {
-             Storage::disk('public')->delete($rutaFoto);
+            $rutaFoto = $this->getRelativePath($cancion->foto_url);
+            if ($rutaFoto && Storage::disk('public')->exists($rutaFoto)) {
+                Storage::disk('public')->delete($rutaFoto);
+            }
+
+            $cancion->delete();
+
+            return redirect()->route('canciones.index')->with('success', 'Canción eliminada correctamente');
+        } catch (ModelNotFoundException $e) {
+            return redirect()->route('canciones.index')->with('error', 'Canción no encontrada.');
+        } catch (\Exception $e) {
+             return redirect()->route('canciones.index')->with('error', 'Ocurrió un error al eliminar la canción: ' . $e->getMessage());
          }
-
-        $cancion->delete();
-
-        return redirect()->route('canciones.index')->with('success', 'Canción eliminada correctamente');
     }
 
     public function buscarUsuarios(Request $request)
@@ -267,7 +350,7 @@ class CancionController extends Controller
 
         $usuarioActualId = Auth::id();
         if ($usuarioActualId) {
-             $query->where('id', '!=', $usuarioActualId);
+            $query->where('id', '!=', $usuarioActualId);
         }
 
         if (!empty($termino)) {
@@ -280,29 +363,32 @@ class CancionController extends Controller
         }
 
         $usuarios = $query->select('id', 'name', 'email')
-                        ->take($limite)
-                        ->get();
+                          ->take($limite)
+                          ->get();
 
         return response()->json($usuarios);
     }
 
-       private function getRelativePath(?string $url): ?string
-       {
-           if (!$url) return null;
-           try {
-               $path = parse_url($url, PHP_URL_PATH) ?: '';
-               $prefijoStorage = '/storage/';
-               if (Str::startsWith($path, $prefijoStorage)) {
-                   return Str::after($path, $prefijoStorage);
-               }
-               $rutaRecortada = ltrim($path, '/');
-               if (Str::startsWith($rutaRecortada, 'canciones/') || Str::startsWith($rutaRecortada, 'imagenes/')) {
-                    return $rutaRecortada;
-               }
-               return null;
+    private function getRelativePath(?string $url): ?string
+    {
+        if (!$url) return null;
+        try {
+            $path = parse_url($url, PHP_URL_PATH) ?: '';
+            $prefijoStorage = '/storage/';
+            if (Str::startsWith($path, $prefijoStorage)) {
+                $relativePath = Str::after($path, $prefijoStorage);
+                return ltrim($relativePath, '/');
+            }
 
-           } catch (\Exception $e) {
-               return null;
-           }
-       }
+             $path = ltrim($path, '/');
+             if (Str::startsWith($path, 'canciones/') || Str::startsWith($path, 'imagenes/')) {
+                 return $path;
+             }
+
+            return null;
+
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
 }
