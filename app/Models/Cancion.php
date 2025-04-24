@@ -22,24 +22,11 @@ class Cancion extends Model
         'publico',
     ];
 
-    public function pertenecePlaylists()
+    public function contenedores()
     {
-        return $this->morphedByMany(Playlist::class, 'perteneceable', 'pertenece_cancion');
-    }
-
-    public function perteneceAlbumes()
-    {
-        return $this->morphedByMany(Album::class, 'perteneceable', 'pertenece_cancion');
-    }
-
-    public function perteneceEps()
-    {
-        return $this->morphedByMany(Ep::class, 'perteneceable', 'pertenece_cancion');
-    }
-
-    public function perteneceSingles()
-    {
-        return $this->morphedByMany(Single::class, 'perteneceable', 'pertenece_cancion');
+        return $this->belongsToMany(Contenedor::class, 'cancion_contenedor', 'cancion_id', 'contenedor_id')
+                    ->withPivot('id')
+                    ->withTimestamps();
     }
 
     public function usuarios()

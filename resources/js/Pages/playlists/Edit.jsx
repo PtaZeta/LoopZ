@@ -1,25 +1,89 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useForm, Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import PropTypes from 'prop-types';
+import { debounce } from 'lodash';
 import InputError from '@/Components/InputError';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import InputLabel from '@/Components/InputLabel';
 import axios from 'axios';
-import { debounce } from 'lodash';
+import { PencilIcon, TrashIcon, MusicalNoteIcon } from '@heroicons/react/24/solid';
 
-export default function Editar({ auth, playlist, errors: erroresSesion, success: mensajeExitoSesion }) {
-    const idsUsuariosIniciales = playlist.usuarios?.map(u => u.id) || [];
-    const usuariosSeleccionadosIniciales = playlist.usuarios?.map(u => ({ id: u.id, name: u.name, email: u.email })) || [];
+const ImagenItem = ({ url, titulo, className = "w-10 h-10", iconoFallback }) => {
+    const [src, setSrc] = useState(url);
+    const [error, setError] = useState(false);
+
+    useEffect(() => {
+        setSrc(url);
+        setError(false);
+    }, [url]);
+
+    const manejarErrorImagen = () => setError(true);
+
+    if (error || !src) {
+        return (
+            <div className={`${className} bg-gray-200 dark:bg-slate-700 flex items-center justify-center text-gray-400 dark:text-slate-500 rounded`}>
+                {iconoFallback || (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" />
+                    </svg>
+                )}
+            </div>
+        );
+    }
+
+    return (
+        <img
+            src={src}
+            alt={`Portada de ${titulo}`}
+            className={`${className} object-cover rounded shadow-sm flex-shrink-0`}
+            loading="lazy"
+            onError={manejarErrorImagen}
+        />
+    );
+};
+
+ImagenItem.propTypes = {
+    url: PropTypes.string,
+    titulo: PropTypes.string.isRequired,
+    className: PropTypes.string,
+    iconoFallback: PropTypes.node,
+};
+
+export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion, success: mensajeExitoSesion }) {
+
+    const obtenerUrlImagen = (item) => {
+        if (!item) return null;
+        if (item.imagen) {
+            return item.imagen.startsWith('http') ? item.imagen : `/storage/${item.imagen}`;
+        }
+        if (item?.foto_url) return item.foto_url;
+        if (item?.image_url) return item.image_url;
+        return null;
+    };
+
+    const isOwner = contenedor.is_owner ?? false;
+
+    // **Importante**: Asegúrate que 'usuarios' incluye la info del pivot desde el backend
+    const idsUsuariosIniciales = contenedor.usuarios?.map(u => u.id) || [];
+    const usuariosSeleccionadosIniciales = contenedor.usuarios?.map(u => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        // Añadir la información del pivot al estado inicial si está disponible
+        pivot: u.pivot
+    })) || [];
+
 
     const { data, setData, post, processing, errors, reset, recentlySuccessful } = useForm({
         _method: 'PUT',
-        nombre: playlist.nombre || '',
-        publico: playlist.publico || false,
-        descripcion: playlist.descripcion || '',
+        nombre: contenedor.nombre || '',
+        publico: contenedor.publico ?? false,
+        descripcion: contenedor.descripcion || '',
         imagen_nueva: null,
         eliminar_imagen: false,
-        userIds: idsUsuariosIniciales,
+        userIds: isOwner ? idsUsuariosIniciales : undefined,
     });
 
     const [terminoBusqueda, setTerminoBusqueda] = useState('');
@@ -29,8 +93,11 @@ export default function Editar({ auth, playlist, errors: erroresSesion, success:
     const [mostrarUsuariosIniciales, setMostrarUsuariosIniciales] = useState(false);
 
     const agregarUsuario = (usuario) => {
+        if (!isOwner) return;
         if (!usuariosSeleccionados.some(seleccionado => seleccionado.id === usuario.id)) {
-            const nuevosUsuariosSeleccionados = [...usuariosSeleccionados, usuario];
+            // Al agregar, no tenemos info del pivot, asumimos propietario=false
+            const usuarioParaAgregar = { ...usuario, pivot: { propietario: false } };
+            const nuevosUsuariosSeleccionados = [...usuariosSeleccionados, usuarioParaAgregar];
             setUsuariosSeleccionados(nuevosUsuariosSeleccionados);
             setData('userIds', nuevosUsuariosSeleccionados.map(u => u.id));
             setTerminoBusqueda('');
@@ -40,50 +107,71 @@ export default function Editar({ auth, playlist, errors: erroresSesion, success:
     };
 
     const quitarUsuario = (usuarioId) => {
-        if (auth.user?.id === usuarioId) return;
+        if (!isOwner) return;
+        // Buscar si el usuario a quitar es el propietario
+        const usuarioAQuitar = usuariosSeleccionados.find(u => u.id === usuarioId);
+        if (usuarioAQuitar?.pivot?.propietario) {
+             alert("No puedes quitar al propietario de la playlist.");
+             return;
+        }
+        // Permitir quitar si no es propietario
         const nuevosUsuariosSeleccionados = usuariosSeleccionados.filter(usuario => usuario.id !== usuarioId);
         setUsuariosSeleccionados(nuevosUsuariosSeleccionados);
         setData('userIds', nuevosUsuariosSeleccionados.map(u => u.id));
-        if (!terminoBusqueda.trim()) {
-            realizarBusqueda('');
+        if (terminoBusqueda.trim()) {
+            realizarBusqueda(terminoBusqueda);
+        } else {
+             realizarBusqueda('');
         }
     };
 
     const realizarBusqueda = useCallback(
         debounce(async (termino) => {
+            if (!isOwner) return;
             setCargandoBusqueda(true);
             try {
-                const respuesta = await axios.get(route('users.search', { q: termino }));
+                const respuesta = await axios.get(route('usuarios.buscar', { q: termino }));
                 const usuariosDisponibles = respuesta.data.filter(
                     usuario => !usuariosSeleccionados.some(seleccionado => seleccionado.id === usuario.id)
                 );
                 setResultadosBusqueda(usuariosDisponibles);
                 setMostrarUsuariosIniciales(!termino.trim() && usuariosDisponibles.length > 0);
-            } finally {
+            } catch (error) {
+                 console.error("Error buscando usuarios:", error);
+                 setResultadosBusqueda([]);
+            }
+            finally {
                 setCargandoBusqueda(false);
             }
         }, 300),
-        [usuariosSeleccionados]
+        [usuariosSeleccionados, isOwner]
     );
 
     const manejarCambioBusqueda = (e) => {
+        if (!isOwner) return;
         const termino = e.target.value;
         setTerminoBusqueda(termino);
         realizarBusqueda(termino);
     };
 
     useEffect(() => {
-        if (!terminoBusqueda.trim() && !mostrarUsuariosIniciales && usuariosSeleccionados.length > 0) {
+        if (isOwner && !terminoBusqueda.trim()) {
             realizarBusqueda('');
         }
         return () => {
             realizarBusqueda.cancel();
         };
-    }, [realizarBusqueda, terminoBusqueda, mostrarUsuariosIniciales, usuariosSeleccionados]);
+    }, [realizarBusqueda, terminoBusqueda, isOwner]);
 
     const manejarEnvio = (e) => {
         e.preventDefault();
-        post(route('playlists.update', playlist.id), {
+        const dataToSend = { ...data };
+        if (!isOwner) {
+            delete dataToSend.userIds;
+        }
+
+        post(route('playlists.update', contenedor.id), {
+            data: dataToSend,
             forceFormData: true,
             onSuccess: () => {
                 setData(datosAnteriores => ({
@@ -128,36 +216,38 @@ export default function Editar({ auth, playlist, errors: erroresSesion, success:
         }
     };
 
+    const urlImagenActual = obtenerUrlImagen(contenedor);
+
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Editar Playlist: {playlist.nombre}</h2>}
+            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Editar Playlist: {contenedor.nombre}</h2>}
         >
-            <Head title={`Editar ${playlist.nombre}`} />
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <Head title={`Editar ${contenedor.nombre}`} />
+            <div className="py-12 bg-gray-100 dark:bg-slate-900 min-h-screen">
+                <div className="max-w-2xl mx-auto sm:px-6 lg:px-8">
                     {recentlySuccessful && mensajeExitoSesion && (
-                        <div className="mb-4 p-4 bg-green-100 text-green-700 rounded">
+                        <div className="mb-4 p-4 bg-green-100 dark:bg-green-900 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-200 rounded-md shadow-sm" role="alert">
                             {mensajeExitoSesion}
                         </div>
                     )}
-                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-gray-900">
-                            <h3 className="text-lg font-medium text-gray-900 mb-4">Editando Playlist</h3>
+                    <div className="bg-white dark:bg-slate-800 overflow-hidden shadow-xl sm:rounded-lg">
+                        <div className="p-6 md:p-8 text-gray-900 dark:text-gray-100">
+                            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Editando Playlist</h3>
                             {Object.keys(erroresSesion || {}).length > 0 && !errors && (
-                                <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
+                                <div className="mb-4 p-4 bg-red-100 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 rounded-md shadow-sm" role="alert">
                                     Hubo errores al procesar tu solicitud. Revisa los campos.
                                 </div>
                             )}
                             <form onSubmit={manejarEnvio} className="space-y-6">
                                 <div>
-                                    <InputLabel htmlFor="nombre" value="Nombre *" />
+                                    <InputLabel htmlFor="nombre" value="Nombre *" className="dark:text-gray-300" />
                                     <TextInput
                                         id="nombre"
                                         name="nombre"
                                         value={data.nombre}
                                         className="mt-1 block w-full"
-                                        autoComplete="nombre"
+                                        autoComplete="off"
                                         isFocused={true}
                                         onChange={manejarCambioInput}
                                         required
@@ -165,26 +255,25 @@ export default function Editar({ auth, playlist, errors: erroresSesion, success:
                                     <InputError message={errors.nombre} className="mt-2" />
                                 </div>
                                 <div>
-                                    <InputLabel htmlFor="descripcion" value="Descripción *" />
+                                    <InputLabel htmlFor="descripcion" value="Descripción" className="dark:text-gray-300" />
                                     <textarea
                                         id="descripcion"
                                         name="descripcion"
                                         value={data.descripcion}
                                         onChange={manejarCambioInput}
                                         rows="4"
-                                        className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                        required
+                                        className="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-purple-500 focus:border-transparent dark:bg-slate-700 dark:text-gray-200 focus:outline-none focus:ring-2 dark:focus:ring-offset-slate-800"
                                     ></textarea>
                                     <InputError message={errors.descripcion} className="mt-2" />
                                 </div>
                                 <div>
-                                    <InputLabel htmlFor="publico" value="Visibilidad *" />
+                                    <InputLabel htmlFor="publico" value="Visibilidad *" className="dark:text-gray-300" />
                                     <select
                                         id="publico"
                                         name="publico"
-                                        value={data.publico}
+                                        value={data.publico ? 'true' : 'false'}
                                         onChange={(e) => setData('publico', e.target.value === 'true')}
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:ring-purple-500 focus:border-transparent dark:bg-slate-700 dark:text-gray-200 focus:outline-none focus:ring-2 dark:focus:ring-offset-slate-800 sm:text-sm"
                                         required
                                     >
                                         <option value="false">Privado (Solo colaboradores)</option>
@@ -193,11 +282,11 @@ export default function Editar({ auth, playlist, errors: erroresSesion, success:
                                     <InputError message={errors.publico} className="mt-2" />
                                 </div>
                                 <div>
-                                    <InputLabel htmlFor="imagen_nueva" value="Imagen (Opcional: reemplazar actual)" />
-                                    {playlist.imagen && !data.eliminar_imagen && (
+                                    <InputLabel htmlFor="imagen_nueva" value="Imagen (Opcional: reemplazar actual)" className="dark:text-gray-300"/>
+                                    {urlImagenActual && !data.eliminar_imagen && (
                                         <div className="mt-2 mb-4">
-                                            <p className="text-sm text-gray-500 mb-1">Imagen Actual:</p>
-                                            <img src={`/storage/${playlist.imagen}`} alt="Imagen actual de la playlist" className="h-24 w-24 object-cover rounded border border-gray-200" />
+                                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Imagen Actual:</p>
+                                            <img src={urlImagenActual} alt="Imagen actual" className="h-24 w-24 object-cover rounded border border-gray-200 dark:border-slate-600" />
                                         </div>
                                     )}
                                     <input
@@ -205,13 +294,13 @@ export default function Editar({ auth, playlist, errors: erroresSesion, success:
                                         id="imagen_nueva"
                                         name="imagen_nueva"
                                         onChange={manejarCambioArchivo}
-                                        className={`mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 ${errors.imagen_nueva ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-indigo-500 focus:border-indigo-500`}
-                                        accept="image/jpeg,image/png,image/jpg"
+                                        className={`mt-1 block w-full text-sm dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 dark:file:bg-slate-600 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-slate-500 ${errors.imagen_nueva ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'} rounded-md focus:ring-purple-500 focus:border-transparent dark:bg-slate-700 focus:outline-none focus:ring-2 dark:focus:ring-offset-slate-800`}
+                                        accept="image/jpeg,image/png,image/jpg,image/webp,image/gif"
                                         disabled={data.eliminar_imagen}
                                     />
-                                    {data.imagen_nueva && <span className="text-green-600 text-xs mt-1 block">Nueva imagen seleccionada: {data.imagen_nueva.name}</span>}
+                                    {data.imagen_nueva && <span className="text-green-600 dark:text-green-400 text-xs mt-1 block">Nueva imagen: {data.imagen_nueva.name}</span>}
                                     <InputError message={errors.imagen_nueva} className="mt-2" />
-                                    {playlist.imagen && (
+                                    {urlImagenActual && (
                                         <div className="mt-2 flex items-center">
                                             <input
                                                 type="checkbox"
@@ -219,31 +308,33 @@ export default function Editar({ auth, playlist, errors: erroresSesion, success:
                                                 name="eliminar_imagen"
                                                 checked={data.eliminar_imagen}
                                                 onChange={manejarCambioCheckbox}
-                                                className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                                className="h-4 w-4 text-pink-600 border-gray-300 dark:border-slate-600 rounded focus:ring-pink-500 dark:bg-slate-700 dark:checked:bg-pink-500"
                                             />
-                                            <label htmlFor="eliminar_imagen" className="ml-2 block text-sm text-gray-900">
+                                            <label htmlFor="eliminar_imagen" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
                                                 Eliminar imagen actual (si no subes una nueva)
                                             </label>
                                         </div>
                                     )}
                                     <InputError message={errors.eliminar_imagen} className="mt-2" />
                                 </div>
-                                <div className="border-t border-gray-200 pt-6 mt-6">
-                                    <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Asociar Usuarios (Colaboradores)</h3>
+                                <div className={`border-t border-gray-200 dark:border-slate-700 pt-6 mt-6 ${!isOwner ? 'opacity-50 pointer-events-none' : ''}`}>
+                                    <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100 mb-4">Asociar Usuarios (Colaboradores)</h3>
+                                    {!isOwner && <p className="text-sm text-yellow-600 dark:text-yellow-400 mb-4 italic">(Solo el propietario puede modificar los colaboradores)</p>}
                                     <div className="space-y-4">
                                         <div>
-                                            <label htmlFor="user-search" className="block text-sm font-medium text-gray-700">Buscar Usuario por Nombre o Email</label>
+                                            <InputLabel htmlFor="user-search" value="Buscar Usuario por Nombre o Email" className="dark:text-gray-300"/>
                                             <div className="mt-1 relative rounded-md shadow-sm">
-                                                <input
+                                                <TextInput
                                                     id="user-search"
                                                     type="search"
                                                     name="user-search"
                                                     value={terminoBusqueda}
                                                     onChange={manejarCambioBusqueda}
-                                                    onFocus={() => { if (!terminoBusqueda && !mostrarUsuariosIniciales) realizarBusqueda('') }}
-                                                    className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm pr-10"
+                                                    onFocus={() => { if (!terminoBusqueda) realizarBusqueda('') }}
+                                                    className="block w-full pr-10"
                                                     placeholder="Escribe para buscar..."
                                                     autoComplete="off"
+                                                    disabled={!isOwner}
                                                 />
                                                 {cargandoBusqueda && (
                                                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -254,14 +345,14 @@ export default function Editar({ auth, playlist, errors: erroresSesion, success:
                                                     </div>
                                                 )}
                                             </div>
-                                            {!cargandoBusqueda && (terminoBusqueda || mostrarUsuariosIniciales) && (
-                                                <ul className="mt-2 border border-gray-300 rounded-md bg-white shadow-lg max-h-60 overflow-auto w-full">
+                                            {!cargandoBusqueda && (terminoBusqueda || mostrarUsuariosIniciales) && isOwner && (
+                                                <ul className="mt-2 border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 shadow-lg max-h-60 overflow-auto w-full z-10">
                                                     {resultadosBusqueda.length > 0 ? (
                                                         resultadosBusqueda.map(usuario => (
-                                                            <li key={usuario.id} className="px-4 py-2 hover:bg-gray-100 flex justify-between items-center cursor-pointer group" onClick={() => agregarUsuario(usuario)}>
+                                                            <li key={usuario.id} className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-600 flex justify-between items-center cursor-pointer group" onClick={() => agregarUsuario(usuario)}>
                                                                 <div>
-                                                                    <span className="font-medium text-sm text-gray-900">{usuario.name}</span>
-                                                                    <span className="text-xs text-gray-500 ml-2">({usuario.email})</span>
+                                                                    <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{usuario.name}</span>
+                                                                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({usuario.email})</span>
                                                                 </div>
                                                                 <button
                                                                     type="button"
@@ -273,29 +364,31 @@ export default function Editar({ auth, playlist, errors: erroresSesion, success:
                                                             </li>
                                                         ))
                                                     ) : (
-                                                        terminoBusqueda && <li className="px-4 py-2 text-sm text-gray-500">No se encontraron usuarios.</li>
+                                                        terminoBusqueda && <li className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">No se encontraron usuarios.</li>
                                                     )}
                                                 </ul>
                                             )}
                                         </div>
                                         {usuariosSeleccionados.length > 0 && (
                                             <div className="mt-4">
-                                                <h4 className="text-sm font-medium text-gray-700 mb-2">Usuarios Seleccionados:</h4>
+                                                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Usuarios Seleccionados:</h4>
                                                 <ul className="space-y-2">
                                                     {usuariosSeleccionados.map(usuario => (
-                                                        <li key={usuario.id} className="flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-200">
+                                                        <li key={usuario.id} className="flex justify-between items-center bg-gray-50 dark:bg-slate-700/50 p-2 rounded border border-gray-200 dark:border-slate-600">
                                                             <div>
-                                                                <span className="font-medium text-sm text-gray-900">{usuario.name}</span>
-                                                                <span className="text-xs text-gray-500 ml-2">({usuario.email})</span>
+                                                                <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{usuario.name}</span>
+                                                                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({usuario.email})</span>
                                                             </div>
-                                                            {auth.user?.id === usuario.id ? (
-                                                                <span className="ml-4 text-xs text-gray-500 font-medium">(Tú - Creador)</span>
+                                                            {/* *** CONDICIÓN ACTUALIZADA *** */}
+                                                            {usuario.pivot?.propietario ? (
+                                                                <span className="ml-4 text-xs text-gray-500 dark:text-gray-400 font-medium">(Propietario)</span>
                                                             ) : (
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => quitarUsuario(usuario.id)}
-                                                                    className="ml-4 text-xs bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded"
+                                                                    className="ml-4 text-xs bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                                                                     title="Quitar usuario"
+                                                                    disabled={!isOwner}
                                                                 >
                                                                     Quitar
                                                                 </button>
@@ -312,13 +405,14 @@ export default function Editar({ auth, playlist, errors: erroresSesion, success:
                                         {usuariosSeleccionados.length === 0 && errors.userIds && typeof errors.userIds === 'string' && <p className="mt-1 text-xs text-red-600">{errors.userIds}</p>}
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-4">
-                                    <PrimaryButton disabled={processing}>
+
+                                <div className="flex items-center gap-4 mt-8">
+                                    <PrimaryButton disabled={processing} className="bg-gradient-to-r from-blue-500 to-pink-500 hover:from-blue-600 hover:to-pink-600">
                                         {processing ? 'Actualizando...' : 'Actualizar Playlist'}
                                     </PrimaryButton>
                                     <Link
                                         href={route('playlists.index')}
-                                        className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150"
+                                        className="inline-flex items-center px-4 py-2 bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-200 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 disabled:opacity-25 transition ease-in-out duration-150"
                                     >
                                         Cancelar
                                     </Link>
