@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('canciones', function (Blueprint $table) {
-            $table->boolean('publico')->default(false);
+        Schema::table('pertenece_user', function (Blueprint $table) {
+            $table->boolean('propietario')->default(false);
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('canciones', function (Blueprint $table) {
-            $table->dropIfExists('publico');
+        Schema::table('pertenece_user', function (Blueprint $table) {
+            $table->dropIfExists('propietario');
         });
     }
 };

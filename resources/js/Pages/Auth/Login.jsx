@@ -25,7 +25,7 @@ export default function Login({ status, canResetPassword }) {
         <GuestLayout>
             <Head title="Log in" />
 
-            <div className="max-w-md mx-auto p-6 bg-gray-900 rounded-md shadow-lg text-gray-300">
+            <div className="max-w-md mx-auto p-6 bg-gray-900 rounded-md shadow-lg text-white">
                 <div className="flex justify-center mb-8">
                     <Link href="/" className="text-2xl font-bold text-blue-500 hover:text-blue-400 transition-colors">
                         LoopZ
@@ -40,14 +40,14 @@ export default function Login({ status, canResetPassword }) {
 
                 <form onSubmit={submit}>
                     <div className="mb-4">
-                        <InputLabel htmlFor="email" value="Email" className="text-gray-400" />
+                        <InputLabel htmlFor="email" value="Email" className="text-gray-100 font-medium" />
 
                         <TextInput
                             id="email"
                             type="email"
                             name="email"
                             value={data.email}
-                            className="mt-1 block w-full text-gray-200 bg-gray-800 border-gray-700 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm"
+                            className="mt-1 block w-full text-gray-200 bg-gray-800 border-gray-700 rounded-md shadow-sm"
                             autoComplete="username"
                             isFocused={true}
                             onChange={(e) => setData('email', e.target.value)}
@@ -57,14 +57,14 @@ export default function Login({ status, canResetPassword }) {
                     </div>
 
                     <div className="mb-4">
-                        <InputLabel htmlFor="password" value="Password" className="text-gray-400" />
+                        <InputLabel htmlFor="password" value="Contraseña" className="text-gray-100 font-medium" />
 
                         <TextInput
                             id="password"
                             type="password"
                             name="password"
                             value={data.password}
-                            className="mt-1 block w-full text-gray-200 bg-gray-800 border-gray-700 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm"
+                            className="mt-1 block w-full text-gray-200 bg-gray-800 border-gray-700 rounded-md shadow-sm"
                             autoComplete="current-password"
                             onChange={(e) => setData('password', e.target.value)}
                         />
@@ -72,12 +72,12 @@ export default function Login({ status, canResetPassword }) {
                         <InputError message={errors.password} className="mt-2 text-red-500" />
                     </div>
 
-                    <div className="mb-6 block">
-                        <label className="flex items-center text-gray-400">
+                    <div className="mb-6">
+                         <label className="flex items-center text-gray-400 cursor-pointer">
                             <Checkbox
+                                id="remember"
                                 name="remember"
                                 checked={data.remember}
-                                className="text-blue-500 focus:ring-blue-500 border-gray-700 rounded"
                                 onChange={(e) =>
                                     setData('remember', e.target.checked)
                                 }
@@ -92,13 +92,13 @@ export default function Login({ status, canResetPassword }) {
                         {canResetPassword && (
                             <Link
                                 href={route('password.request')}
-                                className="rounded-md text-sm text-gray-400 underline hover:text-gray-300 focus:outline-none focus:ring-blue-500 focus:ring-offset-2"
+                                className="rounded-md text-sm text-gray-400 underline hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-pink-500/50 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
                             >
                                 Has olvidado tu contraseña?
                             </Link>
                         )}
 
-                        <PrimaryButton className="ms-4 bg-blue-600 hover:bg-blue-700 text-white">
+                        <PrimaryButton className="ms-4 bg-blue-600 hover:bg-blue-700 text-white" disabled={processing}>
                             Log in
                         </PrimaryButton>
                     </div>
