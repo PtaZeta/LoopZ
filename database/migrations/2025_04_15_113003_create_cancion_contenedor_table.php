@@ -11,10 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('singles', function (Blueprint $table) {
+        Schema::create('cancion_contenedor', function (Blueprint $table) {
             $table->id();
-            $table->string('nombre');
-            $table->string('imagen')->nullable();
+            $table->foreignId('cancion_id')->constrained('canciones')->onDelete('cascade');
+            $table->foreignId('contenedor_id')->constrained('contenedores')->onDelete('cascade');
             $table->timestamps();
         });
     }
@@ -24,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('singles');
+        Schema::dropIfExists('cancion_contenedor');
     }
 };
