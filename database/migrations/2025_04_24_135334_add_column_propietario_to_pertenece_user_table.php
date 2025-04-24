@@ -11,12 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('playlists', function (Blueprint $table) {
-            $table->id();
-            $table->string('nombre');
-            $table->string('descripcion');
-            $table->string('imagen')->nullable();
-            $table->timestamps();
+        Schema::table('pertenece_user', function (Blueprint $table) {
+            $table->boolean('propietario')->default(false);
         });
     }
 
@@ -25,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('playlists');
+        Schema::table('pertenece_user', function (Blueprint $table) {
+            $table->dropIfExists('propietario');
+        });
     }
 };
