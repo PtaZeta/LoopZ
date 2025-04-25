@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use App\Models\User;
+use App\Models\Cancion;
+use App\Models\Contenedor;
 
 class ProfileController extends Controller
 {
@@ -20,29 +22,33 @@ class ProfileController extends Controller
         $usuario = $request->user();
 
         $consultaCanciones = $usuario->perteneceCanciones()
-                                     ->orderBy('created_at', 'desc')
+                                      ->orderBy('pertenece_user.created_at', 'desc')
+                                      ->limit(10)
+                                      ->get();
+
+        $consultaPlaylists = $usuario->perteneceContenedores()
+                                       ->where('contenedores.tipo', 'playlist')
+                                       ->orderBy('pertenece_user.created_at', 'desc')
+                                       ->limit(10)
+                                       ->get();
+
+        $consultaAlbumes = $usuario->perteneceContenedores()
+                                     ->where('contenedores.tipo', 'album')
+                                     ->orderBy('pertenece_user.created_at', 'desc')
                                      ->limit(10)
                                      ->get();
 
-        $consultaPlaylists = $usuario->pertenecePlaylists()
-                                     ->orderBy('created_at', 'desc')
+        $consultaEps = $usuario->perteneceContenedores()
+                                 ->where('contenedores.tipo', 'ep')
+                                 ->orderBy('pertenece_user.created_at', 'desc')
+                                 ->limit(10)
+                                 ->get();
+
+        $consultaSingles = $usuario->perteneceContenedores()
+                                     ->where('contenedores.tipo', 'single')
+                                     ->orderBy('pertenece_user.created_at', 'desc')
                                      ->limit(10)
                                      ->get();
-
-        $consultaAlbumes = $usuario->perteneceAlbumes()
-                                   ->orderBy('created_at', 'desc')
-                                   ->limit(10)
-                                   ->get();
-
-        $consultaEps = $usuario->perteneceEps()
-                               ->orderBy('created_at', 'desc')
-                               ->limit(10)
-                               ->get();
-
-        $consultaSingles = $usuario->perteneceSingles()
-                                   ->orderBy('created_at', 'desc')
-                                   ->limit(10)
-                                   ->get();
 
         return Inertia::render('Profile/Index', [
             'cancionesUsuario' => $consultaCanciones,
@@ -50,6 +56,9 @@ class ProfileController extends Controller
             'albumesUsuario' => $consultaAlbumes,
             'epsUsuario' => $consultaEps,
             'singlesUsuario' => $consultaSingles,
+            'auth' => [
+                'user' => $usuario->only(['id', 'name', 'email', 'foto_perfil', 'banner_perfil']),
+            ],
         ]);
     }
 
@@ -58,6 +67,9 @@ class ProfileController extends Controller
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
+             'auth' => [
+                 'user' => $request->user()->only(['id', 'name', 'email', 'foto_perfil', 'banner_perfil']),
+            ],
         ]);
     }
 
@@ -68,8 +80,8 @@ class ProfileController extends Controller
         $datosValidados = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class.',email,'.$usuario->id],
-            'foto_perfil' => ['nullable', 'image', 'max:2048'],
-            'banner_perfil' => ['nullable', 'image', 'max:4096'],
+            'foto_perfil' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
+            'banner_perfil' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:4096'],
         ]);
 
         $usuario->fill($datosValidados);
@@ -78,16 +90,16 @@ class ProfileController extends Controller
             if ($usuario->foto_perfil && Storage::disk('public')->exists($usuario->foto_perfil)) {
                 Storage::disk('public')->delete($usuario->foto_perfil);
             }
-            $ruta = $request->file('foto_perfil')->store('foto_perfil', 'public');
-            $usuario->foto_perfil = $ruta;
+            $rutaFoto = $request->file('foto_perfil')->store('foto_perfil', 'public');
+            $usuario->foto_perfil = $rutaFoto;
         }
 
          if ($request->hasFile('banner_perfil')) {
              if ($usuario->banner_perfil && Storage::disk('public')->exists($usuario->banner_perfil)) {
                  Storage::disk('public')->delete($usuario->banner_perfil);
              }
-             $ruta = $request->file('banner_perfil')->store('banner_perfil', 'public');
-             $usuario->banner_perfil = $ruta;
+             $rutaBanner = $request->file('banner_perfil')->store('banner_perfil', 'public');
+             $usuario->banner_perfil = $rutaBanner;
          }
 
         if ($usuario->isDirty('email') && $usuario instanceof MustVerifyEmail) {
@@ -114,12 +126,12 @@ class ProfileController extends Controller
 
         $usuario->delete();
 
-        if ($rutaFotoPerfil && Storage::disk('public')->exists($rutaFotoPerfil)) {
-            Storage::disk('public')->delete($rutaFotoPerfil);
-        }
-        if ($rutaBanner && Storage::disk('public')->exists($rutaBanner)) {
-            Storage::disk('public')->delete($rutaBanner);
-        }
+         if ($rutaFotoPerfil && Storage::disk('public')->exists($rutaFotoPerfil)) {
+             Storage::disk('public')->delete($rutaFotoPerfil);
+         }
+         if ($rutaBanner && Storage::disk('public')->exists($rutaBanner)) {
+             Storage::disk('public')->delete($rutaBanner);
+         }
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -141,12 +153,12 @@ class ProfileController extends Controller
                 $q->where('name', 'LIKE', "%{$termino}%")
                   ->orWhere('email', 'LIKE', "%{$termino}%");
             })
-            ->select('id', 'name', 'email')
+            ->select('id', 'name', 'email', 'foto_perfil')
             ->limit($limite);
 
-         if (Auth::check()) {
+        if (Auth::check()) {
             $consulta->where('id', '!=', Auth::id());
-         }
+        }
 
         $usuarios = $consulta->get();
 
