@@ -25,20 +25,18 @@ export default function Mostrar() {
         ? cancion.usuarios.map(user => user.name).join(', ')
         : 'Desconocido';
 
-    const backgroundStyle = "bg-gradient-to-b from-slate-900 via-slate-900 to-purple-900/30";
-
     return (
         <AuthenticatedLayout
             user={auth.user}
             header={
                 <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
+                    <h2 className="text-xl font-semibold leading-tight text-gray-200">
                         {cancion.titulo || 'Detalles de Canción'}
                     </h2>
                     {cancion.can?.edit && (
                         <Link
                             href={route('canciones.edit', cancion.id)}
-                            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-pink-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:from-blue-600 hover:to-pink-600 active:from-blue-700 active:to-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-50 transition ease-in-out duration-150 shadow-md"
+                            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-pink-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:from-blue-600 hover:to-pink-600 active:from-blue-700 active:to-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 transition ease-in-out duration-150 shadow-md"
                             title="Editar"
                         >
                             <PencilIcon className="h-4 w-4 mr-1" />
@@ -50,7 +48,8 @@ export default function Mostrar() {
         >
             <Head title={cancion.titulo || 'Detalles de Canción'} />
 
-            <div className={`py-12 ${backgroundStyle} min-h-screen`}>
+            {/* Se eliminó backgroundStyle para usar el del Layout */}
+            <div className={`py-12 min-h-screen`}>
                 <div className="mx-auto max-w-6xl sm:px-6 lg:px-8">
                     <div className="md:flex md:items-end md:space-x-8 p-6 md:p-10 bg-transparent">
                         <div className="flex-shrink-0 w-48 h-48 lg:w-64 lg:h-64 mb-6 md:mb-0 mx-auto md:mx-0 shadow-2xl rounded-lg overflow-hidden border-4 border-slate-700/50">
@@ -88,26 +87,26 @@ export default function Mostrar() {
                                     </audio>
                                  </div>
                             ) : (
-                                <p className="text-sm text-gray-500 mb-8">No hay archivo de audio disponible.</p>
+                                <p className="text-sm text-gray-400 mb-8">No hay archivo de audio disponible.</p>
                             )}
 
                              <div className="flex items-center justify-center md:justify-start space-x-4">
-                                <button
-                                    onClick={() => document.querySelector('audio')?.play()}
-                                    className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-pink-500 to-rose-500 rounded-full font-semibold text-white shadow-lg hover:scale-105 transform transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
-                                    title="Reproducir"
-                                    disabled={!urlAudioCompleta}
-                                >
-                                     <PlayIcon className="h-7 w-7" />
-                                </button>
-                                <Link
-                                    href={route('canciones.index')}
-                                    className="inline-flex items-center px-4 py-2 border border-slate-600 rounded-full font-semibold text-xs text-gray-300 uppercase tracking-widest shadow-sm hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-25 transition ease-in-out duration-150"
-                                >
-                                     <ArrowUturnLeftIcon className="h-4 w-4 mr-1" />
-                                    Volver
-                                </Link>
-                            </div>
+                                 <button
+                                     onClick={() => document.querySelector('audio')?.play()}
+                                     className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-pink-500 to-rose-500 rounded-full font-semibold text-white shadow-lg hover:scale-105 transform transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+                                     title="Reproducir"
+                                     disabled={!urlAudioCompleta}
+                                 >
+                                      <PlayIcon className="h-7 w-7" />
+                                 </button>
+                                 <Link
+                                     href={route('canciones.index')}
+                                     className="inline-flex items-center px-4 py-2 border border-slate-600 rounded-full font-semibold text-xs text-gray-300 uppercase tracking-widest shadow-sm hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-25 transition ease-in-out duration-150"
+                                 >
+                                      <ArrowUturnLeftIcon className="h-4 w-4 mr-1" />
+                                     Volver
+                                 </Link>
+                             </div>
                         </div>
                     </div>
                 </div>

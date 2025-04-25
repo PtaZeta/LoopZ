@@ -3,17 +3,17 @@ import { useForm, Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import axios from 'axios';
 import { debounce } from 'lodash';
+import InputLabel from '@/Components/InputLabel';
+import InputError from '@/Components/InputError';
 
-// --- Componente CrearPlaylist ---
-function CrearPlaylist({ auth }) {
-    // --- Estado Inicial ---
+export default function CrearPlaylist({ auth }) {
     const usuarioCreadorInicial = auth.user
         ? { id: auth.user.id, name: auth.user.name, email: auth.user.email }
         : null;
 
     const { data, setData, post, processing, errors, progress, reset } = useForm({
         nombre: '',
-        publico: false, // Booleano por defecto
+        publico: false,
         descripcion: '',
         imagen: null,
         userIds: auth.user ? [auth.user.id] : [],
@@ -25,7 +25,20 @@ function CrearPlaylist({ auth }) {
     const [cargandoBusqueda, setCargandoBusqueda] = useState(false);
     const [mostrarResultados, setMostrarResultados] = useState(false);
 
-    // --- Funciones Manejadoras de Usuarios ---
+    const coreInputStyle = 'rounded-md shadow-sm border-gray-600 bg-gray-800 text-gray-200 focus:outline-none focus:border-transparent focus:ring-2 focus:ring-purple-500 focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed';
+    const autofillStyle = '[&:-webkit-autofill]:!bg-transparent [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_theme(colors.gray.800)] [&:-webkit-autofill]:![-webkit-text-fill-color:theme(colors.gray.200)] [&:-webkit-autofill:hover]:!bg-transparent [&:-webkit-autofill:focus]:!bg-transparent [&:-webkit-autofill:focus]:!border-transparent [&:-webkit-autofill:focus]:ring-2 [&:-webkit-autofill:focus]:ring-purple-500 [&:-webkit-autofill:focus]:ring-offset-gray-800';
+    const fileInputStyle = 'text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-800 file:text-indigo-200 hover:file:bg-indigo-700 cursor-pointer';
+
+
+    useEffect(() => {
+        if (auth.user && !usuariosSeleccionados.some(u => u.id === auth.user.id)) {
+             const usuarioCreador = { id: auth.user.id, name: auth.user.name, email: auth.user.email };
+             const nuevosSeleccionados = [usuarioCreador, ...usuariosSeleccionados.filter(u => u.id !== usuarioCreador.id)];
+             setUsuariosSeleccionados(nuevosSeleccionados);
+             setData('userIds', nuevosSeleccionados.map(u => u.id));
+        }
+    }, [auth.user]);
+
     const agregarUsuario = (usuario) => {
         if (!usuariosSeleccionados.some(seleccionado => seleccionado.id === usuario.id)) {
             const nuevosUsuariosSeleccionados = [...usuariosSeleccionados, usuario];
@@ -33,7 +46,7 @@ function CrearPlaylist({ auth }) {
             setData('userIds', nuevosUsuariosSeleccionados.map(u => u.id));
             setTerminoBusqueda('');
             setResultadosBusqueda([]);
-            setMostrarResultados(false); // Ocultar lista tras selección
+            setMostrarResultados(false);
         }
     };
 
@@ -45,109 +58,72 @@ function CrearPlaylist({ auth }) {
         const nuevosUsuariosSeleccionados = usuariosSeleccionados.filter(usuario => usuario.id !== usuarioId);
         setUsuariosSeleccionados(nuevosUsuariosSeleccionados);
         setData('userIds', nuevosUsuariosSeleccionados.map(u => u.id));
-        // Refrescar búsqueda si es necesario (opcional)
-        // if (terminoBusqueda.trim()) {
-        //     realizarBusqueda(terminoBusqueda);
-        // } else {
-        //     realizarBusqueda(''); // Podría recargar la lista inicial
-        // }
     };
 
-    // --- Búsqueda Debounced ---
     const realizarBusqueda = useCallback(
         debounce(async (termino) => {
-            if (!auth.user) return; // Salir si no hay usuario autenticado
-
+            if (!auth.user) return;
             setCargandoBusqueda(true);
-            // No necesariamente mostramos resultados aquí, esperamos la respuesta
-            // setMostrarResultados(true); // Mostrar se controla al escribir o enfocar
-
             try {
-                console.log(`Buscando usuarios con término: "${termino}"`);
-                // La llamada se hace incluso con término vacío
-                // Se espera que el backend devuelva sugerencias limitadas si q=''
-                const respuesta = await axios.get(route('usuarios.buscar', { q: termino, limit: 10 })); // Añadido limit opcional
-                console.log("Respuesta de búsqueda:", respuesta.data);
-
+                const respuesta = await axios.get(route('usuarios.buscar', { q: termino, limit: 10 }));
                 const usuariosDisponibles = respuesta.data.filter(
                     usuario => usuario.id !== auth.user.id && !usuariosSeleccionados.some(seleccionado => seleccionado.id === usuario.id)
                 );
-                console.log("Usuarios disponibles:", usuariosDisponibles);
-
                 setResultadosBusqueda(usuariosDisponibles);
-                // Mostrar resultados si la búsqueda devolvió algo O si el término está vacío (para mostrar la lista inicial)
-                // setMostrarResultados(usuariosDisponibles.length > 0 || termino.trim() === '');
             } catch (error) {
-                console.error("Error buscando usuarios:", error.response?.data || error.message);
                 setResultadosBusqueda([]);
-                // setMostrarResultados(false); // Ocultar si hay error
             } finally {
                 setCargandoBusqueda(false);
             }
         }, 300),
-        [usuariosSeleccionados, auth.user?.id] // Dependencias clave
+        [usuariosSeleccionados, auth.user?.id]
     );
 
-    // --- Manejador de Cambio en Input de Búsqueda ---
     const manejarCambioBusqueda = (e) => {
         const termino = e.target.value;
         setTerminoBusqueda(termino);
         if (termino.trim() === '') {
-            setResultadosBusqueda([]); // Limpiar resultados explícitamente
-            setMostrarResultados(true); // Mantener visible para mostrar sugerencias (si se cargan en focus/vacio)
-            realizarBusqueda.cancel(); // Cancelar debounce
-            realizarBusqueda(''); // Realizar búsqueda de sugerencias si se borra todo
+            setResultadosBusqueda([]);
+            setMostrarResultados(true);
+            realizarBusqueda.cancel();
+            realizarBusqueda('');
         } else {
-            setMostrarResultados(true); // Mostrar al empezar a escribir
-            realizarBusqueda(termino); // Lanzar búsqueda debounced
+            setMostrarResultados(true);
+            realizarBusqueda(termino);
         }
     };
 
-    // --- Manejador de Foco en Input de Búsqueda ---
      const manejarFocoBusqueda = () => {
-        // Si el input está vacío al enfocar, cargar/mostrar sugerencias
         if (!terminoBusqueda.trim()) {
             setMostrarResultados(true);
-            // Solo llamar si los resultados no están ya cargados para evitar llamadas repetidas
             if (resultadosBusqueda.length === 0 && !cargandoBusqueda) {
                  realizarBusqueda('');
             }
         } else {
-            // Si ya hay texto, solo asegurarse que la lista sea visible
             setMostrarResultados(true);
         }
     };
 
-
-    // --- Manejador de Envío del Formulario ---
     const manejarEnvio = (e) => {
         e.preventDefault();
-        // Asegurarse que el creador está en la lista final
         const finalUserIds = Array.from(new Set( auth.user ? [...data.userIds, auth.user.id] : data.userIds));
-        const dataToSend = { ...data, userIds: finalUserIds, imagen: data.imagen }; // Asegurar que la imagen va
-
-        console.log("Enviando datos:", dataToSend);
+        const dataToSend = { ...data, userIds: finalUserIds, imagen: data.imagen };
 
         post(route('playlists.store'), {
-             // useForm maneja 'data' internamente, no es necesario pasarlo explícitamente aquí con Inertia v1+
-             // data: dataToSend, // Ya no es necesario con useForm hook >= v1.0
-             forceFormData: true, // NECESARIO si envías archivos
+             forceFormData: true,
              preserveScroll: true,
              onSuccess: () => {
-                 reset(); // Limpia todos los campos gestionados por useForm
-                 // Reinicializa estado local no gestionado por useForm
+                 reset();
                  if (auth.user && usuarioCreadorInicial) {
                      setUsuariosSeleccionados([usuarioCreadorInicial]);
-                     // Reafirmar userIds tras reset (aunque useForm debería manejarlo)
-                     setData('userIds', [auth.user.id]);
+                     setData(currentData => ({...currentData, userIds: [auth.user.id]}));
                  } else {
                      setUsuariosSeleccionados([]);
-                     setData('userIds', []);
+                     setData(currentData => ({...currentData, userIds: []}));
                  }
                  setTerminoBusqueda('');
                  setResultadosBusqueda([]);
                  setMostrarResultados(false);
-                 // Limpiar input de archivo manualmente si reset no lo hace
                  const fileInput = document.getElementById('imagen');
                  if(fileInput) fileInput.value = null;
              },
@@ -157,11 +133,9 @@ function CrearPlaylist({ auth }) {
         });
     };
 
-    // --- Efecto para Cerrar Resultados al Hacer Clic Fuera ---
     useEffect(() => {
         const handleClickOutside = (event) => {
             const searchContainer = document.getElementById('search-container');
-            // Si el clic es fuera del contenedor de búsqueda Y fuera del input mismo
             if (searchContainer && !searchContainer.contains(event.target) && event.target.id !== 'user-search') {
                 setMostrarResultados(false);
             }
@@ -172,99 +146,93 @@ function CrearPlaylist({ auth }) {
         };
     }, []);
 
-    // --- Renderizado del Componente ---
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Crear Nueva Playlist</h2>}
+            header={<h2 className="font-semibold text-xl text-gray-200 leading-tight">Crear Nueva Playlist</h2>}
         >
             <Head title="Crear Playlist" />
 
             <div className="py-12">
                 <div className="max-w-2xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white dark:bg-slate-800 overflow-hidden shadow-xl sm:rounded-lg">
-                        <div className="p-6 md:p-8 text-gray-900 dark:text-gray-100">
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-6">Nueva Playlist</h3>
+                    <div className="bg-slate-800 overflow-hidden shadow-xl sm:rounded-lg">
+                        <div className="p-6 md:p-8 text-gray-100">
+                            <h3 className="text-lg font-medium text-gray-100 mb-6">Nueva Playlist</h3>
 
                             <form onSubmit={manejarEnvio} className="space-y-6">
 
-                                {/* Nombre */}
                                 <div>
-                                    <label htmlFor="nombre" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre *</label>
+                                    <InputLabel htmlFor="nombre" value="Nombre *" className="text-gray-300 mb-1" />
                                     <input
                                         id="nombre"
                                         type="text"
                                         value={data.nombre}
                                         onChange={(e) => setData('nombre', e.target.value)}
-                                        className={`mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-slate-700 dark:text-gray-200 sm:text-sm ${errors.nombre ? 'border-red-500' : ''}`}
+                                        className={`mt-1 block w-full sm:text-sm ${coreInputStyle} ${autofillStyle} ${errors.nombre ? 'border-red-500' : ''}`}
                                         required
                                         autoComplete="off"
                                     />
-                                    {errors.nombre && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.nombre}</p>}
+                                    <InputError message={errors.nombre} className="mt-1 text-xs text-red-400" />
                                 </div>
 
-                                {/* Visibilidad */}
                                 <div>
-                                    <label htmlFor="publico" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Visibilidad *</label>
+                                    <InputLabel htmlFor="publico" value="Visibilidad *" className="text-gray-300 mb-1" />
                                     <select
                                         id="publico"
                                         name="publico"
-                                        value={String(data.publico)} // Convertir boolean a string para el value del select
+                                        value={String(data.publico)}
                                         onChange={(e) => setData('publico', e.target.value === 'true')}
-                                        className={`mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-slate-700 dark:text-gray-200 sm:text-sm ${errors.publico ? 'border-red-500' : ''}`}
+                                        className={`mt-1 block w-full sm:text-sm ${coreInputStyle} ${errors.publico ? 'border-red-500' : ''}`}
                                         required
                                     >
                                         <option value="false">Privado (Solo colaboradores)</option>
                                         <option value="true">Público (Visible para todos)</option>
                                     </select>
-                                    {errors.publico && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.publico}</p>}
+                                    <InputError message={errors.publico} className="mt-1 text-xs text-red-400" />
                                 </div>
 
-                                {/* Descripción */}
                                 <div>
-                                    <label htmlFor="descripcion" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
+                                    <InputLabel htmlFor="descripcion" value="Descripción" className="text-gray-300 mb-1" />
                                     <textarea
                                         id="descripcion"
                                         rows="4"
                                         value={data.descripcion}
                                         onChange={(e) => setData('descripcion', e.target.value)}
-                                        className={`mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-slate-700 dark:text-gray-200 sm:text-sm ${errors.descripcion ? 'border-red-500' : ''}`}
+                                        className={`mt-1 block w-full sm:text-sm ${coreInputStyle} ${errors.descripcion ? 'border-red-500' : ''}`}
                                     ></textarea>
-                                    {errors.descripcion && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.descripcion}</p>}
+                                    <InputError message={errors.descripcion} className="mt-1 text-xs text-red-400" />
                                 </div>
 
-                                {/* Imagen */}
                                 <div>
-                                    <label htmlFor="imagen" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Imagen (Opcional)</label>
+                                    <InputLabel htmlFor="imagen" value="Imagen (Opcional)" className="text-gray-300 mb-1" />
                                     <input
                                         type="file"
                                         id="imagen"
                                         accept="image/*"
                                         onChange={(e) => setData('imagen', e.target.files[0])}
-                                        className={`mt-1 block w-full text-sm dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 dark:file:bg-indigo-800 file:text-indigo-700 dark:file:text-indigo-200 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-700 ${errors.imagen ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'} rounded-md focus:ring-indigo-500 focus:border-transparent dark:bg-slate-700 focus:outline-none focus:ring-2 dark:focus:ring-offset-slate-800 cursor-pointer`}
+                                        className={`mt-1 block w-full text-sm ${coreInputStyle} ${fileInputStyle} ${errors.imagen ? 'border-red-500' : ''}`}
                                     />
                                      {progress && data.imagen && (
-                                        <div className="mt-2 w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-                                            <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${progress.percentage}%` }}></div>
-                                        </div>
-                                    )}
-                                    {errors.imagen && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.imagen}</p>}
+                                         <div className="mt-2 w-full bg-gray-700 rounded-full h-2.5">
+                                             <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${progress.percentage}%` }}></div>
+                                         </div>
+                                     )}
+                                    <InputError message={errors.imagen} className="mt-1 text-xs text-red-400" />
                                 </div>
 
-                                {/* Asociar Usuarios */}
-                                <div className="border-t border-gray-200 dark:border-slate-700 pt-6 mt-6">
-                                    <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100 mb-4">Asociar Usuarios (Colaboradores)</h3>
-                                    <div id="search-container" className="space-y-4 relative"> {/* Añadido relative aquí */}
+                                <div className="border-t border-slate-700 pt-6 mt-6">
+                                    <h3 className="text-lg font-medium leading-6 text-gray-100 mb-4">Asociar Usuarios (Colaboradores)</h3>
+                                    <div id="search-container" className="space-y-4 relative">
                                         <div>
-                                            <label htmlFor="user-search" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Buscar Usuario</label>
+                                            <InputLabel htmlFor="user-search" value="Buscar Usuario" className="text-gray-300" />
                                             <div className="mt-1 relative rounded-md shadow-sm">
                                                 <input
                                                     id="user-search"
                                                     type="search"
                                                     value={terminoBusqueda}
                                                     onChange={manejarCambioBusqueda}
-                                                    onFocus={manejarFocoBusqueda} // Cargar/mostrar lista al enfocar
-                                                    className="block w-full pr-10 rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-slate-700 dark:text-gray-200 sm:text-sm"
+                                                    onFocus={manejarFocoBusqueda}
+                                                    className={`block w-full pr-10 sm:text-sm ${coreInputStyle} ${autofillStyle}`}
                                                     placeholder="Escribe para buscar..."
                                                     autoComplete="off"
                                                     disabled={!auth.user}
@@ -276,16 +244,15 @@ function CrearPlaylist({ auth }) {
                                                 )}
                                             </div>
 
-                                            {/* Lista de Resultados/Sugerencias */}
                                             {mostrarResultados && (
-                                                <ul className="absolute mt-1 w-full border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900 shadow-lg max-h-60 overflow-auto z-10">
-                                                   {cargandoBusqueda && ( <li className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">Buscando...</li> )}
-                                                   {!cargandoBusqueda && resultadosBusqueda.length === 0 && ( <li className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">No se encontraron usuarios.</li> )}
+                                                <ul className="absolute mt-1 w-full border border-slate-600 rounded-md bg-slate-900 shadow-lg max-h-60 overflow-auto z-10">
+                                                   {cargandoBusqueda && ( <li className="px-4 py-2 text-sm text-gray-400">Buscando...</li> )}
+                                                   {!cargandoBusqueda && resultadosBusqueda.length === 0 && ( <li className="px-4 py-2 text-sm text-gray-400">No se encontraron usuarios.</li> )}
                                                    {!cargandoBusqueda && resultadosBusqueda.map(usuario => (
-                                                       <li key={usuario.id} className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-700 flex justify-between items-center cursor-pointer group" onClick={() => agregarUsuario(usuario)}>
+                                                       <li key={usuario.id} className="px-4 py-2 hover:bg-slate-700 flex justify-between items-center cursor-pointer group" onClick={() => agregarUsuario(usuario)}>
                                                            <div>
-                                                               <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{usuario.name}</span>
-                                                               <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({usuario.email})</span>
+                                                               <span className="font-medium text-sm text-gray-100">{usuario.name}</span>
+                                                               <span className="text-xs text-gray-400 ml-2">({usuario.email})</span>
                                                            </div>
                                                            <button type="button" onClick={(e) => { e.stopPropagation(); agregarUsuario(usuario); }} className="ml-4 text-xs bg-green-500 hover:bg-green-600 text-white font-semibold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity"> Añadir </button>
                                                        </li>
@@ -294,36 +261,34 @@ function CrearPlaylist({ auth }) {
                                             )}
                                         </div>
 
-                                        {/* Lista de Seleccionados */}
                                         {usuariosSeleccionados.length > 0 && (
                                             <div className="mt-4 pt-2">
-                                                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Usuarios Seleccionados:</h4>
+                                                <h4 className="text-sm font-medium text-gray-300 mb-2">Usuarios Seleccionados:</h4>
                                                 <ul className="space-y-2">
                                                     {usuariosSeleccionados.map(usuario => (
-                                                        <li key={usuario.id} className="flex justify-between items-center bg-gray-50 dark:bg-slate-700/50 p-2 rounded border border-gray-200 dark:border-slate-600">
+                                                        <li key={usuario.id} className="flex justify-between items-center bg-slate-700/50 p-2 rounded border border-slate-600">
                                                             <div>
-                                                                <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{usuario.name}</span>
-                                                                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({usuario.email})</span>
+                                                                <span className="font-medium text-sm text-gray-100">{usuario.name}</span>
+                                                                <span className="text-xs text-gray-400 ml-2">({usuario.email})</span>
                                                             </div>
                                                             {auth.user?.id === usuario.id
-                                                              ? <span className="ml-4 text-xs text-gray-500 dark:text-gray-400 font-medium">(Tú - Creador)</span>
+                                                              ? <span className="ml-4 text-xs text-gray-400 font-medium">(Tú - Creador)</span>
                                                               : <button type="button" onClick={() => quitarUsuario(usuario.id)} className="ml-4 text-xs bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded" title="Quitar usuario"> Quitar </button>
                                                             }
                                                         </li>
                                                     ))}
                                                 </ul>
-                                                {errors.userIds && typeof errors.userIds === 'string' && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.userIds}</p>}
-                                                {Object.keys(errors).filter(key => key.startsWith('userIds.')).map(key => ( <p key={key} className="mt-1 text-xs text-red-600 dark:text-red-400">{errors[key]}</p> ))}
+                                                 <InputError message={errors.userIds && typeof errors.userIds === 'string' ? errors.userIds : ''} className="mt-1 text-xs text-red-400" />
+                                                 {Object.keys(errors).filter(key => key.startsWith('userIds.')).map(key => ( <InputError key={key} message={errors[key]} className="mt-1 text-xs text-red-400" /> ))}
                                             </div>
                                         )}
                                     </div>
                                 </div>
 
-                                {/* Botones Finales */}
-                                <div className="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200 dark:border-slate-700 mt-6">
+                                <div className="flex items-center justify-end space-x-4 pt-6 border-t border-slate-700 mt-6">
                                     <Link
                                         href={route('playlists.index')}
-                                        className="inline-flex items-center px-4 py-2 bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-200 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 disabled:opacity-25 transition ease-in-out duration-150"
+                                        className="inline-flex items-center px-4 py-2 bg-slate-600 border border-slate-500 rounded-md font-semibold text-xs text-gray-200 uppercase tracking-widest shadow-sm hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-800 disabled:opacity-25 transition ease-in-out duration-150"
                                         as="button"
                                         disabled={processing}
                                     >
@@ -331,7 +296,7 @@ function CrearPlaylist({ auth }) {
                                     </Link>
                                     <button
                                         type="submit"
-                                        className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 disabled:opacity-25 transition ease-in-out duration-150"
+                                        className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800 disabled:opacity-25 transition ease-in-out duration-150"
                                         disabled={processing || !auth.user}
                                     >
                                         {processing ? 'Guardando...' : 'Guardar Playlist'}
@@ -347,4 +312,4 @@ function CrearPlaylist({ auth }) {
     );
 }
 
-export default CrearPlaylist;
+export { CrearPlaylist };
