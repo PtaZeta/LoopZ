@@ -12,74 +12,137 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Route;
 
 class ContenedorController extends Controller
 {
-    public function index()
+    private function getTipoVista(Request $peticion): array
     {
-        $user = Auth::user();
-        $tipoContenedor = 'playlist';
+        $tipo = null;
+        $vistaBase = null;
+        $nombreRutaBase = null;
 
-        $contenedoresQuery = Contenedor::where('tipo', $tipoContenedor)
+        if ($peticion->routeIs('albumes.*')) {
+            $tipo = 'album';
+            $vistaBase = 'albumes/';
+            $nombreRutaBase = 'albumes';
+        } elseif ($peticion->routeIs('playlists.*')) {
+            $tipo = 'playlist';
+            $vistaBase = 'playlists/';
+            $nombreRutaBase = 'playlists';
+        } elseif ($peticion->routeIs('eps.*')) {
+            $tipo = 'ep';
+            $vistaBase = 'eps/';
+            $nombreRutaBase = 'eps';
+        } elseif ($peticion->routeIs('singles.*')) {
+            $tipo = 'single';
+            $vistaBase = 'singles/';
+            $nombreRutaBase = 'singles';
+        } else {
+            Log::warning('Acceso a ContenedorController desde ruta no reconocida: ' . $peticion->path());
+            abort(404, 'Tipo de recurso no soportado.');
+        }
+        return ['tipo' => $tipo, 'vista' => $vistaBase, 'ruta' => $nombreRutaBase];
+    }
+
+    private function validarTipoContenedor(Contenedor $contenedor, string $tipoEsperado): void
+    {
+        if ($contenedor->tipo !== $tipoEsperado) {
+            Log::warning("Discrepancia de tipo al acceder al contenedor.", [
+                'id' => $contenedor->id,
+                'actual_type' => $contenedor->tipo,
+                'expected_type' => $tipoEsperado,
+                'route' => Route::currentRouteName() ?? 'N/A'
+            ]);
+            abort(404);
+        }
+    }
+
+    private function getNombreTipo(string $tipo): string
+    {
+        switch ($tipo) {
+            case 'album': return 'álbum';
+            case 'playlist': return 'playlist';
+            case 'ep': return 'EP';
+            case 'single': return 'single';
+            default: return 'contenedor';
+        }
+    }
+
+
+    public function index(Request $peticion)
+    {
+        $infoRecurso = $this->getTipoVista($peticion);
+        $tipoContenedor = $infoRecurso['tipo'];
+        $nombreVista = $infoRecurso['vista'] . 'Index';
+        $usuario = Auth::user();
+
+        $consultaContenedores = Contenedor::where('tipo', $tipoContenedor)
             ->with(['usuarios' => function ($query) {
                 $query->select('users.id', 'users.name');
             }])
             ->withCount('canciones')
             ->latest();
 
-        if ($user) {
-             $contenedoresQuery->where(function ($query) use ($user) {
-                $query->where('publico', true)
-                      ->orWhereHas('usuarios', function ($subQuery) use ($user) {
-                          $subQuery->where('users.id', $user->id);
-                      });
-            });
+        if ($usuario) {
+             $consultaContenedores->where(function ($query) use ($usuario) {
+                 $query->where('publico', true)
+                       ->orWhereHas('usuarios', function ($subQuery) use ($usuario) {
+                           $subQuery->where('users.id', $usuario->id);
+                       });
+             });
         } else {
-            $contenedoresQuery->where('publico', true);
+             $consultaContenedores->where('publico', true);
         }
+        $contenedores = $consultaContenedores->get();
 
-        $contenedores = $contenedoresQuery->get();
-
-        $contenedoresConPermisos = $contenedores->map(function ($contenedor) use ($user) {
-            if ($user) {
+        $contenedoresConPermisos = $contenedores->map(function ($contenedor) use ($usuario) {
+            if ($usuario) {
                 $contenedor->can = [
-                    'view'   => $user->can('view', $contenedor),
-                    'edit'   => $user->can('update', $contenedor),
-                    'delete' => $user->can('delete', $contenedor),
+                    'view'   => $usuario->can('view', $contenedor),
+                    'edit'   => $usuario->can('update', $contenedor),
+                    'delete' => $usuario->can('delete', $contenedor),
                 ];
             } else {
                  $contenedor->can = [
                     'view'   => $contenedor->publico ?? false,
                     'edit'   => false,
                     'delete' => false,
-                ];
+                 ];
             }
             return $contenedor;
         });
 
-        return Inertia::render('playlists/Index', [
+        return Inertia::render($nombreVista, [
             'contenedores' => $contenedoresConPermisos,
         ]);
     }
 
-    public function create()
+    public function create(Request $peticion)
     {
-        return Inertia::render('playlists/Create');
+        $infoRecurso = $this->getTipoVista($peticion);
+        $nombreVista = $infoRecurso['vista'] . 'Create';
+
+        return Inertia::render($nombreVista, ['tipo' => $infoRecurso['tipo']]);
     }
 
-    public function store(StoreContenedorRequest $request)
+    public function store(StoreContenedorRequest $peticion)
     {
-        $datosValidados = $request->validated();
-        $datosValidados['tipo'] = 'playlist';
+        $infoRecurso = $this->getTipoVista($peticion);
+        $tipoContenedor = $infoRecurso['tipo'];
+        $rutaRedireccion = $infoRecurso['ruta'] . '.index';
 
-        if ($request->hasFile('imagen')) {
-            $ruta = $request->file('imagen')->store('contenedor_images', 'public');
+        $datosValidados = $peticion->validated();
+        $datosValidados['tipo'] = $tipoContenedor;
+
+        if ($peticion->hasFile('imagen')) {
+            $ruta = $peticion->file('imagen')->store('contenedor_images', 'public');
             $datosValidados['imagen'] = $ruta;
         } else {
             unset($datosValidados['imagen']);
         }
 
-        $request->validate([
+        $peticion->validate([
             'userIds' => 'nullable|array',
             'userIds.*' => 'integer|exists:users,id',
         ]);
@@ -87,41 +150,43 @@ class ContenedorController extends Controller
         $contenedor = Contenedor::create($datosValidados);
 
         if (method_exists($contenedor, 'usuarios')) {
-            $userIdsInput = $request->input('userIds', []);
-            $creatorId = Auth::id();
+            $idsUsuariosEntrada = $peticion->input('userIds', []);
+            $idCreador = Auth::id();
+            $usuariosASincronizar = [];
 
-            $usersToSync = [];
-
-            foreach ($userIdsInput as $userId) {
-                if ($userId != $creatorId) {
-                    $usersToSync[$userId] = ['propietario' => false];
+            foreach ($idsUsuariosEntrada as $idUsuario) {
+                if ($idUsuario != $idCreador) {
+                    $usuariosASincronizar[$idUsuario] = ['propietario' => false];
                 }
             }
-
-            if ($creatorId) {
-                $usersToSync[$creatorId] = ['propietario' => true];
+            if ($idCreador) {
+                $usuariosASincronizar[$idCreador] = ['propietario' => true];
             }
 
-            if (!empty($usersToSync)) {
-                $contenedor->usuarios()->attach($usersToSync);
-                Log::info('Attached users to contenedor (playlist) ' . $contenedor->id . ': ' . json_encode($usersToSync));
+            if (!empty($usuariosASincronizar)) {
+                $contenedor->usuarios()->attach($usuariosASincronizar);
+                Log::info('Usuarios adjuntados al contenedor (' . $tipoContenedor . ') ' . $contenedor->id . ': ' . json_encode($usuariosASincronizar));
             }
         } else {
-             Log::warning('Method usuarios() does not exist on Contenedor model for contenedor ID ' . $contenedor->id);
+             Log::warning('El método usuarios() no existe en el modelo Contenedor para el ID ' . $contenedor->id);
         }
 
-        return redirect()->route('playlists.index')
-                         ->with('success', 'Playlist creada exitosamente.');
+         $mensaje = ucfirst($this->getNombreTipo($tipoContenedor)) . ' creado exitosamente.';
+
+        return redirect()->route($rutaRedireccion)->with('success', $mensaje);
     }
 
-    public function show($id)
+    public function show(Request $peticion, $id)
     {
-        $contenedor = Contenedor::findOrFail($id);
-        if ($contenedor->tipo !== 'playlist') {
-            abort(404);
-        }
+        $infoRecurso = $this->getTipoVista($peticion);
+        $tipoEsperado = $infoRecurso['tipo'];
+        $nombreVista = $infoRecurso['vista'] . 'Show';
 
-        $user = Auth::user();
+        $contenedor = Contenedor::findOrFail($id);
+
+        $this->validarTipoContenedor($contenedor, $tipoEsperado);
+
+        $usuario = Auth::user();
 
         $contenedor->load([
             'canciones' => function ($query) {
@@ -133,87 +198,86 @@ class ContenedorController extends Controller
             }
         ]);
 
-        if ($user) {
+        if ($usuario) {
             $contenedor->can = [
-                'view'   => $user->can('view', $contenedor),
-                'edit'   => $user->can('update', $contenedor),
-                'delete' => $user->can('delete', $contenedor),
+                'view'   => $usuario->can('view', $contenedor),
+                'edit'   => $usuario->can('update', $contenedor),
+                'delete' => $usuario->can('delete', $contenedor),
             ];
         } else {
              $contenedor->can = [
                 'view'   => $contenedor->publico ?? false,
                 'edit'   => false,
                 'delete' => false,
-            ];
+             ];
         }
 
-        return Inertia::render('playlists/Show', [
+        return Inertia::render($nombreVista, [
             'contenedor' => $contenedor,
         ]);
     }
 
-    public function edit($id)
+    public function edit(Request $peticion, $id)
     {
+        $infoRecurso = $this->getTipoVista($peticion);
+        $tipoEsperado = $infoRecurso['tipo'];
+        $nombreVista = $infoRecurso['vista'] . 'Edit';
+
         $contenedor = Contenedor::findOrFail($id);
-        if ($contenedor->tipo !== 'playlist') {
-            abort(404);
-        }
+        $this->validarTipoContenedor($contenedor, $tipoEsperado);
         $this->authorize('update', $contenedor);
 
-        // *** Cargar relación usuarios CON el pivot 'propietario' ***
         $contenedor->load(['usuarios' => function ($query) {
             $query->select('users.id', 'users.name', 'users.email')->withPivot('propietario');
         }]);
 
-        // *** Determinar si el usuario actual es propietario ***
-        $isOwner = false;
+        $esPropietario = false;
         if (Auth::check() && method_exists($contenedor, 'usuarios')) {
             $propietario = $contenedor->usuarios()->wherePivot('propietario', true)->first();
-            $isOwner = $propietario && $propietario->id === Auth::id();
+            $esPropietario = $propietario && $propietario->id === Auth::id();
         }
-        // Añadir la bandera al objeto contenedor
-        $contenedor->is_owner = $isOwner;
+        $contenedor->is_owner = $esPropietario;
 
-
-        return Inertia::render('playlists/Edit', [
+        return Inertia::render($nombreVista, [
             'contenedor' => $contenedor,
         ]);
     }
 
-    public function update(UpdateContenedorRequest $request, $id)
+    public function update(UpdateContenedorRequest $peticion, $id)
     {
+        $infoRecurso = $this->getTipoVista($peticion);
+        $tipoEsperado = $infoRecurso['tipo'];
+        $rutaBase = $infoRecurso['ruta'];
+        $rutaRedireccion = $rutaBase . '.show';
+
         $contenedor = Contenedor::findOrFail($id);
-        if ($contenedor->tipo !== 'playlist') {
-            abort(404);
-        }
+        $this->validarTipoContenedor($contenedor, $tipoEsperado);
         $this->authorize('update', $contenedor);
 
-        $datosValidados = $request->validated();
+        $datosValidados = $peticion->validated();
 
-        // Solo validar y sincronizar userIds si el usuario actual es el propietario
-        $isOwner = false;
-         if (Auth::check() && method_exists($contenedor, 'usuarios')) {
+        $esPropietario = false;
+        if (Auth::check() && method_exists($contenedor, 'usuarios')) {
             $propietario = $contenedor->usuarios()->wherePivot('propietario', true)->first();
-            $isOwner = $propietario && $propietario->id === Auth::id();
+            $esPropietario = $propietario && $propietario->id === Auth::id();
         }
 
-        if ($isOwner) {
-            $usersIdsValidadas = $request->validate([
-                'userIds' => 'nullable|array',
-                'userIds.*' => 'integer|exists:users,id',
-            ]);
+        $idsUsuariosValidados = [];
+        if ($esPropietario) {
+             $idsUsuariosValidados = $peticion->validate([
+                 'userIds' => 'nullable|array',
+                 'userIds.*' => 'integer|exists:users,id',
+             ]);
         } else {
-            // Si no es propietario, no permitir cambiar los userIds
-            unset($datosValidados['userIds']);
+             unset($datosValidados['userIds']);
         }
 
-
-        $eliminarImagen = $request->boolean('eliminar_imagen');
+        $eliminarImagen = $peticion->boolean('eliminar_imagen');
         $carpetaDestino = 'contenedor_images';
         $rutaImagenAntigua = $contenedor->imagen;
 
-        if ($request->hasFile('imagen_nueva')) {
-            $nuevoArchivoImagen = $request->file('imagen_nueva');
+        if ($peticion->hasFile('imagen_nueva')) {
+            $nuevoArchivoImagen = $peticion->file('imagen_nueva');
             if ($rutaImagenAntigua && Storage::disk('public')->exists($rutaImagenAntigua)) {
                 Storage::disk('public')->delete($rutaImagenAntigua);
             }
@@ -230,44 +294,44 @@ class ContenedorController extends Controller
 
         $contenedor->update($datosValidados);
 
-        // Sincronizar usuarios solo si el usuario actual es el propietario
-        if ($isOwner && method_exists($contenedor, 'usuarios')) {
-            $usersIds = $usersIdsValidadas['userIds'] ?? [];
+        if ($esPropietario && method_exists($contenedor, 'usuarios')) {
+            $idsUsuarios = $idsUsuariosValidados['userIds'] ?? [];
+            $usuariosASincronizar = [];
+            $idCreador = Auth::id();
 
-            $usersToSync = [];
-            $creatorId = Auth::id();
+            if ($idCreador) {
+                 $usuariosASincronizar[$idCreador] = ['propietario' => true];
+            }
 
-            foreach ($usersIds as $userId) {
-                if ($userId != $creatorId) {
-                    $usersToSync[$userId] = ['propietario' => false];
+            foreach ($idsUsuarios as $idUsuario) {
+                if ($idUsuario != $idCreador) {
+                    $usuariosASincronizar[$idUsuario] = ['propietario' => false];
                 }
             }
 
-            if ($creatorId) {
-                $usersToSync[$creatorId] = ['propietario' => true];
-            }
-
-            $contenedor->usuarios()->sync($usersToSync);
-             Log::info('Synced users for contenedor (playlist) ' . $contenedor->id . ': ' . json_encode($usersToSync));
+            $contenedor->usuarios()->sync($usuariosASincronizar);
+            Log::info('Usuarios sincronizados para el contenedor (' . $tipoEsperado . ') ' . $contenedor->id . ': ' . json_encode($usuariosASincronizar));
         }
 
-        return Redirect::route('playlists.show', $contenedor->id)
-                         ->with('success', 'Playlist actualizada exitosamente.');
+         $mensaje = ucfirst($this->getNombreTipo($tipoEsperado)) . ' actualizado exitosamente.';
+        return Redirect::route($rutaRedireccion, $contenedor->id)->with('success', $mensaje);
     }
 
-    public function destroy($id)
+    public function destroy(Request $peticion, $id)
     {
+        $infoRecurso = $this->getTipoVista($peticion);
+        $tipoEsperado = $infoRecurso['tipo'];
+        $rutaRedireccion = $infoRecurso['ruta'] . '.index';
+
         $contenedor = Contenedor::findOrFail($id);
-         if ($contenedor->tipo !== 'playlist') {
-            abort(404);
-        }
+        $this->validarTipoContenedor($contenedor, $tipoEsperado);
         $this->authorize('delete', $contenedor);
 
         if (method_exists($contenedor, 'usuarios')) {
-             $contenedor->usuarios()->detach();
+            $contenedor->usuarios()->detach();
         }
-         if (method_exists($contenedor, 'canciones')) {
-             $contenedor->canciones()->detach();
+        if (method_exists($contenedor, 'canciones')) {
+            $contenedor->canciones()->detach();
         }
 
         if ($contenedor->imagen) {
@@ -276,99 +340,142 @@ class ContenedorController extends Controller
 
         $contenedor->delete();
 
-        return redirect()->route('playlists.index')
-                         ->with('success', 'Playlist eliminada exitosamente.');
+        $mensaje = ucfirst($this->getNombreTipo($tipoEsperado)) . ' eliminado exitosamente.';
+        return redirect()->route($rutaRedireccion)->with('success', $mensaje);
     }
 
-    public function anadirCancion(Request $request, Contenedor $contenedor)
+    public function buscarCanciones(Request $peticion, Contenedor $contenedor)
     {
-        if ($contenedor->tipo !== 'playlist') {
-            abort(404);
-        }
-        $this->authorize('update', $contenedor);
-
-        $valido = $request->validate([
-            'cancion_id' => 'required|exists:canciones,id',
-        ]);
-        $idCancion = $valido['cancion_id'];
-
-        if (method_exists($contenedor, 'canciones')) {
-             $contenedor->canciones()->attach($idCancion);
-             $message = 'Canción añadida a la playlist.';
-        } else {
-             Log::error("Relación 'canciones' no encontrada en Contenedor ID: " . $contenedor->id);
-             return redirect()->route('playlists.show', $contenedor->id)
-                              ->with('error', 'No se pudo añadir la canción.');
+        if (!in_array($contenedor->tipo, ['playlist', 'album', 'ep', 'single'])) {
+             return response()->json(['error' => 'Tipo de contenedor no válido para buscar canciones'], 400);
         }
 
-        return redirect()->route('playlists.show', $contenedor->id)
-                         ->with('success', $message);
-    }
-
-    public function quitarCancionPorPivot(Request $request, Contenedor $contenedor, $pivotId)
-    {
-        if ($contenedor->tipo !== 'playlist') {
-            abort(404);
-        }
-        $this->authorize('update', $contenedor);
-
-        $deleted = false;
-        if (method_exists($contenedor, 'canciones')) {
-            $deleted = $contenedor->canciones()
-                ->wherePivot('id', $pivotId)
-                ->detach();
-        } else {
-             Log::error("Relación 'canciones' no encontrada en Contenedor ID: " . $contenedor->id);
-        }
-
-        $message = $deleted ? 'Canción eliminada de la playlist.' : 'Error: No se encontró la instancia de la canción en la playlist.';
-        if (!$deleted && method_exists($contenedor, 'canciones')) {
-            Log::warning('Intento de eliminar registro pivot no encontrado', ['contenedor_id' => $contenedor->id, 'pivot_id' => $pivotId]);
-        }
-
-        return redirect()->route('playlists.show', $contenedor->id)
-                         ->with($deleted ? 'success' : 'error', $message);
-    }
-
-    public function buscarCanciones(Request $request, Contenedor $contenedor)
-    {
-         if ($contenedor->tipo !== 'playlist') {
-            return response()->json(['error' => 'Tipo de contenedor no válido'], 400);
-        }
-
-        $user = Auth::user();
-        $consulta = $request->input('query', '');
+        $usuario = Auth::user();
+        $consulta = $peticion->input('query', '');
         $minimoBusqueda = 1;
-        $limit = 30;
+        $limite = 30;
 
-        $collaboratorIds = [];
+        $idsColaboradores = [];
         if (method_exists($contenedor, 'usuarios')) {
-             $collaboratorIds = $contenedor->usuarios()->pluck('users.id')->toArray();
+             $idsColaboradores = $contenedor->usuarios()->pluck('users.id')->toArray();
         }
 
-        $query = Cancion::query()
+        $idsCancionesExistentes = [];
+        if (in_array($contenedor->tipo, ['album', 'ep', 'single']) && method_exists($contenedor, 'canciones')) {
+            $idsCancionesExistentes = $contenedor->canciones()->pluck('canciones.id')->all();
+        }
+
+        $consultaCanciones = Cancion::query()
             ->with('usuarios:id,name')
-            ->where(function ($q) use ($user, $collaboratorIds) {
+            ->where(function ($q) use ($usuario, $idsColaboradores) {
                 $q->where('publico', true);
-                if ($user) {
-                     $q->orWhereHas('usuarios', function ($q2) use ($user) {
-                         $q2->where('users.id', $user->id);
+                if ($usuario) {
+                     $q->orWhereHas('usuarios', function ($q2) use ($usuario) {
+                         $q2->where('users.id', $usuario->id);
                      });
                 }
             });
 
-        if (strlen($consulta) >= $minimoBusqueda) {
-            $query->where('titulo', 'LIKE', "%{$consulta}%");
-            $limit = 15;
-        } else {
-            $query->orderBy('titulo');
+        if (in_array($contenedor->tipo, ['album', 'ep', 'single']) && !empty($idsCancionesExistentes)) {
+            $consultaCanciones->whereNotIn('canciones.id', $idsCancionesExistentes);
         }
 
-        $resultados = $query
+        if (strlen($consulta) >= $minimoBusqueda) {
+            $consultaCanciones->where('titulo', 'LIKE', "%{$consulta}%");
+            $limite = 15;
+        } else {
+             $consultaCanciones->orderBy('titulo');
+        }
+
+        $resultados = $consultaCanciones
             ->select('canciones.id', 'canciones.titulo', 'canciones.foto_url')
-            ->limit($limit)
+            ->limit($limite)
             ->get();
 
         return response()->json($resultados);
+    }
+
+    public function anadirCancion(Request $peticion, Contenedor $contenedor)
+    {
+         if (!in_array($contenedor->tipo, ['playlist', 'album', 'ep', 'single'])) { abort(404); }
+         $this->authorize('update', $contenedor);
+
+         $valido = $peticion->validate([
+             'cancion_id' => 'required|exists:canciones,id',
+         ]);
+         $idCancion = $valido['cancion_id'];
+         $mensaje = 'Error interno.';
+         $tipoNombre = $this->getNombreTipo($contenedor->tipo);
+
+
+         if (method_exists($contenedor, 'canciones')) {
+              if (in_array($contenedor->tipo, ['album', 'ep', 'single'])) {
+                  $yaExiste = $contenedor->canciones()->where('canciones.id', $idCancion)->exists();
+                  if ($yaExiste) {
+                      $mensaje = 'Esta canción ya está en el ' . $tipoNombre . '.';
+                  } else {
+                      $contenedor->canciones()->attach($idCancion);
+                      $mensaje = 'Canción añadida al ' . $tipoNombre . '.';
+                  }
+              } else {
+                  $contenedor->canciones()->attach($idCancion);
+                  $mensaje = 'Canción añadida a la ' . $tipoNombre . '.';
+              }
+         } else {
+              Log::error("Relación 'canciones' no encontrada en Contenedor ID: " . $contenedor->id);
+              $mensaje = 'No se pudo añadir la canción.';
+         }
+
+         $rutaBase = match ($contenedor->tipo) {
+             'album' => 'albumes',
+             'ep' => 'eps',
+             'single' => 'singles',
+             default => 'playlists'
+         };
+         $rutaRedireccion = $rutaBase . '.show';
+
+         $tipoMensaje = 'success';
+         if (str_contains($mensaje, 'Error') || str_contains($mensaje, 'ya está')) {
+              $tipoMensaje = 'error';
+         }
+
+         return redirect()->route($rutaRedireccion, $contenedor->id)
+                         ->with($tipoMensaje, $mensaje);
+    }
+
+    public function quitarCancionPorPivot(Request $peticion, Contenedor $contenedor, $idPivot)
+    {
+         if (!in_array($contenedor->tipo, ['playlist', 'album', 'ep', 'single'])) { abort(404); }
+         $this->authorize('update', $contenedor);
+
+         $eliminado = false;
+         if (method_exists($contenedor, 'canciones')) {
+              $eliminado = $contenedor->canciones()
+                  ->wherePivot('id', $idPivot)
+                  ->detach();
+         } else {
+              Log::error("Relación 'canciones' no encontrada en Contenedor ID: " . $contenedor->id);
+         }
+
+         $tipoNombre = $this->getNombreTipo($contenedor->tipo);
+         $mensaje = $eliminado
+             ? 'Canción eliminada de ' . ($contenedor->tipo === 'playlist' ? 'la ' : 'el ') . $tipoNombre . '.'
+             : 'Error: No se encontró la instancia de la canción.';
+
+
+         if (!$eliminado && method_exists($contenedor, 'canciones')) {
+              Log::warning('Intento de eliminar registro pivot no encontrado', ['contenedor_id' => $contenedor->id, 'pivot_id' => $idPivot]);
+         }
+
+         $rutaBase = match ($contenedor->tipo) {
+             'album' => 'albumes',
+             'ep' => 'eps',
+             'single' => 'singles',
+             default => 'playlists'
+         };
+         $rutaRedireccion = $rutaBase . '.show';
+
+         return redirect()->route($rutaRedireccion, $contenedor->id)
+                         ->with($eliminado ? 'success' : 'error', $mensaje);
     }
 }
