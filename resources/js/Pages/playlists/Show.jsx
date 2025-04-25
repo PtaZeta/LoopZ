@@ -28,7 +28,7 @@ const ImagenItem = ({ url, titulo, className = "w-10 h-10", iconoFallback }) => 
 
     if (error || !src) {
         return (
-            <div className={`${className} bg-gray-200 dark:bg-slate-700 flex items-center justify-center text-gray-400 dark:text-slate-500 rounded`}>
+            <div className={`${className} bg-slate-700 flex items-center justify-center text-slate-500 rounded`}>
                 {iconoFallback || (
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" />
@@ -110,7 +110,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             preserveState: false,
             onSuccess: (page) => {
                  if (page.props.contenedor) {
-                    setContenedor(page.props.contenedor);
+                     setContenedor(page.props.contenedor);
                  }
             },
             onError: (errores) => {
@@ -181,20 +181,18 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         ? contenedor.usuarios.map(user => user.name).join(', ')
         : 'Desconocido';
 
-    const backgroundStyle = "bg-gradient-to-b from-slate-900 via-slate-900 to-purple-900/30";
-
     return (
         <AuthenticatedLayout
             user={auth.user}
             header={
                 <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
+                    <h2 className="text-xl font-semibold leading-tight text-gray-200">
                         {contenedor?.nombre || 'Detalles de Playlist'}
                     </h2>
                     {contenedor?.can?.edit && (
                         <Link
                             href={route('playlists.edit', contenedor.id)}
-                            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-pink-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:from-blue-600 hover:to-pink-600 active:from-blue-700 active:to-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-50 transition ease-in-out duration-150 shadow-md"
+                            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-pink-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:from-blue-600 hover:to-pink-600 active:from-blue-700 active:to-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 transition ease-in-out duration-150 shadow-md"
                             title="Editar"
                         >
                             <PencilIcon className="h-4 w-4 mr-1" />
@@ -206,7 +204,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         >
             <Head title={contenedor?.nombre || 'Detalles de Playlist'} />
 
-            <div className={`py-12 ${backgroundStyle} min-h-screen`}>
+            <div className={`py-12 min-h-screen`}>
                 <div className="mx-auto max-w-6xl sm:px-6 lg:px-8">
                     <div className="md:flex md:items-end md:space-x-8 p-6 md:p-10 bg-transparent">
                         <div className="flex-shrink-0 w-48 h-48 lg:w-64 lg:h-64 mb-6 md:mb-0 mx-auto md:mx-0 shadow-2xl rounded-lg overflow-hidden border-4 border-slate-700/50">
@@ -237,105 +235,105 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
 
                             {contenedor?.canciones?.length > 0 ? (
                                 <div className='mb-8'>
-                                    {/* Placeholder for potentially playing audio */}
+
                                 </div>
                             ) : null}
 
                              <div className="flex items-center justify-center md:justify-start space-x-4">
-                                <button
-                                    onClick={() => alert('Funcionalidad de reproducción no implementada')}
-                                    className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-pink-500 to-rose-500 rounded-full font-semibold text-white shadow-lg hover:scale-105 transform transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
-                                    title="Reproducir"
-                                    disabled={!contenedor?.canciones || contenedor.canciones.length === 0}
-                                >
-                                     <PlayIcon className="h-7 w-7" />
-                                </button>
-                                <Link
-                                    href={route('playlists.index')}
-                                    className="inline-flex items-center px-4 py-2 border border-slate-600 rounded-full font-semibold text-xs text-gray-300 uppercase tracking-widest shadow-sm hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900 disabled:opacity-25 transition ease-in-out duration-150"
-                                >
-                                     <ArrowUturnLeftIcon className="h-4 w-4 mr-1" />
-                                    Volver
-                                </Link>
-                            </div>
+                                 <button
+                                     onClick={() => alert('Funcionalidad de reproducción no implementada')}
+                                     className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-pink-500 to-rose-500 rounded-full font-semibold text-white shadow-lg hover:scale-105 transform transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+                                     title="Reproducir"
+                                     disabled={!contenedor?.canciones || contenedor.canciones.length === 0}
+                                 >
+                                      <PlayIcon className="h-7 w-7" />
+                                 </button>
+                                 <Link
+                                     href={route('playlists.index')}
+                                     className="inline-flex items-center px-4 py-2 border border-slate-600 rounded-full font-semibold text-xs text-gray-300 uppercase tracking-widest shadow-sm hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-25 transition ease-in-out duration-150"
+                                 >
+                                      <ArrowUturnLeftIcon className="h-4 w-4 mr-1" />
+                                     Volver
+                                 </Link>
+                             </div>
                         </div>
                     </div>
 
-                    <div className="mt-10 p-6 md:p-8 bg-white dark:bg-slate-800/80 backdrop-blur-sm shadow-inner rounded-lg">
-                         <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Canciones en esta Playlist ({contenedor?.canciones?.length || 0})</h3>
+                    <div className="mt-10 p-6 md:p-8 bg-slate-800/80 backdrop-blur-sm shadow-inner rounded-lg">
+                         <h3 className="text-xl font-semibold mb-4 text-gray-100">Canciones en esta Playlist ({contenedor?.canciones?.length || 0})</h3>
                          {contenedor?.canciones && Array.isArray(contenedor.canciones) && contenedor.canciones.length > 0 ? (
-                              <ul className="space-y-2">
-                                   {contenedor.canciones.map((cancion) => (
-                                       <li key={cancion.pivot?.id ?? `fallback-${cancion.id}-${Math.random()}`} className="p-2 bg-gray-100 dark:bg-slate-700/60 rounded-md flex items-center space-x-3 hover:bg-gray-200 dark:hover:bg-slate-600/80 transition-colors duration-150">
-                                           <ImagenItem url={obtenerUrlImagen(cancion)} titulo={cancion.titulo} className="w-10 h-10" iconoFallback={<MusicalNoteIcon className="h-5 w-5"/>} />
-                                           <span className="text-gray-800 dark:text-gray-200 flex-grow truncate" title={cancion.titulo}>{cancion.titulo}</span>
-                                           {contenedor.can?.edit && (
-                                           <button
-                                               onClick={() => manejarEliminarCancion(cancion.pivot?.id)}
-                                               disabled={!cancion.pivot?.id}
-                                               className="ml-2 p-1.5 text-red-500 hover:text-red-400 focus:outline-none focus:ring-2 focus:ring-purple-500 rounded-md transition-colors duration-150 disabled:opacity-50 disabled:hover:text-red-500"
-                                               title={!cancion.pivot?.id ? "Error: No se pudo identificar esta entrada específica" : "Quitar de la playlist"}
-                                           >
-                                               <TrashIcon className="w-4 h-4"/>
-                                           </button>
-                                           )}
-                                       </li>
-                                   ))}
-                              </ul>
+                             <ul className="space-y-2">
+                                  {contenedor.canciones.map((cancion) => (
+                                      <li key={cancion.pivot?.id ?? `fallback-${cancion.id}-${Math.random()}`} className="p-2 bg-slate-700/60 rounded-md flex items-center space-x-3 hover:bg-slate-600/80 transition-colors duration-150">
+                                          <ImagenItem url={obtenerUrlImagen(cancion)} titulo={cancion.titulo} className="w-10 h-10" iconoFallback={<MusicalNoteIcon className="h-5 w-5"/>} />
+                                          <span className="text-gray-200 flex-grow truncate" title={cancion.titulo}>{cancion.titulo}</span>
+                                          {contenedor.can?.edit && (
+                                          <button
+                                              onClick={() => manejarEliminarCancion(cancion.pivot?.id)}
+                                              disabled={!cancion.pivot?.id}
+                                              className="ml-2 p-1.5 text-red-500 hover:text-red-400 focus:outline-none focus:ring-2 focus:ring-purple-500 rounded-md transition-colors duration-150 disabled:opacity-50 disabled:hover:text-red-500"
+                                              title={!cancion.pivot?.id ? "Error: No se pudo identificar esta entrada específica" : "Quitar de la playlist"}
+                                          >
+                                              <TrashIcon className="w-4 h-4"/>
+                                          </button>
+                                          )}
+                                      </li>
+                                  ))}
+                             </ul>
                           ) : (
-                               <p className="text-gray-500 dark:text-gray-400 italic">Esta playlist aún no tiene canciones.</p>
+                               <p className="text-gray-400 italic">Esta playlist aún no tiene canciones.</p>
                           )}
                      </div>
 
                     {contenedor?.can?.edit && (
-                         <div className="mt-10 p-6 md:p-8 bg-white dark:bg-slate-800/80 backdrop-blur-sm shadow-inner rounded-lg">
-                              <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Añadir Canciones</h3>
+                         <div className="mt-10 p-6 md:p-8 bg-slate-800/80 backdrop-blur-sm shadow-inner rounded-lg">
+                              <h3 className="text-xl font-semibold mb-4 text-gray-100">Añadir Canciones</h3>
                               <div className="mb-4">
                                   <input
                                       type="text"
                                       placeholder="Buscar canciones por título..."
                                       value={consultaBusqueda}
                                       onChange={manejarCambioInputBusqueda}
-                                      className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-purple-500 focus:border-transparent dark:bg-slate-700 dark:text-gray-200 focus:outline-none focus:ring-2 dark:focus:ring-offset-slate-800"
+                                      className="w-full px-4 py-2 border border-slate-600 rounded-md shadow-sm focus:ring-purple-500 focus:border-transparent bg-slate-700 text-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-slate-800"
                                       disabled={!contenedor?.id}
                                   />
                               </div>
 
-                              {estaBuscando && <p className="text-gray-500 dark:text-gray-400 italic text-center">Buscando...</p>}
+                              {estaBuscando && <p className="text-gray-400 italic text-center">Buscando...</p>}
 
                               {!estaBuscando && resultadosBusqueda.length > 0 && (
-                                   <div className="max-h-60 overflow-y-auto border dark:border-slate-600 rounded-md p-2 space-y-2 bg-gray-50 dark:bg-slate-700/50">
-                                        <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">
-                                             {consultaBusqueda.length >= minQueryLength ? 'Resultados:' : 'Canciones Disponibles:'}
-                                        </h4>
-                                        <ul>
-                                             {resultadosBusqueda.map((cancionEncontrada) => (
-                                                 <li key={cancionEncontrada.id} className="flex items-center justify-between p-2 hover:bg-gray-100 dark:hover:bg-slate-600 rounded space-x-3">
-                                                     <div className="flex items-center space-x-3 flex-grow overflow-hidden">
-                                                          <ImagenItem url={obtenerUrlImagen(cancionEncontrada)} titulo={cancionEncontrada.titulo} className="w-10 h-10" iconoFallback={<MusicalNoteIcon className="h-5 w-5"/>} />
-                                                          <span className="text-gray-800 dark:text-gray-200 truncate" title={cancionEncontrada.titulo}>{cancionEncontrada.titulo}</span>
-                                                     </div>
-                                                     <button
-                                                         onClick={() => manejarAnadirCancion(cancionEncontrada.id)}
-                                                         disabled={anadiendoCancionId === cancionEncontrada.id}
-                                                         className={`ml-2 px-3 py-1 text-xs font-semibold rounded-md transition ease-in-out duration-150 flex-shrink-0 ${
-                                                              anadiendoCancionId === cancionEncontrada.id
-                                                                   ? 'bg-indigo-300 text-white cursor-wait dark:bg-indigo-700'
-                                                                   : 'bg-gradient-to-r from-blue-500 to-pink-500 text-white hover:from-blue-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800'
-                                                         }`}
-                                                     >
-                                                         {anadiendoCancionId === cancionEncontrada.id ? 'Añadiendo...' : 'Añadir'}
-                                                     </button>
-                                                 </li>
-                                             ))}
-                                        </ul>
-                                   </div>
+                                  <div className="max-h-60 overflow-y-auto border border-slate-600 rounded-md p-2 space-y-2 bg-slate-700/50">
+                                       <h4 className="text-sm font-semibold text-gray-300 mb-2">
+                                           {consultaBusqueda.length >= minQueryLength ? 'Resultados:' : 'Canciones Disponibles:'}
+                                       </h4>
+                                       <ul>
+                                           {resultadosBusqueda.map((cancionEncontrada) => (
+                                               <li key={cancionEncontrada.id} className="flex items-center justify-between p-2 hover:bg-slate-600 rounded space-x-3">
+                                                   <div className="flex items-center space-x-3 flex-grow overflow-hidden">
+                                                        <ImagenItem url={obtenerUrlImagen(cancionEncontrada)} titulo={cancionEncontrada.titulo} className="w-10 h-10" iconoFallback={<MusicalNoteIcon className="h-5 w-5"/>} />
+                                                        <span className="text-gray-200 truncate" title={cancionEncontrada.titulo}>{cancionEncontrada.titulo}</span>
+                                                   </div>
+                                                   <button
+                                                        onClick={() => manejarAnadirCancion(cancionEncontrada.id)}
+                                                        disabled={anadiendoCancionId === cancionEncontrada.id}
+                                                        className={`ml-2 px-3 py-1 text-xs font-semibold rounded-md transition ease-in-out duration-150 flex-shrink-0 ${
+                                                             anadiendoCancionId === cancionEncontrada.id
+                                                                 ? 'bg-indigo-700 text-white cursor-wait'
+                                                                 : 'bg-gradient-to-r from-blue-500 to-pink-500 text-white hover:from-blue-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-800'
+                                                        }`}
+                                                   >
+                                                        {anadiendoCancionId === cancionEncontrada.id ? 'Añadiendo...' : 'Añadir'}
+                                                   </button>
+                                               </li>
+                                           ))}
+                                       </ul>
+                                  </div>
                                )}
                               {!estaBuscando && consultaBusqueda.length >= minQueryLength && resultadosBusqueda.length === 0 && (
-                                   <p className="text-gray-500 dark:text-gray-400 italic text-center">No se encontraron canciones que coincidan.</p>
+                                  <p className="text-gray-400 italic text-center">No se encontraron canciones que coincidan.</p>
                                )}
                               {!estaBuscando && consultaBusqueda.length < minQueryLength && resultadosBusqueda.length === 0 && !estaBuscando && (
-                                   <p className="text-gray-500 dark:text-gray-400 italic text-center">No hay canciones disponibles para añadir.</p>
+                                  <p className="text-gray-400 italic text-center">No hay canciones disponibles para añadir.</p>
                                )}
                          </div>
                      )}

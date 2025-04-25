@@ -23,7 +23,7 @@ const ImagenItem = ({ url, titulo, className = "w-10 h-10", iconoFallback }) => 
 
     if (error || !src) {
         return (
-            <div className={`${className} bg-gray-200 dark:bg-slate-700 flex items-center justify-center text-gray-400 dark:text-slate-500 rounded`}>
+            <div className={`${className} bg-slate-700 flex items-center justify-center text-slate-500 rounded`}>
                 {iconoFallback || (
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" />
@@ -65,13 +65,11 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
 
     const isOwner = contenedor.is_owner ?? false;
 
-    // **Importante**: Asegúrate que 'usuarios' incluye la info del pivot desde el backend
     const idsUsuariosIniciales = contenedor.usuarios?.map(u => u.id) || [];
     const usuariosSeleccionadosIniciales = contenedor.usuarios?.map(u => ({
         id: u.id,
         name: u.name,
         email: u.email,
-        // Añadir la información del pivot al estado inicial si está disponible
         pivot: u.pivot
     })) || [];
 
@@ -95,7 +93,6 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
     const agregarUsuario = (usuario) => {
         if (!isOwner) return;
         if (!usuariosSeleccionados.some(seleccionado => seleccionado.id === usuario.id)) {
-            // Al agregar, no tenemos info del pivot, asumimos propietario=false
             const usuarioParaAgregar = { ...usuario, pivot: { propietario: false } };
             const nuevosUsuariosSeleccionados = [...usuariosSeleccionados, usuarioParaAgregar];
             setUsuariosSeleccionados(nuevosUsuariosSeleccionados);
@@ -108,13 +105,11 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
 
     const quitarUsuario = (usuarioId) => {
         if (!isOwner) return;
-        // Buscar si el usuario a quitar es el propietario
         const usuarioAQuitar = usuariosSeleccionados.find(u => u.id === usuarioId);
         if (usuarioAQuitar?.pivot?.propietario) {
              alert("No puedes quitar al propietario de la playlist.");
              return;
         }
-        // Permitir quitar si no es propietario
         const nuevosUsuariosSeleccionados = usuariosSeleccionados.filter(usuario => usuario.id !== usuarioId);
         setUsuariosSeleccionados(nuevosUsuariosSeleccionados);
         setData('userIds', nuevosUsuariosSeleccionados.map(u => u.id));
@@ -221,27 +216,27 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Editar Playlist: {contenedor.nombre}</h2>}
+            header={<h2 className="font-semibold text-xl text-gray-200 leading-tight">Editar Playlist: {contenedor.nombre}</h2>}
         >
             <Head title={`Editar ${contenedor.nombre}`} />
-            <div className="py-12 bg-gray-100 dark:bg-slate-900 min-h-screen">
+            <div className="py-12 min-h-screen">
                 <div className="max-w-2xl mx-auto sm:px-6 lg:px-8">
                     {recentlySuccessful && mensajeExitoSesion && (
-                        <div className="mb-4 p-4 bg-green-100 dark:bg-green-900 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-200 rounded-md shadow-sm" role="alert">
+                        <div className="mb-4 p-4 bg-green-900 border border-green-700 text-green-200 rounded-md shadow-sm" role="alert">
                             {mensajeExitoSesion}
                         </div>
                     )}
-                    <div className="bg-white dark:bg-slate-800 overflow-hidden shadow-xl sm:rounded-lg">
-                        <div className="p-6 md:p-8 text-gray-900 dark:text-gray-100">
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Editando Playlist</h3>
+                    <div className="bg-slate-800 overflow-hidden shadow-xl sm:rounded-lg">
+                        <div className="p-6 md:p-8 text-gray-100">
+                            <h3 className="text-lg font-medium text-gray-100 mb-4">Editando Playlist</h3>
                             {Object.keys(erroresSesion || {}).length > 0 && !errors && (
-                                <div className="mb-4 p-4 bg-red-100 dark:bg-red-900 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-200 rounded-md shadow-sm" role="alert">
+                                <div className="mb-4 p-4 bg-red-900 border border-red-700 text-red-200 rounded-md shadow-sm" role="alert">
                                     Hubo errores al procesar tu solicitud. Revisa los campos.
                                 </div>
                             )}
                             <form onSubmit={manejarEnvio} className="space-y-6">
                                 <div>
-                                    <InputLabel htmlFor="nombre" value="Nombre *" className="dark:text-gray-300" />
+                                    <InputLabel htmlFor="nombre" value="Nombre *" className="text-gray-300" />
                                     <TextInput
                                         id="nombre"
                                         name="nombre"
@@ -252,41 +247,41 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
                                         onChange={manejarCambioInput}
                                         required
                                     />
-                                    <InputError message={errors.nombre} className="mt-2" />
+                                    <InputError message={errors.nombre} className="mt-2 text-red-400" />
                                 </div>
                                 <div>
-                                    <InputLabel htmlFor="descripcion" value="Descripción" className="dark:text-gray-300" />
+                                    <InputLabel htmlFor="descripcion" value="Descripción" className="text-gray-300" />
                                     <textarea
                                         id="descripcion"
                                         name="descripcion"
                                         value={data.descripcion}
                                         onChange={manejarCambioInput}
                                         rows="4"
-                                        className="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-purple-500 focus:border-transparent dark:bg-slate-700 dark:text-gray-200 focus:outline-none focus:ring-2 dark:focus:ring-offset-slate-800"
+                                        className="mt-1 block w-full border-slate-600 rounded-md shadow-sm focus:ring-purple-500 focus:border-transparent bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-slate-800"
                                     ></textarea>
-                                    <InputError message={errors.descripcion} className="mt-2" />
+                                    <InputError message={errors.descripcion} className="mt-2 text-red-400" />
                                 </div>
                                 <div>
-                                    <InputLabel htmlFor="publico" value="Visibilidad *" className="dark:text-gray-300" />
+                                    <InputLabel htmlFor="publico" value="Visibilidad *" className="text-gray-300" />
                                     <select
                                         id="publico"
                                         name="publico"
                                         value={data.publico ? 'true' : 'false'}
                                         onChange={(e) => setData('publico', e.target.value === 'true')}
-                                        className="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-600 shadow-sm focus:ring-purple-500 focus:border-transparent dark:bg-slate-700 dark:text-gray-200 focus:outline-none focus:ring-2 dark:focus:ring-offset-slate-800 sm:text-sm"
+                                        className="mt-1 block w-full rounded-md border-slate-600 shadow-sm focus:ring-purple-500 focus:border-transparent bg-gray-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-slate-800 sm:text-sm"
                                         required
                                     >
                                         <option value="false">Privado (Solo colaboradores)</option>
                                         <option value="true">Público (Visible para todos)</option>
                                     </select>
-                                    <InputError message={errors.publico} className="mt-2" />
+                                    <InputError message={errors.publico} className="mt-2 text-red-400" />
                                 </div>
                                 <div>
-                                    <InputLabel htmlFor="imagen_nueva" value="Imagen (Opcional: reemplazar actual)" className="dark:text-gray-300"/>
+                                    <InputLabel htmlFor="imagen_nueva" value="Imagen (Opcional: reemplazar actual)" className="text-gray-300"/>
                                     {urlImagenActual && !data.eliminar_imagen && (
                                         <div className="mt-2 mb-4">
-                                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Imagen Actual:</p>
-                                            <img src={urlImagenActual} alt="Imagen actual" className="h-24 w-24 object-cover rounded border border-gray-200 dark:border-slate-600" />
+                                            <p className="text-sm text-gray-400 mb-1">Imagen Actual:</p>
+                                            <img src={urlImagenActual} alt="Imagen actual" className="h-24 w-24 object-cover rounded border border-slate-600" />
                                         </div>
                                     )}
                                     <input
@@ -294,12 +289,12 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
                                         id="imagen_nueva"
                                         name="imagen_nueva"
                                         onChange={manejarCambioArchivo}
-                                        className={`mt-1 block w-full text-sm dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 dark:file:bg-slate-600 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-slate-500 ${errors.imagen_nueva ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'} rounded-md focus:ring-purple-500 focus:border-transparent dark:bg-slate-700 focus:outline-none focus:ring-2 dark:focus:ring-offset-slate-800`}
+                                        className={`mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-600 file:text-blue-300 hover:file:bg-slate-500 ${errors.imagen_nueva ? 'border-red-500' : 'border-slate-600'} rounded-md focus:ring-purple-500 focus:border-transparent bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-slate-800`}
                                         accept="image/jpeg,image/png,image/jpg,image/webp,image/gif"
                                         disabled={data.eliminar_imagen}
                                     />
-                                    {data.imagen_nueva && <span className="text-green-600 dark:text-green-400 text-xs mt-1 block">Nueva imagen: {data.imagen_nueva.name}</span>}
-                                    <InputError message={errors.imagen_nueva} className="mt-2" />
+                                    {data.imagen_nueva && <span className="text-green-400 text-xs mt-1 block">Nueva imagen: {data.imagen_nueva.name}</span>}
+                                    <InputError message={errors.imagen_nueva} className="mt-2 text-red-400" />
                                     {urlImagenActual && (
                                         <div className="mt-2 flex items-center">
                                             <input
@@ -308,21 +303,21 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
                                                 name="eliminar_imagen"
                                                 checked={data.eliminar_imagen}
                                                 onChange={manejarCambioCheckbox}
-                                                className="h-4 w-4 text-pink-600 border-gray-300 dark:border-slate-600 rounded focus:ring-pink-500 dark:bg-slate-700 dark:checked:bg-pink-500"
+                                                className="h-4 w-4 text-pink-600 border-slate-600 rounded focus:ring-pink-500 bg-gray-800 checked:bg-pink-500"
                                             />
-                                            <label htmlFor="eliminar_imagen" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+                                            <label htmlFor="eliminar_imagen" className="ml-2 block text-sm text-gray-300">
                                                 Eliminar imagen actual (si no subes una nueva)
                                             </label>
                                         </div>
                                     )}
-                                    <InputError message={errors.eliminar_imagen} className="mt-2" />
+                                    <InputError message={errors.eliminar_imagen} className="mt-2 text-red-400" />
                                 </div>
-                                <div className={`border-t border-gray-200 dark:border-slate-700 pt-6 mt-6 ${!isOwner ? 'opacity-50 pointer-events-none' : ''}`}>
-                                    <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100 mb-4">Asociar Usuarios (Colaboradores)</h3>
-                                    {!isOwner && <p className="text-sm text-yellow-600 dark:text-yellow-400 mb-4 italic">(Solo el propietario puede modificar los colaboradores)</p>}
+                                <div className={`border-t border-slate-700 pt-6 mt-6 ${!isOwner ? 'opacity-50 pointer-events-none' : ''}`}>
+                                    <h3 className="text-lg font-medium leading-6 text-gray-100 mb-4">Asociar Usuarios (Colaboradores)</h3>
+                                    {!isOwner && <p className="text-sm text-yellow-400 mb-4 italic">(Solo el propietario puede modificar los colaboradores)</p>}
                                     <div className="space-y-4">
                                         <div>
-                                            <InputLabel htmlFor="user-search" value="Buscar Usuario por Nombre o Email" className="dark:text-gray-300"/>
+                                            <InputLabel htmlFor="user-search" value="Buscar Usuario por Nombre o Email" className="text-gray-300"/>
                                             <div className="mt-1 relative rounded-md shadow-sm">
                                                 <TextInput
                                                     id="user-search"
@@ -346,13 +341,13 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
                                                 )}
                                             </div>
                                             {!cargandoBusqueda && (terminoBusqueda || mostrarUsuariosIniciales) && isOwner && (
-                                                <ul className="mt-2 border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 shadow-lg max-h-60 overflow-auto w-full z-10">
+                                                <ul className="mt-2 border border-slate-600 rounded-md bg-slate-700 shadow-lg max-h-60 overflow-auto w-full z-10">
                                                     {resultadosBusqueda.length > 0 ? (
                                                         resultadosBusqueda.map(usuario => (
-                                                            <li key={usuario.id} className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-slate-600 flex justify-between items-center cursor-pointer group" onClick={() => agregarUsuario(usuario)}>
+                                                            <li key={usuario.id} className="px-4 py-2 hover:bg-slate-600 flex justify-between items-center cursor-pointer group" onClick={() => agregarUsuario(usuario)}>
                                                                 <div>
-                                                                    <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{usuario.name}</span>
-                                                                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({usuario.email})</span>
+                                                                    <span className="font-medium text-sm text-gray-100">{usuario.name}</span>
+                                                                    <span className="text-xs text-gray-400 ml-2">({usuario.email})</span>
                                                                 </div>
                                                                 <button
                                                                     type="button"
@@ -364,24 +359,23 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
                                                             </li>
                                                         ))
                                                     ) : (
-                                                        terminoBusqueda && <li className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">No se encontraron usuarios.</li>
+                                                        terminoBusqueda && <li className="px-4 py-2 text-sm text-gray-400">No se encontraron usuarios.</li>
                                                     )}
                                                 </ul>
                                             )}
                                         </div>
                                         {usuariosSeleccionados.length > 0 && (
                                             <div className="mt-4">
-                                                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Usuarios Seleccionados:</h4>
+                                                <h4 className="text-sm font-medium text-gray-300 mb-2">Usuarios Seleccionados:</h4>
                                                 <ul className="space-y-2">
                                                     {usuariosSeleccionados.map(usuario => (
-                                                        <li key={usuario.id} className="flex justify-between items-center bg-gray-50 dark:bg-slate-700/50 p-2 rounded border border-gray-200 dark:border-slate-600">
+                                                        <li key={usuario.id} className="flex justify-between items-center bg-slate-700/50 p-2 rounded border border-slate-600">
                                                             <div>
-                                                                <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{usuario.name}</span>
-                                                                <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">({usuario.email})</span>
+                                                                <span className="font-medium text-sm text-gray-100">{usuario.name}</span>
+                                                                <span className="text-xs text-gray-400 ml-2">({usuario.email})</span>
                                                             </div>
-                                                            {/* *** CONDICIÓN ACTUALIZADA *** */}
                                                             {usuario.pivot?.propietario ? (
-                                                                <span className="ml-4 text-xs text-gray-500 dark:text-gray-400 font-medium">(Propietario)</span>
+                                                                <span className="ml-4 text-xs text-gray-400 font-medium">(Propietario)</span>
                                                             ) : (
                                                                 <button
                                                                     type="button"
@@ -396,13 +390,13 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
                                                         </li>
                                                     ))}
                                                 </ul>
-                                                {errors.userIds && typeof errors.userIds === 'string' && <p className="mt-1 text-xs text-red-600">{errors.userIds}</p>}
+                                                <InputError message={errors.userIds && typeof errors.userIds === 'string' ? errors.userIds : ''} className="mt-1 text-xs text-red-400" />
                                                 {Object.keys(errors).filter(key => key.startsWith('userIds.')).map(key => (
-                                                    <p key={key} className="mt-1 text-xs text-red-600">{errors[key]}</p>
+                                                    <InputError key={key} message={errors[key]} className="mt-1 text-xs text-red-400" />
                                                 ))}
                                             </div>
                                         )}
-                                        {usuariosSeleccionados.length === 0 && errors.userIds && typeof errors.userIds === 'string' && <p className="mt-1 text-xs text-red-600">{errors.userIds}</p>}
+                                        {usuariosSeleccionados.length === 0 && errors.userIds && typeof errors.userIds === 'string' && <InputError message={errors.userIds} className="mt-1 text-xs text-red-400" />}
                                     </div>
                                 </div>
 
@@ -412,7 +406,7 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
                                     </PrimaryButton>
                                     <Link
                                         href={route('playlists.index')}
-                                        className="inline-flex items-center px-4 py-2 bg-white dark:bg-slate-600 border border-gray-300 dark:border-slate-500 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-200 uppercase tracking-widest shadow-sm hover:bg-gray-50 dark:hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 disabled:opacity-25 transition ease-in-out duration-150"
+                                        className="inline-flex items-center px-4 py-2 bg-slate-600 border border-slate-500 rounded-md font-semibold text-xs text-gray-200 uppercase tracking-widest shadow-sm hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-800 disabled:opacity-25 transition ease-in-out duration-150"
                                     >
                                         Cancelar
                                     </Link>

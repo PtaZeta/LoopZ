@@ -78,6 +78,24 @@ Route::middleware('auth')->group(function () {
     Route::post('/playlists/{contenedor}/songs', [ContenedorController::class, 'anadirCancion'])->name('playlists.songs.add');
     Route::delete('/playlists/{contenedor}/songs/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('playlists.songs.remove');
 
+    Route::resource('albumes', ContenedorController::class);
+
+    Route::get('/albumes/{contenedor}/songs/search', [ContenedorController::class, 'buscarCanciones'])->name('albumes.songs.search');
+    Route::post('/albumes/{contenedor}/songs', [ContenedorController::class, 'anadirCancion'])->name('albumes.songs.add');
+    Route::delete('/albumes/{contenedor}/songs/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('albumes.songs.remove');
+
+    Route::resource('eps', ContenedorController::class);
+
+    Route::get('/eps/{contenedor}/songs/search', [ContenedorController::class, 'buscarCanciones'])->name('eps.songs.search');
+    Route::post('/eps/{contenedor}/songs', [ContenedorController::class, 'anadirCancion'])->name('eps.songs.add');
+    Route::delete('/eps/{contenedor}/songs/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('eps.songs.remove');
+
+    Route::resource('singles', ContenedorController::class);
+
+    Route::get('/singles/{contenedor}/songs/search', [ContenedorController::class, 'buscarCanciones'])->name('singles.songs.search');
+    Route::post('/singles/{contenedor}/songs', [ContenedorController::class, 'anadirCancion'])->name('singles.songs.add');
+    Route::delete('/singles/{contenedor}/songs/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('singles.songs.remove');
+
 });
 
 
