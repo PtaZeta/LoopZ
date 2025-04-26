@@ -56,7 +56,7 @@ const ListaUsuariosPlaylist = ({ usuarios, usuarioLogueadoId }) => {
     return (
         <div className="relative group mt-1 w-full">
             <p className="text-xs text-gray-400 truncate w-full cursor-default">
-                Por: {usuariosMostrados.map(u => u.name).join(', ')}
+                De: {usuariosMostrados.map(u => u.name).join(', ')}
                 {usuariosOcultosCount > 0 && (
                     <span className="font-semibold"> +{usuariosOcultosCount} más</span>
                 )}
@@ -76,7 +76,7 @@ const ListaUsuariosPlaylist = ({ usuarios, usuarioLogueadoId }) => {
 };
 
 
-export default function Biblioteca({ playlists }) {
+export default function Biblioteca({ playlists, playlistsLoopZs }) {
     const { auth } = usePage().props;
     const usuarioLogueadoId = auth.user.id;
 
@@ -84,7 +84,7 @@ export default function Biblioteca({ playlists }) {
         <AuthenticatedLayout>
             <Head title="Mi Biblioteca" />
 
-            <main className='pt-6 pb-12 min-h-screen px-4 sm:px-6 lg:px-8'>
+            <main className='pt-3 pb-12 min-h-screen px-4 sm:px-6 lg:px-8'>
                 <h3 className="text-2xl font-semibold mb-6 text-gray-100">
                     Tus Playlists
                 </h3>
@@ -120,9 +120,41 @@ export default function Biblioteca({ playlists }) {
                     <p className="text-gray-400">No tienes ninguna playlist todavía.</p>
                 )}
 
-                <h3 className="mt-10 text-2xl font-semibold mb-6 text-gray-100">
+                <h3 className="mt-6 text-2xl font-semibold mb-6 text-gray-100">
                     LoopZs
                 </h3>
+                {playlistsLoopZs && playlistsLoopZs.length > 0 ? (
+                    <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6">
+                        {playlistsLoopZs.map(playlist => (
+                            <li key={playlist.id} className="bg-gray-800 rounded-lg shadow-md overflow-hidden flex flex-col items-center text-center transition duration-200 ease-in-out hover:bg-gray-700">
+                                <Link href={route('playlists.show', playlist.id)} className="block w-full p-4 pb-0">
+                                    <div className="relative w-full aspect-square mb-3">
+                                        <ImagenConPlaceholder
+                                            src={playlist.imagen}
+                                            alt={`Portada de ${playlist.nombre}`}
+                                            claseImagen="absolute inset-0 w-full h-full object-cover rounded"
+                                            clasePlaceholder="absolute inset-0 w-full h-full rounded bg-gray-700 flex items-center justify-center"
+                                            tipo="playlist"
+                                            esStorage={true}
+                                        />
+                                    </div>
+                                </Link>
+                                <div className="w-full px-4 pb-4 flex flex-col items-center">
+                                    <Link href={route('playlists.show', playlist.id)} className="block w-full truncate group">
+                                        <span className="text-sm font-semibold text-gray-100 group-hover:underline">{playlist.nombre}</span>
+                                    </Link>
+                                    <ListaUsuariosPlaylist
+                                        usuarios={playlist.usuarios}
+                                        usuarioLogueadoId={usuarioLogueadoId}
+                                    />
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-gray-400">No tienes ninguna playlist todavía.</p>
+                )}
+
             </main>
 
         </AuthenticatedLayout>

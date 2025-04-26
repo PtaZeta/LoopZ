@@ -39,4 +39,9 @@ class Contenedor extends Model
     {
         return $this->morphToMany(User::class, 'perteneceable', 'pertenece_user');
     }
+
+    public function loopzusuarios()
+    {
+        return $this->belongsToMany(User::class, 'loopzs_contenedores', 'contenedor_id', 'user_id');
+    }
 }
