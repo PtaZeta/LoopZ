@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use App\Models\User;
 
 Route::get('/', function () {
     $cancionesAleatorias = Cancion::query()
@@ -34,19 +35,18 @@ Route::get('/', function () {
         'artistasPopulares' => $artistasPopulares,
     ]);
 })->name('welcome');
+Route::get('/biblioteca', function () {
+        $usuario = Auth::user();
+        $playlists = $usuario->perteneceContenedores()
+            ->where('tipo', 'playlist')
+            ->with('usuarios:id,name')
+            ->orderBy('pertenece_user.created_at', 'desc')
+            ->get();
 
-
-Route::get('/genres/{slug}', function (string $slug) {
-     return Inertia::render('Static/FeatureUnavailable', [
-         'featureName' => 'Explorar por Género (' . e($slug) . ')'
-     ]);
-})->name('genres.show');
-
-Route::get('/artists/{slug}', function (string $slug) {
-     return Inertia::render('Static/FeatureUnavailable', [
-         'featureName' => 'Página de Artista (' . e($slug) . ')'
-     ]);
-})->name('artists.show');
+        return Inertia::render('Biblioteca', [
+            'playlists' => $playlists,
+        ]);
+})->name('biblioteca');
 
 
 Route::inertia('/terms', 'Static/Terms')->name('terms');
