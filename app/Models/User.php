@@ -73,4 +73,9 @@ class User extends Authenticatable
     {
         return $this->morphedByMany(Contenedor::class, 'perteneceable', 'pertenece_user');
     }
+
+    public function loopzContenedores()
+    {
+        return $this->belongsToMany(Contenedor::class, 'loopzs_contenedores', 'user_id', 'contenedor_id');
+    }
 }

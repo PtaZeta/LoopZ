@@ -43,8 +43,16 @@ Route::get('/biblioteca', function () {
             ->orderBy('pertenece_user.created_at', 'desc')
             ->get();
 
+        $playlistsLoopZs = $usuario->loopzContenedores()
+            ->where('tipo', 'playlist')
+            ->with('usuarios:id,name')
+            ->orderBy('loopzs_contenedores.created_at', 'desc')
+            ->get();
+
+
         return Inertia::render('Biblioteca', [
             'playlists' => $playlists,
+            'playlistsLoopZs' => $playlistsLoopZs,
         ]);
 })->name('biblioteca');
 
@@ -95,6 +103,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/singles/{contenedor}/songs/search', [ContenedorController::class, 'buscarCanciones'])->name('singles.songs.search');
     Route::post('/singles/{contenedor}/songs', [ContenedorController::class, 'anadirCancion'])->name('singles.songs.add');
     Route::delete('/singles/{contenedor}/songs/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('singles.songs.remove');
+
+    Route::get('/playlists/{contenedor}/loopz', [ContenedorController::class, 'loopzPlaylist'])->name('playlists.loopzPlaylist');
 
 });
 
