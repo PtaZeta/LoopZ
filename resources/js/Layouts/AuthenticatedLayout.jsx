@@ -21,6 +21,7 @@ export default function AuthenticatedLayout({ children }) {
                     </Link>
 
                     <nav className="hidden md:flex space-x-6 items-center">
+                        <Link href={route('biblioteca')} className="hover:text-blue-400 transition-colors">Biblioteca</Link>
                         <Link href={route('canciones.index')} className="hover:text-blue-400 transition-colors">Canciones</Link>
                         <Link href={route('playlists.index')} className="hover:text-blue-400 transition-colors">Playlists</Link>
                         <Link href={route('albumes.index')} className="hover:text-blue-400 transition-colors">Álbumes</Link>
