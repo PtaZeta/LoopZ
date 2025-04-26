@@ -183,7 +183,6 @@ class ContenedorController extends Controller
         $nombreVista = $infoRecurso['vista'] . 'Show';
 
         $contenedor = Contenedor::findOrFail($id);
-
         $this->validarTipoContenedor($contenedor, $tipoEsperado);
 
         $usuario = Auth::user();
@@ -193,9 +192,8 @@ class ContenedorController extends Controller
                 $query->select('canciones.id', 'canciones.titulo', 'canciones.archivo_url', 'canciones.foto_url', 'canciones.duracion')
                       ->withPivot('id as pivot_id');
             },
-            'usuarios' => function ($query) {
-                $query->select('users.id', 'users.name');
-            }
+            'usuarios:id,name',
+            'loopzusuarios:users.id'
         ]);
 
         if ($usuario) {
@@ -204,12 +202,14 @@ class ContenedorController extends Controller
                 'edit'   => $usuario->can('update', $contenedor),
                 'delete' => $usuario->can('delete', $contenedor),
             ];
+            $contenedor->is_liked_by_user = $contenedor->loopzusuarios->contains('id', $usuario->id);
         } else {
-             $contenedor->can = [
+            $contenedor->can = [
                 'view'   => $contenedor->publico ?? false,
                 'edit'   => false,
                 'delete' => false,
-             ];
+            ];
+            $contenedor->is_liked_by_user = false;
         }
 
         return Inertia::render($nombreVista, [
@@ -477,5 +477,17 @@ class ContenedorController extends Controller
 
          return redirect()->route($rutaRedireccion, $contenedor->id)
                          ->with($eliminado ? 'success' : 'error', $mensaje);
+    }
+
+    public function loopzPlaylist($idPlaylist) {
+        $playlist = Contenedor::findOrFail($idPlaylist);
+        $user = Auth::user();
+        if($playlist->loopzusuarios()->where('user_id', $user->id)->exists()) {
+            $playlist->loopzusuarios()->detach($user->id);
+            return redirect()->back()->with('success', 'Playlist desmarcada como Loopz.');
+        } else {
+            $playlist->loopzusuarios()->attach($user->id);
+            return redirect()->back()->with('success', 'Playlist marcada como Loopz.');
+        }
     }
 }
