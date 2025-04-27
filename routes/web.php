@@ -18,10 +18,7 @@ Route::get('/', function () {
     $cancionesAleatorias = Cancion::query()
         ->inRandomOrder()
         ->limit(8)
-        ->get()
-        ->map(function ($cancion) {
-            return $cancion;
-        });
+        ->get();
 
     $artistasPopulares = [];
 
@@ -35,26 +32,30 @@ Route::get('/', function () {
         'artistasPopulares' => $artistasPopulares,
     ]);
 })->name('welcome');
+
 Route::get('/biblioteca', function () {
         $usuario = Auth::user();
         $playlists = $usuario->perteneceContenedores()
             ->where('tipo', 'playlist')
-            ->with('usuarios:id,name')
-            ->orderBy('pertenece_user.created_at', 'desc')
-            ->get();
+            ->with(['usuarios' => function ($query) {
+                 $query->select('users.id', 'users.name')->withPivot('propietario'); // Cargar pivot
+             }])
+            ->orderBy('pertenece_user.created_at', 'desc') // Ajustar tabla/columna si es necesario
+            ->get()
+            ->map(function ($item) { $item->tipo = 'playlist'; return $item; });
 
-        $playlistsLoopZs = $usuario->loopzContenedores()
-            ->where('tipo', 'playlist')
-            ->with('usuarios:id,name')
+        $loopzs = $usuario->loopzContenedores()
+             ->with(['usuarios' => function ($query) {
+                 $query->select('users.id', 'users.name')->withPivot('propietario'); // Cargar pivot
+             }])
             ->orderBy('loopzs_contenedores.created_at', 'desc')
             ->get();
 
-
         return Inertia::render('Biblioteca', [
             'playlists' => $playlists,
-            'playlistsLoopZs' => $playlistsLoopZs,
+            'loopzContenedores' => $loopzs,
         ]);
-})->name('biblioteca');
+})->middleware(['auth', 'verified'])->name('biblioteca');
 
 
 Route::inertia('/terms', 'Static/Terms')->name('terms');
@@ -79,32 +80,29 @@ Route::middleware('auth')->group(function () {
     Route::resource('canciones', CancionController::class);
     Route::get('/usuarios/buscar', [CancionController::class, 'buscarUsuarios'])->name('usuarios.buscar');
 
-
     Route::resource('playlists', ContenedorController::class);
-
     Route::get('/playlists/{contenedor}/songs/search', [ContenedorController::class, 'buscarCanciones'])->name('playlists.songs.search');
     Route::post('/playlists/{contenedor}/songs', [ContenedorController::class, 'anadirCancion'])->name('playlists.songs.add');
     Route::delete('/playlists/{contenedor}/songs/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('playlists.songs.remove');
 
     Route::resource('albumes', ContenedorController::class);
-
     Route::get('/albumes/{contenedor}/songs/search', [ContenedorController::class, 'buscarCanciones'])->name('albumes.songs.search');
     Route::post('/albumes/{contenedor}/songs', [ContenedorController::class, 'anadirCancion'])->name('albumes.songs.add');
     Route::delete('/albumes/{contenedor}/songs/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('albumes.songs.remove');
 
     Route::resource('eps', ContenedorController::class);
-
     Route::get('/eps/{contenedor}/songs/search', [ContenedorController::class, 'buscarCanciones'])->name('eps.songs.search');
     Route::post('/eps/{contenedor}/songs', [ContenedorController::class, 'anadirCancion'])->name('eps.songs.add');
     Route::delete('/eps/{contenedor}/songs/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('eps.songs.remove');
 
     Route::resource('singles', ContenedorController::class);
-
     Route::get('/singles/{contenedor}/songs/search', [ContenedorController::class, 'buscarCanciones'])->name('singles.songs.search');
     Route::post('/singles/{contenedor}/songs', [ContenedorController::class, 'anadirCancion'])->name('singles.songs.add');
     Route::delete('/singles/{contenedor}/songs/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('singles.songs.remove');
 
-    Route::get('/playlists/{contenedor}/loopz', [ContenedorController::class, 'loopzPlaylist'])->name('playlists.loopzPlaylist');
+    Route::post('/contenedores/{contenedor}/toggle-loopz', [ContenedorController::class, 'toggleLoopz'])
+         ->name('contenedores.toggle-loopz')
+         ->where('contenedor', '[0-9]+');
 
 });
 
