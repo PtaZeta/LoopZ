@@ -65,7 +65,7 @@ class ContenedorController extends Controller
             case 'playlist': return 'playlist';
             case 'ep': return 'EP';
             case 'single': return 'single';
-            default: return 'contenedor';
+            default: return 'elemento';
         }
     }
 
@@ -122,7 +122,6 @@ class ContenedorController extends Controller
     {
         $infoRecurso = $this->getTipoVista($peticion);
         $nombreVista = $infoRecurso['vista'] . 'Create';
-
         return Inertia::render($nombreVista, ['tipo' => $infoRecurso['tipo']]);
     }
 
@@ -171,8 +170,7 @@ class ContenedorController extends Controller
              Log::warning('El método usuarios() no existe en el modelo Contenedor para el ID ' . $contenedor->id);
         }
 
-         $mensaje = ucfirst($this->getNombreTipo($tipoContenedor)) . ' creado exitosamente.';
-
+        $mensaje = ucfirst($this->getNombreTipo($tipoContenedor)) . ' creado exitosamente.';
         return redirect()->route($rutaRedireccion)->with('success', $mensaje);
     }
 
@@ -313,7 +311,7 @@ class ContenedorController extends Controller
             Log::info('Usuarios sincronizados para el contenedor (' . $tipoEsperado . ') ' . $contenedor->id . ': ' . json_encode($usuariosASincronizar));
         }
 
-         $mensaje = ucfirst($this->getNombreTipo($tipoEsperado)) . ' actualizado exitosamente.';
+        $mensaje = ucfirst($this->getNombreTipo($tipoEsperado)) . ' actualizado exitosamente.';
         return Redirect::route($rutaRedireccion, $contenedor->id)->with('success', $mensaje);
     }
 
@@ -397,19 +395,19 @@ class ContenedorController extends Controller
 
     public function anadirCancion(Request $peticion, Contenedor $contenedor)
     {
-         if (!in_array($contenedor->tipo, ['playlist', 'album', 'ep', 'single'])) { abort(404); }
-         $this->authorize('update', $contenedor);
+        if (!in_array($contenedor->tipo, ['playlist', 'album', 'ep', 'single'])) { abort(404); }
+        $this->authorize('update', $contenedor);
 
-         $valido = $peticion->validate([
+        $valido = $peticion->validate([
              'cancion_id' => 'required|exists:canciones,id',
-         ]);
-         $idCancion = $valido['cancion_id'];
-         $mensaje = 'Error interno.';
-         $tipoNombre = $this->getNombreTipo($contenedor->tipo);
+        ]);
+        $idCancion = $valido['cancion_id'];
+        $mensaje = 'Error interno.';
+        $tipoNombre = $this->getNombreTipo($contenedor->tipo);
 
 
-         if (method_exists($contenedor, 'canciones')) {
-              if (in_array($contenedor->tipo, ['album', 'ep', 'single'])) {
+        if (method_exists($contenedor, 'canciones')) {
+             if (in_array($contenedor->tipo, ['album', 'ep', 'single'])) {
                   $yaExiste = $contenedor->canciones()->where('canciones.id', $idCancion)->exists();
                   if ($yaExiste) {
                       $mensaje = 'Esta canción ya está en el ' . $tipoNombre . '.';
@@ -417,77 +415,89 @@ class ContenedorController extends Controller
                       $contenedor->canciones()->attach($idCancion);
                       $mensaje = 'Canción añadida al ' . $tipoNombre . '.';
                   }
-              } else {
+             } else {
                   $contenedor->canciones()->attach($idCancion);
                   $mensaje = 'Canción añadida a la ' . $tipoNombre . '.';
-              }
-         } else {
-              Log::error("Relación 'canciones' no encontrada en Contenedor ID: " . $contenedor->id);
-              $mensaje = 'No se pudo añadir la canción.';
-         }
+             }
+        } else {
+             Log::error("Relación 'canciones' no encontrada en Contenedor ID: " . $contenedor->id);
+             $mensaje = 'No se pudo añadir la canción.';
+        }
 
-         $rutaBase = match ($contenedor->tipo) {
+        $rutaBase = match ($contenedor->tipo) {
              'album' => 'albumes',
              'ep' => 'eps',
              'single' => 'singles',
              default => 'playlists'
-         };
-         $rutaRedireccion = $rutaBase . '.show';
+        };
+        $rutaRedireccion = $rutaBase . '.show';
 
-         $tipoMensaje = 'success';
-         if (str_contains($mensaje, 'Error') || str_contains($mensaje, 'ya está')) {
-              $tipoMensaje = 'error';
-         }
+        $tipoMensaje = 'success';
+        if (str_contains($mensaje, 'Error') || str_contains($mensaje, 'ya está')) {
+             $tipoMensaje = 'error';
+        }
 
-         return redirect()->route($rutaRedireccion, $contenedor->id)
+        return redirect()->route($rutaRedireccion, $contenedor->id)
                          ->with($tipoMensaje, $mensaje);
     }
 
     public function quitarCancionPorPivot(Request $peticion, Contenedor $contenedor, $idPivot)
     {
-         if (!in_array($contenedor->tipo, ['playlist', 'album', 'ep', 'single'])) { abort(404); }
-         $this->authorize('update', $contenedor);
+        if (!in_array($contenedor->tipo, ['playlist', 'album', 'ep', 'single'])) { abort(404); }
+        $this->authorize('update', $contenedor);
 
-         $eliminado = false;
-         if (method_exists($contenedor, 'canciones')) {
-              $eliminado = $contenedor->canciones()
-                  ->wherePivot('id', $idPivot)
-                  ->detach();
-         } else {
-              Log::error("Relación 'canciones' no encontrada en Contenedor ID: " . $contenedor->id);
-         }
+        $eliminado = false;
+        if (method_exists($contenedor, 'canciones')) {
+             $eliminado = $contenedor->canciones()
+                 ->wherePivot('id', $idPivot)
+                 ->detach();
+        } else {
+             Log::error("Relación 'canciones' no encontrada en Contenedor ID: " . $contenedor->id);
+        }
 
-         $tipoNombre = $this->getNombreTipo($contenedor->tipo);
-         $mensaje = $eliminado
+        $tipoNombre = $this->getNombreTipo($contenedor->tipo);
+        $mensaje = $eliminado
              ? 'Canción eliminada de ' . ($contenedor->tipo === 'playlist' ? 'la ' : 'el ') . $tipoNombre . '.'
              : 'Error: No se encontró la instancia de la canción.';
 
 
-         if (!$eliminado && method_exists($contenedor, 'canciones')) {
-              Log::warning('Intento de eliminar registro pivot no encontrado', ['contenedor_id' => $contenedor->id, 'pivot_id' => $idPivot]);
-         }
+        if (!$eliminado && method_exists($contenedor, 'canciones')) {
+             Log::warning('Intento de eliminar registro pivot no encontrado', ['contenedor_id' => $contenedor->id, 'pivot_id' => $idPivot]);
+        }
 
-         $rutaBase = match ($contenedor->tipo) {
+        $rutaBase = match ($contenedor->tipo) {
              'album' => 'albumes',
              'ep' => 'eps',
              'single' => 'singles',
              default => 'playlists'
-         };
-         $rutaRedireccion = $rutaBase . '.show';
+        };
+        $rutaRedireccion = $rutaBase . '.show';
 
-         return redirect()->route($rutaRedireccion, $contenedor->id)
+        return redirect()->route($rutaRedireccion, $contenedor->id)
                          ->with($eliminado ? 'success' : 'error', $mensaje);
     }
 
-    public function loopzPlaylist($idPlaylist) {
-        $playlist = Contenedor::findOrFail($idPlaylist);
+    public function toggleLoopz(Request $request, Contenedor $contenedor)
+    {
         $user = Auth::user();
-        if($playlist->loopzusuarios()->where('user_id', $user->id)->exists()) {
-            $playlist->loopzusuarios()->detach($user->id);
-            return redirect()->back()->with('success', 'Playlist desmarcada como Loopz.');
-        } else {
-            $playlist->loopzusuarios()->attach($user->id);
-            return redirect()->back()->with('success', 'Playlist marcada como Loopz.');
+
+        if (!$user) {
+            return Redirect::back()->with('error', 'Debes iniciar sesión para marcar como LoopZ.');
         }
+
+        $isLiked = $contenedor->loopzusuarios()->where('user_id', $user->id)->exists();
+        $tipoNombre = $this->getNombreTipo($contenedor->tipo);
+
+        if ($isLiked) {
+            $contenedor->loopzusuarios()->detach($user->id);
+            $mensaje = ucfirst($tipoNombre) . ' desmarcado como LoopZ.';
+            Log::info("Usuario {$user->id} desmarcó como LoopZ el {$tipoNombre} ID: {$contenedor->id}");
+        } else {
+            $contenedor->loopzusuarios()->attach($user->id);
+            $mensaje = ucfirst($tipoNombre) . ' marcado como LoopZ.';
+            Log::info("Usuario {$user->id} marcó como LoopZ el {$tipoNombre} ID: {$contenedor->id}");
+        }
+
+        return Redirect::back()->with('success', $mensaje);
     }
 }
