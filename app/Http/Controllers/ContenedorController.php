@@ -26,7 +26,7 @@ class ContenedorController extends Controller
             $tipo = 'album';
             $vistaBase = 'albumes/';
             $nombreRutaBase = 'albumes';
-        } elseif ($peticion->routeIs('playlists.*')) {
+        } elseif ($peticion->routeIs('playlists.*') || $peticion->routeIs('loopzs.*')) {
             $tipo = 'playlist';
             $vistaBase = 'playlists/';
             $nombreRutaBase = 'playlists';
@@ -42,17 +42,21 @@ class ContenedorController extends Controller
             Log::warning('Acceso a ContenedorController desde ruta no reconocida: ' . $peticion->path());
             abort(404, 'Tipo de recurso no soportado.');
         }
+
         return ['tipo' => $tipo, 'vista' => $vistaBase, 'ruta' => $nombreRutaBase];
     }
-
     private function validarTipoContenedor(Contenedor $contenedor, string $tipoEsperado): void
     {
+        if ($tipoEsperado === 'playlist' && in_array($contenedor->tipo, ['playlist', 'loopzs'])) {
+            return;
+        }
+
         if ($contenedor->tipo !== $tipoEsperado) {
             Log::warning("Discrepancia de tipo al acceder al contenedor.", [
-                'id' => $contenedor->id,
-                'actual_type' => $contenedor->tipo,
-                'expected_type' => $tipoEsperado,
-                'route' => Route::currentRouteName() ?? 'N/A'
+                'id'             => $contenedor->id,
+                'actual_type'    => $contenedor->tipo,
+                'expected_type'  => $tipoEsperado,
+                'route'          => Route::currentRouteName() ?? 'N/A'
             ]);
             abort(404);
         }
@@ -179,10 +183,8 @@ class ContenedorController extends Controller
         $infoRecurso = $this->getTipoVista($peticion);
         $tipoEsperado = $infoRecurso['tipo'];
         $nombreVista = $infoRecurso['vista'] . 'Show';
-
         $contenedor = Contenedor::findOrFail($id);
         $this->validarTipoContenedor($contenedor, $tipoEsperado);
-
         $usuario = Auth::user();
 
         $contenedor->load([
@@ -344,7 +346,7 @@ class ContenedorController extends Controller
 
     public function buscarCanciones(Request $peticion, Contenedor $contenedor)
     {
-        if (!in_array($contenedor->tipo, ['playlist', 'album', 'ep', 'single'])) {
+        if (!in_array($contenedor->tipo, ['playlist', 'album', 'ep', 'single', 'loopzs'])) {
              return response()->json(['error' => 'Tipo de contenedor no válido para buscar canciones'], 400);
         }
 

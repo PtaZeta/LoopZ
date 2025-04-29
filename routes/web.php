@@ -34,29 +34,36 @@ Route::get('/', function () {
 })->name('welcome');
 
 Route::get('/biblioteca', function () {
-        $usuario = Auth::user();
-        $playlists = $usuario->perteneceContenedores()
-            ->where('tipo', 'playlist')
-            ->with(['usuarios' => function ($query) {
-                 $query->select('users.id', 'users.name')->withPivot('propietario'); // Cargar pivot
-             }])
-            ->orderBy('pertenece_user.created_at', 'desc') // Ajustar tabla/columna si es necesario
-            ->get()
-            ->map(function ($item) { $item->tipo = 'playlist'; return $item; });
+    $usuario = Auth::user();
 
-        $loopzs = $usuario->loopzContenedores()
-             ->with(['usuarios' => function ($query) {
-                 $query->select('users.id', 'users.name')->withPivot('propietario'); // Cargar pivot
-             }])
-            ->orderBy('loopzs_contenedores.created_at', 'desc')
-            ->get();
+    $playlists = $usuario->perteneceContenedores()
+    ->whereIn('tipo', ['playlist', 'loopzs'])
+    ->with(['usuarios' => function ($query) {
+        $query->select('users.id', 'users.name')->withPivot('propietario');
+    }])
+    ->orderBy('pertenece_user.created_at', 'desc')
+    ->get()
+    ->map(function ($item) {
+        if ($item->tipo === 'loopzs') {
+            $item->tipo = 'loopzs';
+        } else {
+            $item->tipo = 'playlist';
+        }
+        return $item;
+    });
 
-        return Inertia::render('Biblioteca', [
-            'playlists' => $playlists,
-            'loopzContenedores' => $loopzs,
-        ]);
+    $loopzs = $usuario->loopzContenedores()
+         ->with(['usuarios' => function ($query) {
+             $query->select('users.id', 'users.name')->withPivot('propietario');
+         }])
+        ->orderBy('loopzs_contenedores.created_at', 'desc')
+        ->get();
+
+    return Inertia::render('Biblioteca', [
+        'playlists' => $playlists,
+        'loopzContenedores' => $loopzs,
+    ]);
 })->middleware(['auth', 'verified'])->name('biblioteca');
-
 
 Route::inertia('/terms', 'Static/Terms')->name('terms');
 Route::inertia('/privacy', 'Static/Privacy')->name('privacy');
