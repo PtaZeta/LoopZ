@@ -26,6 +26,11 @@ class ContenedorPolicy
         return true;
     }
 
+    public function edit(User $user, Contenedor $contenedor): bool
+    {
+        return method_exists($contenedor, 'usuarios') && $contenedor->usuarios->contains($user);
+    }
+
     public function update(User $user, Contenedor $contenedor): bool
     {
         return method_exists($contenedor, 'usuarios') && $contenedor->usuarios->contains($user);
