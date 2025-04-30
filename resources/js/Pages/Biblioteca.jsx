@@ -88,6 +88,7 @@ const getResourceRouteBase = (tipo) => {
         case 'playlist': return 'playlists';
         case 'ep': return 'eps';
         case 'single': return 'singles';
+        case 'loopzs': return 'playlists';
         default: return tipo ? `${tipo}s` : 'items';
     }
 };
@@ -97,37 +98,31 @@ const DisplayList = ({ items, usuarioLogueadoId, tipoPredeterminado = 'playlist'
     const [isHovering, setIsHovering] = useState(false);
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
-    const LIMITE_GRID = 6;
     const scrollAmount = 400;
     const itemsArray = Array.isArray(items) ? items : [];
-    // *** CAMBIO DE TAMAÑO AQUÍ ***
-    const cardWidthClass = 'w-56'; // Antes w-48
-    const cardMinWidth = '14rem'; // Antes 12rem
+    const cardWidthClass = 'w-56';
+    const cardMinWidth = '14rem';
 
     const updateScrollability = useCallback(() => {
         const element = scrollContainerRef.current;
         if (element) {
-            const hasScrollLeft = element.scrollLeft > 1;
-            setCanScrollLeft(hasScrollLeft);
+            setCanScrollLeft(element.scrollLeft > 1);
             const maxScrollLeft = element.scrollWidth - element.clientWidth;
-            const hasScrollRight = element.scrollLeft < (maxScrollLeft - 1);
-            setCanScrollRight(hasScrollRight);
+            setCanScrollRight(element.scrollLeft < (maxScrollLeft - 1));
         }
     }, []);
 
     useEffect(() => {
-        if (itemsArray.length <= LIMITE_GRID || !scrollContainerRef.current) {
-            setCanScrollLeft(false); setCanScrollRight(false); return;
-        }
-        const element = scrollContainerRef.current;
+        if (!scrollContainerRef.current) return;
         updateScrollability();
-        element.addEventListener('scroll', updateScrollability, { passive: true });
+        const el = scrollContainerRef.current;
+        el.addEventListener('scroll', updateScrollability, { passive: true });
         window.addEventListener('resize', updateScrollability);
         return () => {
-            element.removeEventListener('scroll', updateScrollability);
+            el.removeEventListener('scroll', updateScrollability);
             window.removeEventListener('resize', updateScrollability);
         };
-    }, [itemsArray.length, updateScrollability, LIMITE_GRID]);
+    }, [updateScrollability]);
 
     const handleScroll = (direction) => {
         if (scrollContainerRef.current) {
@@ -170,39 +165,45 @@ const DisplayList = ({ items, usuarioLogueadoId, tipoPredeterminado = 'playlist'
         );
     }
 
-    if (itemsArray.length <= LIMITE_GRID) {
-        return (
-            <ul className={`grid grid-cols-[repeat(auto-fill,minmax(${cardMinWidth},1fr))] gap-4 sm:gap-6`}>
-                {itemsArray.map(item => renderItemCard(item))}
-            </ul>
-        );
-    } else {
-        return (
-            <div
-                className="relative"
-                onMouseEnter={() => setIsHovering(true)}
-                onMouseLeave={() => setIsHovering(false)}
+    return (
+        <div
+            className="relative"
+            onMouseEnter={() => setIsHovering(true)}
+            onMouseLeave={() => setIsHovering(false)}
+        >
+            <button
+                onClick={() => handleScroll('left')} disabled={!canScrollLeft} aria-label="Scroll Left"
+                className={`absolute left-2 top-1/2 transform -translate-y-1/2 z-20 p-2 bg-black bg-opacity-70 rounded-full text-white transition-opacity duration-300 ease-in-out hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white ${ isHovering && canScrollLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'} disabled:opacity-20 disabled:pointer-events-none disabled:cursor-not-allowed`}
             >
-                <button
-                    onClick={() => handleScroll('left')} disabled={!canScrollLeft} aria-label="Scroll Left"
-                    className={`absolute left-2 top-1/2 transform -translate-y-1/2 z-20 p-2 bg-black bg-opacity-70 rounded-full text-white transition-opacity duration-300 ease-in-out hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white ${ isHovering && canScrollLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'} disabled:opacity-20 disabled:pointer-events-none disabled:cursor-not-allowed`}
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+            </button>
+            <div
+                ref={scrollContainerRef}
+                className="
+                    overflow-x-auto
+                    pb-1 -mb-1
+                    [&::-webkit-scrollbar]:hidden      /* oculta en Chrome/Safari */
+                    [scrollbar-width:none]              /* oculta en Firefox */
+                "
                 >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
-                </button>
-                <div ref={scrollContainerRef} className="overflow-x-auto scrollbar-hide pb-1 -mb-1">
-                    <ul className="flex flex-nowrap gap-4 sm:gap-6 px-1 py-1">
-                         {itemsArray.map(item => renderItemCard(item))}
-                    </ul>
-                </div>
-                 <button
-                    onClick={() => handleScroll('right')} disabled={!canScrollRight} aria-label="Scroll Right"
-                    className={`absolute right-2 top-1/2 transform -translate-y-1/2 z-20 p-2 bg-black bg-opacity-70 rounded-full text-white transition-opacity duration-300 ease-in-out hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white ${ isHovering && canScrollRight ? 'opacity-100' : 'opacity-0 pointer-events-none'} disabled:opacity-20 disabled:pointer-events-none disabled:cursor-not-allowed`}
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
-                </button>
+                <ul className="flex flex-nowrap gap-4 sm:gap-6 px-1 py-1">
+                     {itemsArray.map(item => renderItemCard(item))}
+                </ul>
             </div>
-        );
-    }
+            <button
+                onClick={() => handleScroll('right')} disabled={!canScrollRight} aria-label="Scroll Right"
+                className={`absolute right-2 top-1/2 transform -translate-y-1/2 z-20 p-2 bg-black bg-opacity-70 rounded-full text-white transition-opacity duration-300 ease-in-out hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white ${ isHovering && canScrollRight ? 'opacity-100' : 'opacity-0 pointer-events-none'} disabled:opacity-20 disabled:pointer-events-none disabled:cursor-not-allowed`}
+            >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+            </button>
+        </div>
+    );
+};
+
+DisplayList.propTypes = {
+    items: PropTypes.array.isRequired,
+    usuarioLogueadoId: PropTypes.number.isRequired,
+    tipoPredeterminado: PropTypes.string,
 };
 
 export default function Biblioteca({ auth, playlists, loopzContenedores }) {

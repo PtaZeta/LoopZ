@@ -72,6 +72,7 @@ const getResourceRouteBase = (tipo) => {
         case 'playlist': return 'playlists';
         case 'ep': return 'eps';
         case 'single': return 'singles';
+        case 'loopzs': return 'playlists';
         default: return `${tipo}s`;
     }
 };
@@ -93,6 +94,8 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
 
     const urlImagenContenedor = obtenerUrlImagen(contenedor);
     const tipoContenedor = contenedor?.tipo || 'album';
+    const esLoopzs = tipoContenedor === 'loopzs';
+
     const tipoNombreMayuscula = getTipoNombreMayuscula(tipoContenedor);
     const rutaBase = getResourceRouteBase(tipoContenedor);
 
@@ -292,7 +295,8 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                 >
                                     <PlayIcon className="h-7 w-7" />
                                 </button>
-                                <button
+                                {!esLoopzs && (
+                                    <button
                                     onClick={toggleLoopz}
                                     disabled={likeProcessing || !contenedor?.id}
                                     className={`p-2 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${likeProcessing ? 'text-gray-500 cursor-wait' : 'text-gray-400 hover:text-pink-500'}`}
@@ -300,6 +304,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                 >
                                     {isLiked ? <HeartIconSolid className="h-7 w-7 text-pink-500" /> : <HeartIconOutline className="h-7 w-7" />}
                                 </button>
+                                )}
                                 <button onClick={() => window.history.back()} className="inline-flex items-center px-4 py-2 border border-slate-600 rounded-full font-semibold text-xs text-gray-300 uppercase tracking-widest shadow-sm hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-25 transition ease-in-out duration-150">
                                     <ArrowUturnLeftIcon className="h-4 w-4 mr-1" />Volver
                                 </button>
@@ -334,7 +339,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                         )}
                     </div>
 
-                    {contenedor?.can?.edit && (
+                    {!esLoopzs && contenedor?.can?.edit && (
                         <div className="mt-10 p-6 md:p-8 bg-slate-800/80 backdrop-blur-sm shadow-inner rounded-lg">
                             <h3 className="text-xl font-semibold mb-4 text-gray-100">Añadir Canciones</h3>
                             <div className="mb-4">
