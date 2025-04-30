@@ -26,7 +26,7 @@ class ContenedorController extends Controller
             $tipo = 'album';
             $vistaBase = 'albumes/';
             $nombreRutaBase = 'albumes';
-        } elseif ($peticion->routeIs('playlists.*')) {
+        } elseif ($peticion->routeIs('playlists.*') || $peticion->routeIs('loopzs.*')) {
             $tipo = 'playlist';
             $vistaBase = 'playlists/';
             $nombreRutaBase = 'playlists';
@@ -42,17 +42,21 @@ class ContenedorController extends Controller
             Log::warning('Acceso a ContenedorController desde ruta no reconocida: ' . $peticion->path());
             abort(404, 'Tipo de recurso no soportado.');
         }
+
         return ['tipo' => $tipo, 'vista' => $vistaBase, 'ruta' => $nombreRutaBase];
     }
-
     private function validarTipoContenedor(Contenedor $contenedor, string $tipoEsperado): void
     {
+        if ($tipoEsperado === 'playlist' && in_array($contenedor->tipo, ['playlist', 'loopzs'])) {
+            return;
+        }
+
         if ($contenedor->tipo !== $tipoEsperado) {
             Log::warning("Discrepancia de tipo al acceder al contenedor.", [
-                'id' => $contenedor->id,
-                'actual_type' => $contenedor->tipo,
-                'expected_type' => $tipoEsperado,
-                'route' => Route::currentRouteName() ?? 'N/A'
+                'id'             => $contenedor->id,
+                'actual_type'    => $contenedor->tipo,
+                'expected_type'  => $tipoEsperado,
+                'route'          => Route::currentRouteName() ?? 'N/A'
             ]);
             abort(404);
         }
@@ -186,29 +190,40 @@ class ContenedorController extends Controller
         $usuario = Auth::user();
 
         $contenedor->load([
-            'canciones' => function ($query) {
+            'canciones' => function ($query) use ($usuario) { // Pasar $usuario al closure
                 $query->select('canciones.id', 'canciones.titulo', 'canciones.archivo_url', 'canciones.foto_url', 'canciones.duracion')
-                      ->withPivot('id as pivot_id');
+                      ->withPivot('id as pivot_id')
+                      ->when($usuario, function ($q) use ($usuario) {
+                          $q->withExists(['loopzUsuarios as is_loopz_by_user' => function ($subQuery) use ($usuario) {
+                              $subQuery->where('user_id', $usuario->id);
+                          }]);
+                      });
             },
             'usuarios:id,name',
             'loopzusuarios:users.id'
         ]);
 
-        if ($usuario) {
-            $contenedor->can = [
-                'view'   => $usuario->can('view', $contenedor),
-                'edit'   => $usuario->can('update', $contenedor),
-                'delete' => $usuario->can('delete', $contenedor),
-            ];
-            $contenedor->is_liked_by_user = $contenedor->loopzusuarios->contains('id', $usuario->id);
-        } else {
-            $contenedor->can = [
-                'view'   => $contenedor->publico ?? false,
-                'edit'   => false,
-                'delete' => false,
-            ];
-            $contenedor->is_liked_by_user = false;
-        }
+         if ($usuario) {
+             $contenedor->can = [
+                 'view'   => $usuario->can('view', $contenedor),
+                 'edit'   => $usuario->can('update', $contenedor),
+                 'delete' => $usuario->can('delete', $contenedor),
+             ];
+             $contenedor->is_liked_by_user = $contenedor->loopzusuarios->contains('id', $usuario->id);
+
+             if (!isset($contenedor->canciones[0]->is_loopz_by_user)) {
+                foreach ($contenedor->canciones as $cancion) {
+                    $cancion->is_loopz_by_user = false;
+                }
+             }
+
+         } else {
+             $contenedor->is_liked_by_user = false;
+             foreach ($contenedor->canciones ?? [] as $cancion) {
+                $cancion->is_loopz_by_user = false;
+            }
+         }
+
 
         return Inertia::render($nombreVista, [
             'contenedor' => $contenedor,
@@ -344,7 +359,7 @@ class ContenedorController extends Controller
 
     public function buscarCanciones(Request $peticion, Contenedor $contenedor)
     {
-        if (!in_array($contenedor->tipo, ['playlist', 'album', 'ep', 'single'])) {
+        if (!in_array($contenedor->tipo, ['playlist', 'album', 'ep', 'single', 'loopzs'])) {
              return response()->json(['error' => 'Tipo de contenedor no válido para buscar canciones'], 400);
         }
 
