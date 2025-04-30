@@ -34,5 +34,8 @@ class Cancion extends Model
         return $this->morphToMany(User::class, 'perteneceable', 'pertenece_user');
     }
 
-
+    public function loopzUsuarios()
+    {
+        return $this->belongsToMany(User::class, 'loopzs_canciones', 'cancion_id', 'user_id');
+    }
 }

@@ -183,34 +183,47 @@ class ContenedorController extends Controller
         $infoRecurso = $this->getTipoVista($peticion);
         $tipoEsperado = $infoRecurso['tipo'];
         $nombreVista = $infoRecurso['vista'] . 'Show';
+
         $contenedor = Contenedor::findOrFail($id);
         $this->validarTipoContenedor($contenedor, $tipoEsperado);
+
         $usuario = Auth::user();
 
         $contenedor->load([
-            'canciones' => function ($query) {
+            'canciones' => function ($query) use ($usuario) { // Pasar $usuario al closure
                 $query->select('canciones.id', 'canciones.titulo', 'canciones.archivo_url', 'canciones.foto_url', 'canciones.duracion')
-                      ->withPivot('id as pivot_id');
+                      ->withPivot('id as pivot_id')
+                      ->when($usuario, function ($q) use ($usuario) {
+                          $q->withExists(['loopzUsuarios as is_loopz_by_user' => function ($subQuery) use ($usuario) {
+                              $subQuery->where('user_id', $usuario->id);
+                          }]);
+                      });
             },
             'usuarios:id,name',
             'loopzusuarios:users.id'
         ]);
 
-        if ($usuario) {
-            $contenedor->can = [
-                'view'   => $usuario->can('view', $contenedor),
-                'edit'   => $usuario->can('update', $contenedor),
-                'delete' => $usuario->can('delete', $contenedor),
-            ];
-            $contenedor->is_liked_by_user = $contenedor->loopzusuarios->contains('id', $usuario->id);
-        } else {
-            $contenedor->can = [
-                'view'   => $contenedor->publico ?? false,
-                'edit'   => false,
-                'delete' => false,
-            ];
-            $contenedor->is_liked_by_user = false;
-        }
+         if ($usuario) {
+             $contenedor->can = [
+                 'view'   => $usuario->can('view', $contenedor),
+                 'edit'   => $usuario->can('update', $contenedor),
+                 'delete' => $usuario->can('delete', $contenedor),
+             ];
+             $contenedor->is_liked_by_user = $contenedor->loopzusuarios->contains('id', $usuario->id);
+
+             if (!isset($contenedor->canciones[0]->is_loopz_by_user)) {
+                foreach ($contenedor->canciones as $cancion) {
+                    $cancion->is_loopz_by_user = false;
+                }
+             }
+
+         } else {
+             $contenedor->is_liked_by_user = false;
+             foreach ($contenedor->canciones ?? [] as $cancion) {
+                $cancion->is_loopz_by_user = false;
+            }
+         }
+
 
         return Inertia::render($nombreVista, [
             'contenedor' => $contenedor,

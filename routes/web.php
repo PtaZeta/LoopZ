@@ -110,6 +110,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/contenedores/{contenedor}/toggle-loopz', [ContenedorController::class, 'toggleLoopz'])
          ->name('contenedores.toggle-loopz')
          ->where('contenedor', '[0-9]+');
+    Route::post('/canciones/{cancion}/toggle-loopz', [CancionController::class, 'toggleLoopz'])
+         ->name('canciones.toggle-loopz')
+         ->where('cancion', '[0-9]+');
 
 });
 
