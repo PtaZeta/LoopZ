@@ -58,17 +58,14 @@ class RegisteredUserController extends Controller
             'banner_perfil' => $rutaBannerPerfil,
         ]);
 
-        $playlist = Contenedor::create(
-            [
-                'nombre' => 'LoopZs',
-                'tipo' => 'loopzs',
-                'descripcion' => '',
-                'foto_perfil' => null,
-                'banner_perfil' => null,
-            ]
-        );
+        $playlist = Contenedor::create([
+            'user_id' => $user->id,
+            'nombre' => 'LoopZs',
+            'descripcion' => '',
+            'tipo' => 'loopz',
+        ]);
 
-        $user->perteneceContenedores()->attach($playlist->id, ['propietario' => true]);
+        $playlist->usuarios()->attach($user->id, ['propietario' => true]);
 
         event(new Registered($user));
 

@@ -37,33 +37,33 @@ Route::get('/biblioteca', function () {
     $usuario = Auth::user();
 
     $playlists = $usuario->perteneceContenedores()
-    ->whereIn('tipo', ['playlist', 'loopzs'])
-    ->with(['usuarios' => function ($query) {
-        $query->select('users.id', 'users.name')->withPivot('propietario');
-    }])
-    ->orderBy('pertenece_user.created_at', 'desc')
-    ->get()
-    ->map(function ($item) {
-        if ($item->tipo === 'loopzs') {
-            $item->tipo = 'loopzs';
-        } else {
-            $item->tipo = 'playlist';
-        }
-        return $item;
-    });
+        ->where(function ($query) {
+            $query->where('tipo', 'playlist')
+                  ->orWhere('tipo', 'loopz');
+        })
+        ->with(['usuarios' => function ($query) {
+           $query->select('users.id', 'users.name')->withPivot('propietario');
+        }])
+        ->orderBy('pertenece_user.created_at', 'desc')
+        ->get()
+        ->map(function ($item) {
+            $item->tipo = $item->tipo === 'loopz' ? 'loopz' : 'playlist';
+            return $item;
+         });
 
     $loopzs = $usuario->loopzContenedores()
          ->with(['usuarios' => function ($query) {
              $query->select('users.id', 'users.name')->withPivot('propietario');
          }])
-        ->orderBy('loopzs_contenedores.created_at', 'desc')
-        ->get();
+         ->orderBy('loopzs_contenedores.created_at', 'desc')
+         ->get();
 
     return Inertia::render('Biblioteca', [
         'playlists' => $playlists,
         'loopzContenedores' => $loopzs,
     ]);
 })->middleware(['auth', 'verified'])->name('biblioteca');
+
 
 Route::inertia('/terms', 'Static/Terms')->name('terms');
 Route::inertia('/privacy', 'Static/Privacy')->name('privacy');
@@ -110,10 +110,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/contenedores/{contenedor}/toggle-loopz', [ContenedorController::class, 'toggleLoopz'])
          ->name('contenedores.toggle-loopz')
          ->where('contenedor', '[0-9]+');
-    Route::post('/canciones/{cancion}/toggle-loopz', [CancionController::class, 'toggleLoopz'])
-         ->name('canciones.toggle-loopz')
-         ->where('cancion', '[0-9]+');
 
+    Route::resource('loopzs', ContenedorController::class);
+    Route::get('/loopzs/{contenedor}/songs/search', [ContenedorController::class, 'buscarCanciones'])->name('loopzs.songs.search');
+    Route::get('/cancion/{cancion}/loopz', [CancionController::class, 'cancionloopz'])->name('cancion.loopz');
 });
 
 
