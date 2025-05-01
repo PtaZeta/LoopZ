@@ -34,27 +34,34 @@ Route::get('/', function () {
 })->name('welcome');
 
 Route::get('/biblioteca', function () {
-        $usuario = Auth::user();
-        $playlists = $usuario->perteneceContenedores()
-            ->where('tipo', 'playlist')
-            ->with(['usuarios' => function ($query) {
-                 $query->select('users.id', 'users.name')->withPivot('propietario'); // Cargar pivot
-             }])
-            ->orderBy('pertenece_user.created_at', 'desc') // Ajustar tabla/columna si es necesario
-            ->get()
-            ->map(function ($item) { $item->tipo = 'playlist'; return $item; });
+    $usuario = Auth::user();
 
-        $loopzs = $usuario->loopzContenedores()
-             ->with(['usuarios' => function ($query) {
-                 $query->select('users.id', 'users.name')->withPivot('propietario'); // Cargar pivot
-             }])
-            ->orderBy('loopzs_contenedores.created_at', 'desc')
-            ->get();
+    $playlists = $usuario->perteneceContenedores()
+        ->where(function ($query) {
+            $query->where('tipo', 'playlist')
+                  ->orWhere('tipo', 'loopz');
+        })
+        ->with(['usuarios' => function ($query) {
+           $query->select('users.id', 'users.name')->withPivot('propietario');
+        }])
+        ->orderBy('pertenece_user.created_at', 'desc')
+        ->get()
+        ->map(function ($item) {
+            $item->tipo = $item->tipo === 'loopz' ? 'loopz' : 'playlist';
+            return $item;
+         });
 
-        return Inertia::render('Biblioteca', [
-            'playlists' => $playlists,
-            'loopzContenedores' => $loopzs,
-        ]);
+    $loopzs = $usuario->loopzContenedores()
+         ->with(['usuarios' => function ($query) {
+             $query->select('users.id', 'users.name')->withPivot('propietario');
+         }])
+         ->orderBy('loopzs_contenedores.created_at', 'desc')
+         ->get();
+
+    return Inertia::render('Biblioteca', [
+        'playlists' => $playlists,
+        'loopzContenedores' => $loopzs,
+    ]);
 })->middleware(['auth', 'verified'])->name('biblioteca');
 
 
@@ -104,6 +111,9 @@ Route::middleware('auth')->group(function () {
          ->name('contenedores.toggle-loopz')
          ->where('contenedor', '[0-9]+');
 
+    Route::resource('loopzs', ContenedorController::class);
+    Route::get('/loopzs/{contenedor}/songs/search', [ContenedorController::class, 'buscarCanciones'])->name('loopzs.songs.search');
+    Route::get('/cancion/{cancion}/loopz', [CancionController::class, 'cancionloopz'])->name('cancion.loopz');
 });
 
 
