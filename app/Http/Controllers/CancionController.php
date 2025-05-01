@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Log;
 
 class CancionController extends Controller
 {
@@ -393,31 +392,25 @@ class CancionController extends Controller
         }
     }
 
-    public function toggleLoopz(Request $request, Cancion $cancion)
+    public function cancionloopz($idCancion)
     {
+        $cancion = Cancion::findOrFail($idCancion);
         $user = Auth::user();
 
-        if (!$user) {
-            return Redirect::back()->with('error', 'Debes iniciar sesión.');
+        $playlistloopz = $user->perteneceContenedores()
+            ->where('tipo', 'loopz')
+            ->pluck('id');
+
+        foreach ($playlistloopz as $contenedorId) {
+            if ($cancion->contenedores()
+                        ->wherePivot('contenedor_id', $contenedorId)
+                        ->exists()
+            ) {
+                $cancion->contenedores()->detach($contenedorId);
+            } else {
+                $cancion->contenedores()->attach($contenedorId);
+            }
         }
-
-        if (!method_exists($cancion, 'loopzUsuarios')) {
-             Log::error("La relación 'loopzUsuarios' no existe en el modelo Cancion.");
-             return Redirect::back()->with('error', 'Error interno al procesar la solicitud.');
-        }
-
-        $relation = $cancion->loopzUsuarios();
-        $isLiked = $relation->where('user_id', $user->id)->exists();
-
-        if ($isLiked) {
-            $relation->detach($user->id);
-            $mensaje = 'Canción quitada de LoopZ.';
-        } else {
-            $relation->attach($user->id);
-            $mensaje = 'Canción añadida a LoopZ.';
-        }
-
-        return Redirect::back()->with('success', $mensaje);
     }
 
 }

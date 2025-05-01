@@ -88,7 +88,7 @@ const getResourceRouteBase = (tipo) => {
         case 'playlist': return 'playlists';
         case 'ep': return 'eps';
         case 'single': return 'singles';
-        case 'loopzs': return 'playlists';
+        case 'loopz': return 'loopzs';
         default: return tipo ? `${tipo}s` : 'items';
     }
 };
