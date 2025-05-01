@@ -44,4 +44,9 @@ class Contenedor extends Model
     {
         return $this->belongsToMany(User::class, 'loopzs_contenedores', 'contenedor_id', 'user_id');
     }
+
+    public function loopzcanciones()
+    {
+        return $this->belongsToMany(Cancion::class, 'loopzs_canciones', 'contenedor_id', 'cancion_id');
+    }
 }

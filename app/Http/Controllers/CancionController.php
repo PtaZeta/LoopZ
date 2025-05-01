@@ -391,4 +391,26 @@ class CancionController extends Controller
             return null;
         }
     }
+
+    public function cancionloopz($idCancion)
+    {
+        $cancion = Cancion::findOrFail($idCancion);
+        $user = Auth::user();
+
+        $playlistloopz = $user->perteneceContenedores()
+            ->where('tipo', 'loopz')
+            ->pluck('id');
+
+        foreach ($playlistloopz as $contenedorId) {
+            if ($cancion->contenedores()
+                        ->wherePivot('contenedor_id', $contenedorId)
+                        ->exists()
+            ) {
+                $cancion->contenedores()->detach($contenedorId);
+            } else {
+                $cancion->contenedores()->attach($contenedorId);
+            }
+        }
+    }
+
 }

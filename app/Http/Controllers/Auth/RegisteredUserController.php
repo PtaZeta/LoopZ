@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Contenedor;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -56,6 +57,15 @@ class RegisteredUserController extends Controller
             'foto_perfil' => $rutaFotoPerfil,
             'banner_perfil' => $rutaBannerPerfil,
         ]);
+
+        $playlist = Contenedor::create([
+            'user_id' => $user->id,
+            'nombre' => 'LoopZs',
+            'descripcion' => '',
+            'tipo' => 'loopz',
+        ]);
+
+        $playlist->usuarios()->attach($user->id, ['propietario' => true]);
 
         event(new Registered($user));
 

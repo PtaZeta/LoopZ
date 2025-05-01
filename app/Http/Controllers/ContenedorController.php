@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
 
 class ContenedorController extends Controller
 {
@@ -38,6 +39,10 @@ class ContenedorController extends Controller
             $tipo = 'single';
             $vistaBase = 'singles/';
             $nombreRutaBase = 'singles';
+        } elseif ($peticion->routeIs('loopzs.*')) {
+            $tipo = 'loopz';
+            $vistaBase = 'loopzs/';
+            $nombreRutaBase = 'loopzs';
         } else {
             Log::warning('Acceso a ContenedorController desde ruta no reconocida: ' . $peticion->path());
             abort(404, 'Tipo de recurso no soportado.');
@@ -69,6 +74,24 @@ class ContenedorController extends Controller
         }
     }
 
+    private function getLoopzSongIdsForUser($user): array
+    {
+        if (!$user) {
+            return [];
+        }
+        $loopzPlaylist = $user->perteneceContenedores()
+                              ->where('tipo', 'loopz')
+                              ->first();
+
+        if (!$loopzPlaylist) {
+            return [];
+        }
+
+        return DB::table('cancion_contenedor')
+                 ->where('contenedor_id', $loopzPlaylist->id)
+                 ->pluck('cancion_id')
+                 ->all();
+    }
 
     public function index(Request $peticion)
     {
@@ -184,15 +207,21 @@ class ContenedorController extends Controller
         $this->validarTipoContenedor($contenedor, $tipoEsperado);
 
         $usuario = Auth::user();
+        $loopzSongIds = $this->getLoopzSongIdsForUser($usuario);
 
         $contenedor->load([
             'canciones' => function ($query) {
                 $query->select('canciones.id', 'canciones.titulo', 'canciones.archivo_url', 'canciones.foto_url', 'canciones.duracion')
-                      ->withPivot('id as pivot_id');
+                      ->withPivot('id as pivot_id', 'created_at as pivot_created_at')
+                      ->orderBy('pivot_created_at');
             },
             'usuarios:id,name',
             'loopzusuarios:users.id'
         ]);
+
+        $contenedor->canciones->each(function ($cancion) use ($loopzSongIds) {
+            $cancion->is_in_user_loopz = in_array($cancion->id, $loopzSongIds);
+        });
 
         if ($usuario) {
             $contenedor->can = [
@@ -202,12 +231,12 @@ class ContenedorController extends Controller
             ];
             $contenedor->is_liked_by_user = $contenedor->loopzusuarios->contains('id', $usuario->id);
         } else {
-            $contenedor->can = [
+             $contenedor->can = [
                 'view'   => $contenedor->publico ?? false,
                 'edit'   => false,
                 'delete' => false,
             ];
-            $contenedor->is_liked_by_user = false;
+             $contenedor->is_liked_by_user = false;
         }
 
         return Inertia::render($nombreVista, [
@@ -344,37 +373,43 @@ class ContenedorController extends Controller
 
     public function buscarCanciones(Request $peticion, Contenedor $contenedor)
     {
-        if (!in_array($contenedor->tipo, ['playlist', 'album', 'ep', 'single'])) {
+        if (!in_array($contenedor->tipo, ['playlist', 'album', 'ep', 'single', 'loopz'])) {
              return response()->json(['error' => 'Tipo de contenedor no válido para buscar canciones'], 400);
         }
 
         $usuario = Auth::user();
+        $loopzSongIds = $this->getLoopzSongIdsForUser($usuario);
         $consulta = $peticion->input('query', '');
         $minimoBusqueda = 1;
         $limite = 30;
 
-        $idsColaboradores = [];
-        if (method_exists($contenedor, 'usuarios')) {
-             $idsColaboradores = $contenedor->usuarios()->pluck('users.id')->toArray();
-        }
+        // $idsColaboradores = [];
+        // if (method_exists($contenedor, 'usuarios')) {
+        //      $idsColaboradores = $contenedor->usuarios()->pluck('users.id')->toArray();
+        // }
 
         $idsCancionesExistentes = [];
-        if (in_array($contenedor->tipo, ['album', 'ep', 'single']) && method_exists($contenedor, 'canciones')) {
-            $idsCancionesExistentes = $contenedor->canciones()->pluck('canciones.id')->all();
-        }
+         if (in_array($contenedor->tipo, ['album', 'ep', 'single']) && method_exists($contenedor, 'canciones')) {
+             $idsCancionesExistentes = $contenedor->canciones()->pluck('canciones.id')->all();
+         }
 
         $consultaCanciones = Cancion::query()
             ->with('usuarios:id,name')
-            ->where(function ($q) use ($usuario, $idsColaboradores) {
-                $q->where('publico', true);
-                if ($usuario) {
+            ->where(function ($q) use ($usuario /*, $idsColaboradores */) {
+                 $q->where('publico', true);
+                 if ($usuario) {
                      $q->orWhereHas('usuarios', function ($q2) use ($usuario) {
                          $q2->where('users.id', $usuario->id);
                      });
-                }
+                    //  if(!empty($idsColaboradores)) {
+                    //      $q->orWhereHas('usuarios', function ($q3) use ($idsColaboradores) {
+                    //          $q3->whereIn('users.id', $idsColaboradores);
+                    //      });
+                    //  }
+                 }
             });
 
-        if (in_array($contenedor->tipo, ['album', 'ep', 'single']) && !empty($idsCancionesExistentes)) {
+        if (!empty($idsCancionesExistentes)) {
             $consultaCanciones->whereNotIn('canciones.id', $idsCancionesExistentes);
         }
 
@@ -386,9 +421,13 @@ class ContenedorController extends Controller
         }
 
         $resultados = $consultaCanciones
-            ->select('canciones.id', 'canciones.titulo', 'canciones.foto_url')
+            ->select('canciones.id', 'canciones.titulo', 'canciones.foto_url', 'canciones.duracion')
             ->limit($limite)
             ->get();
+
+        $resultados->each(function ($cancion) use ($loopzSongIds) {
+            $cancion->is_in_user_loopz = in_array($cancion->id, $loopzSongIds);
+        });
 
         return response()->json($resultados);
     }
@@ -408,16 +447,16 @@ class ContenedorController extends Controller
 
         if (method_exists($contenedor, 'canciones')) {
              if (in_array($contenedor->tipo, ['album', 'ep', 'single'])) {
-                  $yaExiste = $contenedor->canciones()->where('canciones.id', $idCancion)->exists();
-                  if ($yaExiste) {
-                      $mensaje = 'Esta canción ya está en el ' . $tipoNombre . '.';
-                  } else {
-                      $contenedor->canciones()->attach($idCancion);
-                      $mensaje = 'Canción añadida al ' . $tipoNombre . '.';
-                  }
-             } else {
-                  $contenedor->canciones()->attach($idCancion);
-                  $mensaje = 'Canción añadida a la ' . $tipoNombre . '.';
+                 $yaExiste = $contenedor->canciones()->where('canciones.id', $idCancion)->exists();
+                 if ($yaExiste) {
+                     $mensaje = 'Esta canción ya está en el ' . $tipoNombre . '.';
+                 } else {
+                     $contenedor->canciones()->attach($idCancion);
+                     $mensaje = 'Canción añadida al ' . $tipoNombre . '.';
+                 }
+             } else { // Playlists pueden tener duplicados (si se desea)
+                 $contenedor->canciones()->attach($idCancion);
+                 $mensaje = 'Canción añadida a la ' . $tipoNombre . '.';
              }
         } else {
              Log::error("Relación 'canciones' no encontrada en Contenedor ID: " . $contenedor->id);
