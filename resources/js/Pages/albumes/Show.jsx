@@ -163,7 +163,6 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         if (contenedor?.id) {
             buscarCancionesApi('');
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [contenedor?.id, buscarCancionesApi]);
 
 
@@ -189,7 +188,6 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             setContenedor(contenedorInicial);
             setIsLiked(contenedorInicial?.is_liked_by_user || false);
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pagina.props.contenedor, contenedorInicial]);
 
 
@@ -386,14 +384,14 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                         <span className="text-gray-400 text-xs pr-2 hidden sm:inline">{formatearDuracion(cancion.duracion)}</span>
                                         <Link
                                             href={route('cancion.loopz', { cancion: cancion.id })}
-                                            method="get" // Cambiado a post si es una acción que modifica estado
+                                            method="get"
                                             as="button"
                                             className="p-1 text-gray-400 hover:text-purple-400 focus:outline-none flex-shrink-0"
                                             title={cancion.is_in_user_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ"}
                                             preserveScroll
-                                            preserveState={false} // Podría ser true con manejo optimista
-                                            onSuccess={(page) => { // Actualizar estado local si es necesario
-                                                const updatedSong = page.props.cancion; // Asume que el backend devuelve la canción actualizada
+                                            preserveState={false}
+                                            onSuccess={(page) => {
+                                                const updatedSong = page.props.cancion;
                                                 if (updatedSong) {
                                                     startTransition(()=>{
                                                         setContenedor(prev => ({
