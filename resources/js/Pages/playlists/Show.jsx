@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo, startTransition } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import PropTypes from 'prop-types';
@@ -9,7 +9,8 @@ import {
     PlayIcon,
     PencilIcon,
     ArrowUturnLeftIcon,
-    HeartIcon as HeartIconOutline
+    HeartIcon as HeartIconOutline,
+    ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 
@@ -23,7 +24,7 @@ const obtenerUrlImagen = (item) => {
     return null;
 };
 
-const ImagenItem = ({ url, titulo, className = "w-10 h-10", iconoFallback }) => {
+const ImagenItem = memo(({ url, titulo, className = "w-10 h-10", iconoFallback }) => {
     const [src, setSrc] = useState(url);
     const [error, setError] = useState(false);
 
@@ -55,7 +56,7 @@ const ImagenItem = ({ url, titulo, className = "w-10 h-10", iconoFallback }) => 
             onError={manejarErrorImagen}
         />
     );
-};
+});
 
 ImagenItem.propTypes = {
     url: PropTypes.string,
@@ -63,6 +64,8 @@ ImagenItem.propTypes = {
     className: PropTypes.string,
     iconoFallback: PropTypes.node,
 };
+ImagenItem.displayName = 'ImagenItem';
+
 
 const getTipoNombreMayuscula = (tipo) => {
     if (!tipo) return 'Elemento';
@@ -95,6 +98,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
     const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
     const [estaBuscando, setEstaBuscando] = useState(false);
     const [anadiendoCancionId, setAnadiendoCancionId] = useState(null);
+    const [eliminandoPivotId, setEliminandoPivotId] = useState(null);
     const [likeProcessing, setLikeProcessing] = useState(false);
     const minQueryLength = 2;
 
@@ -106,39 +110,102 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
     const buscarCancionesApi = useCallback(async (consulta) => {
         if (!contenedor?.id) return;
         setEstaBuscando(true);
+        startTransition(() => {
+             setResultadosBusqueda([]);
+        });
         try {
             const nombreRutaBusqueda = `${rutaBase}.songs.search`;
             const urlBusqueda = route(nombreRutaBusqueda, { contenedor: contenedor.id, query: consulta });
             const respuesta = await fetch(urlBusqueda, {
-                 headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                 }
-            });
+                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+             });
             if (!respuesta.ok) {
-                let errorMsg = `La respuesta de red no fue correcta (${respuesta.status})`;
+                let errorMsg = `API Error ${respuesta.status}`;
                 try { const errorBody = await respuesta.text(); errorMsg += ` - ${errorBody}`; } catch (e) {}
                 throw new Error(errorMsg);
             }
             const datos = await respuesta.json();
-            setResultadosBusqueda(Array.isArray(datos) ? datos : []);
+            startTransition(() => {
+                setResultadosBusqueda(Array.isArray(datos) ? datos : []);
+            });
         } catch (error) {
-            console.error("Error al obtener canciones:", error);
-            setResultadosBusqueda([]);
+            console.error("API Error:", error);
+             startTransition(() => {
+                setResultadosBusqueda([]);
+             });
         } finally {
             setEstaBuscando(false);
         }
     }, [contenedor?.id, rutaBase]);
 
-    const busquedaDebounced = useCallback(debounce(buscarCancionesApi, 300), [buscarCancionesApi]);
+    const busquedaDebounced = useCallback(debounce(buscarCancionesApi, 350), [buscarCancionesApi]);
+
+    const manejarCambioInputBusqueda = (e) => {
+        const nuevaConsulta = e.target.value;
+        setConsultaBusqueda(nuevaConsulta);
+
+        if (nuevaConsulta.length >= minQueryLength) {
+            busquedaDebounced(nuevaConsulta);
+        } else {
+            busquedaDebounced.cancel();
+            setEstaBuscando(false);
+            if (nuevaConsulta.length === 0) {
+                buscarCancionesApi('');
+            } else {
+                 startTransition(() => {
+                    setResultadosBusqueda([]);
+                 });
+            }
+        }
+    };
+
+    useEffect(() => {
+        if (contenedor?.id) {
+            buscarCancionesApi('');
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [contenedor?.id, buscarCancionesApi]);
+
+
+    useEffect(() => {
+        const contenedorActualizado = pagina.props.contenedor;
+
+        if (contenedorActualizado && contenedorActualizado.id === (contenedorInicial?.id || contenedor?.id)) {
+
+            if (JSON.stringify(contenedorActualizado) !== JSON.stringify(contenedor)) {
+                 if (!Array.isArray(contenedorActualizado.canciones)) { contenedorActualizado.canciones = []; }
+                 contenedorActualizado.canciones.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
+                 setContenedor(contenedorActualizado);
+            }
+
+            const likedStatusProps = contenedorActualizado?.is_liked_by_user || false;
+            if (likedStatusProps !== isLiked) {
+                setIsLiked(likedStatusProps);
+            }
+
+        } else if (contenedorInicial && !contenedor) {
+            if (!Array.isArray(contenedorInicial.canciones)) { contenedorInicial.canciones = []; }
+            contenedorInicial.canciones.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
+            setContenedor(contenedorInicial);
+            setIsLiked(contenedorInicial?.is_liked_by_user || false);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pagina.props.contenedor, contenedorInicial]);
+
+
+    const resultadosFiltrados = useMemo(() => {
+        const idsEnContenedor = new Set(contenedor?.canciones?.map(c => c.id) || []);
+        return resultadosBusqueda.filter(c => !idsEnContenedor.has(c.id));
+    }, [resultadosBusqueda, contenedor?.canciones]);
+
 
     const manejarEliminarCancion = (pivotId) => {
-        if (!pivotId) {
-            console.error("Error: No se proporcionó ID de pivot para eliminar.");
-            alert("Error al intentar eliminar la canción (sin ID específico). Refresca la página.");
+        if (!pivotId || eliminandoPivotId === pivotId) {
             return;
         }
         const nombreRutaRemove = `${rutaBase}.songs.remove`;
+        setEliminandoPivotId(pivotId);
+
         router.delete(route(nombreRutaRemove, {
             contenedor: contenedor.id,
             pivotId: pivotId
@@ -149,7 +216,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                 if (page.props.contenedor) {
                      if (page.props.contenedor.canciones && Array.isArray(page.props.contenedor.canciones)) {
                          page.props.contenedor.canciones.forEach(c => {
-                            if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false;
+                             if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false;
                          });
                      }
                     setContenedor(page.props.contenedor);
@@ -158,19 +225,17 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             },
             onError: (errores) => {
                 console.error("Error al eliminar canción:", errores);
-                const errorMsg = errores?.message || errores?.error || 'Error desconocido al eliminar la canción. Revisa la consola.';
+                const errorMsg = errores?.message || errores?.error || 'Error desconocido al eliminar la canción.';
                 alert(errorMsg);
+            },
+            onFinish: () => {
+                setEliminandoPivotId(null);
             },
         });
     };
 
-    const manejarCambioInputBusqueda = (e) => {
-        const consulta = e.target.value;
-        setConsultaBusqueda(consulta);
-        busquedaDebounced(consulta);
-    };
-
     const manejarAnadirCancion = (idCancion) => {
+        if (anadiendoCancionId === idCancion) return;
         setAnadiendoCancionId(idCancion);
         const nombreRutaAdd = `${rutaBase}.songs.add`;
         router.post(route(nombreRutaAdd, contenedor.id), {
@@ -181,20 +246,21 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             onSuccess: (page) => {
                  if (page.props.contenedor) {
                      if (page.props.contenedor.canciones && Array.isArray(page.props.contenedor.canciones)) {
-                          page.props.contenedor.canciones.forEach(c => {
-                             if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false;
-                          });
+                           page.props.contenedor.canciones.forEach(c => {
+                               if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false;
+                           });
                      }
-                    setContenedor(page.props.contenedor);
-                    setIsLiked(page.props.contenedor?.is_liked_by_user || false);
-                }
-                setResultadosBusqueda(prev => prev.filter(song => song.id !== idCancion));
+                     setContenedor(page.props.contenedor);
+                     setIsLiked(page.props.contenedor?.is_liked_by_user || false);
+                 }
+                 startTransition(() => {
+                    setResultadosBusqueda(prev => prev.filter(song => song.id !== idCancion));
+                 });
             },
             onFinish: () => setAnadiendoCancionId(null),
             onError: (errores) => {
                 console.error("Error al añadir canción:", errores);
-                setAnadiendoCancionId(null);
-                const errorMsg = errores?.message || errores?.error || 'Error desconocido al añadir la canción. Revisa la consola.';
+                const errorMsg = errores?.message || errores?.error || 'Error desconocido al añadir la canción.';
                 alert(errorMsg);
             },
         });
@@ -206,56 +272,18 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
 
         router.post(route('contenedores.toggle-loopz', { contenedor: contenedor.id }), {}, {
             preserveScroll: true,
-            preserveState: false,
+            preserveState: true,
             onSuccess: (page) => {
-                if (page.props.contenedor) {
-                    setIsLiked(page.props.contenedor?.is_liked_by_user ?? isLiked);
-                     if (page.props.contenedor.canciones && Array.isArray(page.props.contenedor.canciones)) {
-                          page.props.contenedor.canciones.forEach(c => {
-                             if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false;
-                          });
-                     }
-                    setContenedor(page.props.contenedor);
-                }
+                 setIsLiked(prev => !prev);
             },
             onError: (errors) => {
-                console.error("Error en la operación 'LoopZ' del contenedor:", errors);
-                alert('Error al actualizar el estado "LoopZ" del contenedor.');
+                console.error("Error en la operación 'LoopZ':", errors);
+                alert('Error al actualizar el estado "LoopZ".');
+                 setIsLiked(prev => !prev);
             },
             onFinish: () => setLikeProcessing(false),
         });
     };
-
-     useEffect(() => {
-         if (contenedor?.id) {
-             buscarCancionesApi(consultaBusqueda);
-         }
-      }, [buscarCancionesApi, contenedor?.id]);
-
-
-    useEffect(() => {
-        const contenedorActualizado = pagina.props.contenedor;
-        if (contenedorActualizado && contenedorActualizado.id === (contenedorInicial?.id || contenedor?.id)) {
-            if (!Array.isArray(contenedorActualizado.canciones)) {
-                 contenedorActualizado.canciones = [];
-            }
-             contenedorActualizado.canciones.forEach(c => {
-                 if (typeof c.is_in_user_loopz === 'undefined') {
-                    c.is_in_user_loopz = false;
-                 }
-             });
-            setContenedor(contenedorActualizado);
-            setIsLiked(contenedorActualizado?.is_liked_by_user || false);
-        } else if (contenedorInicial && !contenedor) {
-             if (!Array.isArray(contenedorInicial.canciones)) { contenedorInicial.canciones = []; }
-              contenedorInicial.canciones.forEach(c => {
-                  if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false;
-              });
-             setContenedor(contenedorInicial);
-             setIsLiked(contenedorInicial?.is_liked_by_user || false);
-        }
-    }, [pagina.props.contenedor, contenedorInicial]);
-
 
     const formatearDuracion = (segundos) => {
         if (isNaN(segundos) || segundos < 0) return 'N/A';
@@ -264,16 +292,8 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         return `${minutes}:${secondsRestantes}`;
     };
 
-    const artistas = contenedor?.usuarios && contenedor.usuarios.length > 0
-        ? contenedor.usuarios.map(u => u.name).join(', ')
-        : 'Desconocido';
-
+    const artistas = contenedor?.usuarios?.map(u => u.name).join(', ') || 'Desconocido';
     const nombreRutaEdit = `${rutaBase}.edit`;
-
-    // Filter search results to exclude songs already in the container
-    const resultadosFiltrados = resultadosBusqueda.filter(
-        c => !(contenedor?.canciones?.some(songInContainer => songInContainer.id === c.id))
-    );
 
     return (
         <AuthenticatedLayout
@@ -286,7 +306,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                     {contenedor?.can?.edit && (
                         <Link
                             href={route(nombreRutaEdit, contenedor.id)}
-                            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-pink-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:from-blue-600 hover:to-pink-600 active:from-blue-700 active:to-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 transition ease-in-out duration-150 shadow-md flex-shrink-0"
+                            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:from-purple-600 hover:to-blue-600 active:from-purple-700 active:to-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 transition ease-in-out duration-150 shadow-md flex-shrink-0"
                             title={`Editar ${tipoNombreMayuscula}`}
                         >
                             <PencilIcon className="h-4 w-4 mr-1" />
@@ -300,26 +320,26 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
 
             <div className="py-12 min-h-screen">
                 <div className="mx-auto max-w-6xl sm:px-6 lg:px-8">
-                    {/* Contenedor info */}
+
                     <div className="md:flex md:items-end md:space-x-8 p-6 md:p-10 bg-transparent">
-                        <div className="flex-shrink-0 w-48 h-48 lg:w-64 lg:h-64 mb-6 md:mb-0 mx-auto md:mx-0 shadow-2xl rounded-lg overflow-hidden border-4 border-slate-700/50">
+                        <div className="flex-shrink-0 w-48 h-48 lg:w-64 lg:h-64 mb-6 md:mb-0 mx-auto md:mx-0 shadow-2xl rounded-lg overflow-hidden border-4 border-purple-800/50">
                             {urlImagenContenedor ? (
                                 <img src={urlImagenContenedor} alt={`Cover de ${contenedor?.nombre}`} className="w-full h-full object-cover" />
                             ) : (
-                                <div className="w-full h-full bg-slate-800 flex items-center justify-center text-slate-500">
+                                <div className="w-full h-full bg-slate-800 flex items-center justify-center text-purple-500">
                                     <MusicalNoteIcon className="h-24 w-24" />
                                 </div>
                             )}
                         </div>
                         <div className="flex-grow text-center md:text-left">
-                            <p className="text-sm font-medium uppercase tracking-wider text-blue-400 mb-1">{tipoNombreMayuscula}</p>
+                            <p className="text-sm font-medium uppercase tracking-wider text-purple-400 mb-1">{tipoNombreMayuscula}</p>
                             <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold mb-4 text-white break-words shadow-sm">
                                 {contenedor?.nombre}
                             </h1>
                             <div className="flex flex-wrap justify-center md:justify-start items-center space-x-3 text-sm text-gray-300 mb-8">
                                 {contenedor?.usuarios?.[0]?.name && <span className="font-semibold">{contenedor.usuarios[0].name}</span>}
                                 {artistas !== 'Desconocido' && artistas !== contenedor?.usuarios?.[0]?.name && (
-                                    <span className="text-pink-400 font-semibold">• {artistas}</span>
+                                    <span className="text-blue-400 font-semibold">• {artistas}</span>
                                 )}
                                 <span className="hidden sm:inline">• {contenedor?.canciones_count ?? contenedor?.canciones?.length ?? 0} canciones</span>
                                 <span className="hidden md:inline">
@@ -329,7 +349,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                             <div className="flex items-center justify-center md:justify-start space-x-4">
                                 <button
                                     onClick={() => alert('Funcionalidad de reproducción no implementada')}
-                                    className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-pink-500 to-rose-500 rounded-full font-semibold text-white shadow-lg hover:scale-105 transform transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-400 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50"
+                                    className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full font-semibold text-white shadow-lg hover:scale-105 transform transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50"
                                     title="Reproducir"
                                     disabled={!contenedor?.canciones || contenedor.canciones.length === 0}
                                 >
@@ -338,14 +358,14 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                 <button
                                     onClick={toggleLoopz}
                                     disabled={likeProcessing || !contenedor?.id}
-                                    className={`p-2 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${likeProcessing ? 'text-gray-500 cursor-wait' : 'text-gray-400 hover:text-pink-500'}`}
+                                    className={`p-2 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${likeProcessing ? 'text-gray-500 cursor-wait' : 'text-gray-400 hover:text-purple-400'}`}
                                     title={isLiked ? `Quitar ${tipoNombreMayuscula} de LoopZ` : `Añadir ${tipoNombreMayuscula} a LoopZ`}
                                 >
-                                    {isLiked ? <HeartIconSolid className="h-7 w-7 text-pink-500" /> : <HeartIconOutline className="h-7 w-7" />}
+                                    {likeProcessing ? <ArrowPathIcon className="h-7 w-7 animate-spin text-purple-400"/> : (isLiked ? <HeartIconSolid className="h-7 w-7 text-purple-500" /> : <HeartIconOutline className="h-7 w-7" />)}
                                 </button>
                                 <button
                                     onClick={() => window.history.back()}
-                                    className="inline-flex items-center px-4 py-2 border border-slate-600 rounded-full font-semibold text-xs text-gray-300 uppercase tracking-widest shadow-sm hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-25 transition ease-in-out duration-150"
+                                    className="inline-flex items-center px-4 py-2 border border-slate-600 rounded-full font-semibold text-xs text-gray-300 uppercase tracking-widest shadow-sm hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-25 transition ease-in-out duration-150"
                                 >
                                     <ArrowUturnLeftIcon className="h-4 w-4 mr-1" />Volver
                                 </button>
@@ -353,27 +373,26 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                         </div>
                     </div>
 
-                    {/* Lista de canciones en contenedor */}
-                    <div className="mt-10 p-6 md:p-8 bg-slate-800/80 backdrop-blur-sm shadow-inner rounded-lg">
+                    <div className="mt-10 p-6 md:p-8 bg-slate-800/80 backdrop-blur-sm shadow-inner rounded-lg border border-slate-700">
                         <h3 className="text-xl font-semibold mb-4 text-gray-100">
                             Canciones en est{tipoContenedor === 'playlist' ? 'a' : 'e'} {tipoNombreMayuscula} ({contenedor?.canciones?.length || 0})
                         </h3>
                         {contenedor?.canciones && contenedor.canciones.length > 0 ? (
                             <ul className="space-y-2">
                                 {contenedor.canciones.map((cancion) => (
-                                    <li key={cancion.pivot?.id ?? `fallback-${cancion.id}`} className="p-2 bg-slate-700/60 rounded-md flex items-center space-x-3 hover:bg-slate-600/80 transition-colors duration-150">
+                                    <li key={cancion.pivot?.id ?? `fallback-${cancion.id}`} className="p-2 bg-slate-700/60 rounded-md flex items-center space-x-3 hover:bg-purple-900/30 transition-colors duration-150 group">
                                         <ImagenItem url={obtenerUrlImagen(cancion)} titulo={cancion.titulo} className="w-10 h-10" iconoFallback={<MusicalNoteIcon className="h-5 w-5"/>} />
                                         <span className="text-gray-200 flex-grow truncate" title={cancion.titulo}>{cancion.titulo}</span>
                                         <span className="text-gray-400 text-xs pr-2 hidden sm:inline">{formatearDuracion(cancion.duracion)}</span>
                                         <Link
                                             href={route('cancion.loopz', { cancion: cancion.id })}
-                                            className="p-1 text-gray-400 hover:text-pink-500 focus:outline-none flex-shrink-0"
+                                            className="p-1 text-gray-400 hover:text-purple-400 focus:outline-none flex-shrink-0"
                                             title={cancion.is_in_user_loopz ? "Gestionar en LoopZ" : "Añadir a LoopZ"}
                                             preserveScroll
                                             preserveState={false}
                                         >
                                             {cancion.is_in_user_loopz ? (
-                                                <HeartIconSolid className="h-5 w-5 text-pink-500" />
+                                                <HeartIconSolid className="h-5 w-5 text-purple-500" />
                                             ) : (
                                                 <HeartIconOutline className="h-5 w-5" />
                                             )}
@@ -385,11 +404,11 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                                         manejarEliminarCancion(cancion.pivot?.id)
                                                     }
                                                 }}
-                                                disabled={!cancion.pivot?.id}
-                                                className="ml-2 p-1.5 text-red-500 hover:text-red-400 focus:outline-none focus:ring-2 focus:ring-purple-500 rounded-md transition-colors duration-150 disabled:opacity-50 flex-shrink-0"
-                                                title={!cancion.pivot?.id ? "Error: No se pudo identificar esta entrada específica" : `Quitar de ${tipoNombreMayuscula}`}
+                                                disabled={!cancion.pivot?.id || eliminandoPivotId === cancion.pivot?.id}
+                                                className="ml-2 p-1.5 text-red-500 hover:text-red-400 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md transition-colors duration-150 disabled:opacity-50 disabled:cursor-wait flex-shrink-0"
+                                                title={!cancion.pivot?.id ? "Error ID" : `Quitar de ${tipoNombreMayuscula}`}
                                             >
-                                                <TrashIcon className="w-4 h-4"/>
+                                                {eliminandoPivotId === cancion.pivot?.id ? <ArrowPathIcon className="w-4 h-4 animate-spin"/> : <TrashIcon className="w-4 h-4"/>}
                                             </button>
                                         )}
                                     </li>
@@ -400,9 +419,8 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                         )}
                     </div>
 
-                    {/* Buscador y añadir canciones */}
                     {contenedor?.can?.edit && (
-                        <div className="mt-10 p-6 md:p-8 bg-slate-800/80 backdrop-blur-sm shadow-inner rounded-lg">
+                        <div className="mt-10 p-6 md:p-8 bg-slate-800/80 backdrop-blur-sm shadow-inner rounded-lg border border-slate-700">
                             <h3 className="text-xl font-semibold mb-4 text-gray-100">Añadir Canciones</h3>
                             <div className="mb-4">
                                 <input
@@ -410,77 +428,61 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                     placeholder="Buscar canciones por título..."
                                     value={consultaBusqueda}
                                     onChange={manejarCambioInputBusqueda}
-                                    className="w-full px-4 py-2 border border-slate-600 rounded-md shadow-sm focus:ring-purple-500 focus:border-transparent bg-slate-700 text-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-slate-800"
+                                    className="w-full px-4 py-2 border border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-slate-700 text-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-slate-800"
                                     disabled={!contenedor?.id}
                                 />
                             </div>
 
                             {estaBuscando && <p className="text-gray-400 italic text-center">Buscando...</p>}
 
-                            {/* Display filtered results */}
                             {!estaBuscando && resultadosFiltrados.length > 0 && (
                                 <div className="max-h-60 overflow-y-auto border border-slate-600 rounded-md p-2 space-y-2 bg-slate-700/50">
                                     <h4 className="text-sm font-semibold text-gray-300 mb-2">
-                                        {consultaBusqueda.length >= minQueryLength ? 'Resultados:' : 'Canciones Disponibles (que no están ya añadidas):'}
+                                        {consultaBusqueda.length >= minQueryLength ? 'Resultados:' : 'Canciones Disponibles:'}
                                     </h4>
                                     <ul>
                                         {resultadosFiltrados.map((c) => (
-                                            <li key={c.id} className="flex items-center justify-between p-2 hover:bg-slate-600 rounded space-x-3">
-                                                <div className="flex items-center space-x-3 flex-grow overflow-hidden">
-                                                    <ImagenItem url={obtenerUrlImagen(c)} titulo={c.titulo} className="w-10 h-10" iconoFallback={<MusicalNoteIcon className="h-5 w-5"/>} />
-                                                    <span className="text-gray-200 truncate" title={c.titulo}>{c.titulo}</span>
-                                                </div>
-                                                <div className="flex items-center space-x-2 flex-shrink-0">
-                                                     <Link
-                                                        href={route('cancion.loopz', { cancion: c.id })}
-                                                        className="p-1 text-gray-400 hover:text-pink-500 focus:outline-none"
-                                                        title={c.is_in_user_loopz ? "Gestionar en LoopZ" : "Añadir a LoopZ"}
-                                                        preserveScroll
-                                                        preserveState={false}
-                                                    >
-                                                        {c.is_in_user_loopz ? (
-                                                            <HeartIconSolid className="h-5 w-5 text-pink-500" />
-                                                        ) : (
-                                                            <HeartIconOutline className="h-5 w-5" />
-                                                        )}
-                                                    </Link>
-                                                    <button
-                                                        onClick={() => manejarAnadirCancion(c.id)}
-                                                        disabled={anadiendoCancionId === c.id}
-                                                        className={`ml-2 px-3 py-1 text-xs font-semibold rounded-md transition ease-in-out duration-150 flex-shrink-0 ${
-                                                            anadiendoCancionId === c.id
-                                                                ? 'bg-indigo-700 text-white cursor-wait'
-                                                                : 'bg-gradient-to-r from-blue-500 to-pink-500 text-white hover:from-blue-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-800'
-                                                        }`}
-                                                    >
-                                                        {anadiendoCancionId === c.id ? '...' : 'Añadir'}
-                                                    </button>
-                                                </div>
+                                            <li key={c.id} className="flex items-center justify-between p-2 hover:bg-blue-900/30 rounded space-x-3 group">
+                                                 <div className="flex items-center space-x-3 flex-grow overflow-hidden">
+                                                     <ImagenItem url={obtenerUrlImagen(c)} titulo={c.titulo} className="w-10 h-10" iconoFallback={<MusicalNoteIcon className="h-5 w-5"/>} />
+                                                     <span className="text-gray-200 truncate" title={c.titulo}>{c.titulo}</span>
+                                                 </div>
+                                                 <div className="flex items-center space-x-2 flex-shrink-0">
+                                                      <Link
+                                                          href={route('cancion.loopz', { cancion: c.id })}
+                                                          className="p-1 text-gray-400 hover:text-purple-400 focus:outline-none"
+                                                          title={c.is_in_user_loopz ? "Gestionar en LoopZ" : "Añadir a LoopZ"}
+                                                          preserveScroll preserveState={false}
+                                                      >
+                                                          {c.is_in_user_loopz ? <HeartIconSolid className="h-5 w-5 text-purple-500" /> : <HeartIconOutline className="h-5 w-5" />}
+                                                      </Link>
+                                                     <button
+                                                         onClick={() => manejarAnadirCancion(c.id)}
+                                                         disabled={anadiendoCancionId === c.id}
+                                                         className={`ml-2 px-3 py-1 text-xs font-semibold rounded-md transition ease-in-out duration-150 flex-shrink-0 ${anadiendoCancionId === c.id ? 'bg-indigo-700 text-white cursor-wait opacity-75' : 'bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800'}`}
+                                                     >
+                                                         {anadiendoCancionId === c.id ? '...' : 'Añadir'}
+                                                     </button>
+                                                 </div>
                                             </li>
                                         ))}
                                     </ul>
                                 </div>
                             )}
 
-                             {/* Message when search returned results, but ALL were filtered out */}
-                             {!estaBuscando && consultaBusqueda.length >= minQueryLength && resultadosBusqueda.length > 0 && resultadosFiltrados.length === 0 && (
-                                 <p className="text-gray-400 italic text-center">Todas las canciones encontradas ya están en est{tipoContenedor === 'playlist' ? 'a' : 'e'} {tipoNombreMayuscula}.</p>
-                             )}
-
-                            {/* Message when search returned no results */}
+                            {!estaBuscando && consultaBusqueda.length >= minQueryLength && resultadosBusqueda.length > 0 && resultadosFiltrados.length === 0 && (
+                                 <p className="text-gray-400 italic text-center pt-4">Todas las canciones encontradas ya están en est{tipoContenedor === 'playlist' ? 'a' : 'e'} {tipoNombreMayuscula}.</p>
+                            )}
                             {!estaBuscando && consultaBusqueda.length >= minQueryLength && resultadosBusqueda.length === 0 && (
-                                <p className="text-gray-400 italic text-center">No se encontraron canciones que coincidan.</p>
+                                <p className="text-gray-400 italic text-center pt-4">No se encontraron canciones que coincidan.</p>
                             )}
-
-                            {/* Message when query is too short */}
-                            {!estaBuscando && consultaBusqueda.length < minQueryLength && (
-                                 <p className="text-gray-400 italic text-center">Escribe al menos {minQueryLength} caracteres para buscar.</p>
+                            {!estaBuscando && consultaBusqueda.length > 0 && consultaBusqueda.length < minQueryLength && (
+                                 <p className="text-gray-400 italic text-center pt-4">Escribe al menos {minQueryLength} caracteres para buscar.</p>
                             )}
-
-                             {/* Message when no search term and initial state (or fetch returned empty) */}
-                             {!estaBuscando && !consultaBusqueda && resultadosBusqueda.length === 0 && (
-                                 <p className="text-gray-400 italic text-center">Busca canciones para añadirlas.</p>
+                             {!estaBuscando && consultaBusqueda.length === 0 && resultadosFiltrados.length === 0 && (
+                                  <p className="text-gray-400 italic text-center pt-4">No hay canciones disponibles para añadir o no se encontraron coincidencias.</p>
                              )}
+
                         </div>
                     )}
                 </div>
