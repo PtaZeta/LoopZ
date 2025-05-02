@@ -80,17 +80,17 @@ class ContenedorController extends Controller
             return [];
         }
         $loopzPlaylist = $user->perteneceContenedores()
-                              ->where('tipo', 'loopz')
-                              ->first();
+                                ->where('tipo', 'loopz')
+                                ->first();
 
         if (!$loopzPlaylist) {
             return [];
         }
 
         return DB::table('cancion_contenedor')
-                 ->where('contenedor_id', $loopzPlaylist->id)
-                 ->pluck('cancion_id')
-                 ->all();
+               ->where('contenedor_id', $loopzPlaylist->id)
+               ->pluck('cancion_id')
+               ->all();
     }
 
     public function index(Request $peticion)
@@ -235,7 +235,7 @@ class ContenedorController extends Controller
                 'view'   => $contenedor->publico ?? false,
                 'edit'   => false,
                 'delete' => false,
-            ];
+             ];
              $contenedor->is_liked_by_user = false;
         }
 
@@ -383,10 +383,6 @@ class ContenedorController extends Controller
         $minimoBusqueda = 1;
         $limite = 30;
 
-        // $idsColaboradores = [];
-        // if (method_exists($contenedor, 'usuarios')) {
-        //      $idsColaboradores = $contenedor->usuarios()->pluck('users.id')->toArray();
-        // }
 
         $idsCancionesExistentes = [];
          if (in_array($contenedor->tipo, ['album', 'ep', 'single']) && method_exists($contenedor, 'canciones')) {
@@ -395,17 +391,12 @@ class ContenedorController extends Controller
 
         $consultaCanciones = Cancion::query()
             ->with('usuarios:id,name')
-            ->where(function ($q) use ($usuario /*, $idsColaboradores */) {
+            ->where(function ($q) use ($usuario) {
                  $q->where('publico', true);
                  if ($usuario) {
                      $q->orWhereHas('usuarios', function ($q2) use ($usuario) {
                          $q2->where('users.id', $usuario->id);
                      });
-                    //  if(!empty($idsColaboradores)) {
-                    //      $q->orWhereHas('usuarios', function ($q3) use ($idsColaboradores) {
-                    //          $q3->whereIn('users.id', $idsColaboradores);
-                    //      });
-                    //  }
                  }
             });
 
@@ -454,7 +445,7 @@ class ContenedorController extends Controller
                      $contenedor->canciones()->attach($idCancion);
                      $mensaje = 'Canción añadida al ' . $tipoNombre . '.';
                  }
-             } else { // Playlists pueden tener duplicados (si se desea)
+             } else {
                  $contenedor->canciones()->attach($idCancion);
                  $mensaje = 'Canción añadida a la ' . $tipoNombre . '.';
              }
@@ -488,8 +479,8 @@ class ContenedorController extends Controller
         $eliminado = false;
         if (method_exists($contenedor, 'canciones')) {
              $eliminado = $contenedor->canciones()
-                 ->wherePivot('id', $idPivot)
-                 ->detach();
+               ->wherePivot('id', $idPivot)
+               ->detach();
         } else {
              Log::error("Relación 'canciones' no encontrada en Contenedor ID: " . $contenedor->id);
         }

@@ -27,6 +27,7 @@
         "@heroicons/react": "^2.2.0",
         "framer-motion": "^12.9.2",
         "lodash.debounce": "^4.0.8",
-        "lucide-react": "^0.503.0"
+        "lucide-react": "^0.503.0",
+        "react-window": "^1.8.11"
     }
 }
