@@ -206,10 +206,11 @@ DisplayList.propTypes = {
     tipoPredeterminado: PropTypes.string,
 };
 
-export default function Biblioteca({ auth, playlists, loopzContenedores }) {
+export default function Biblioteca({ auth, playlists, loopzContenedores, lanzamientos }) {
     const usuarioLogueadoId = auth.user.id;
     const playlistsArray = Array.isArray(playlists) ? playlists : [];
     const loopzArray = Array.isArray(loopzContenedores) ? loopzContenedores : [];
+    const lanzamientosArray = Array.isArray(lanzamientos) ? lanzamientos : [];
 
     return (
         <AuthenticatedLayout
@@ -232,7 +233,7 @@ export default function Biblioteca({ auth, playlists, loopzContenedores }) {
                         )}
                     </div>
                     <div>
-                        <h3 className="text-2xl font-semibold mb-6 text-gray-100">LoopZs</h3>
+                        <h3 className="text-2xl font-semibold mb-6 text-gray-100">Mis LoopZs</h3>
                          {loopzArray.length > 0 ? (
                              <DisplayList
                                 items={loopzArray}
@@ -240,6 +241,17 @@ export default function Biblioteca({ auth, playlists, loopzContenedores }) {
                              />
                         ) : (
                             <p className="text-gray-400 italic">No has marcado nada como LoopZ todavía.</p>
+                        )}
+                    </div>
+                    <div>
+                        <h3 className="text-2xl font-semibold mb-6 text-gray-100">Mis lanzamientos</h3>
+                         {lanzamientosArray.length > 0 ? (
+                             <DisplayList
+                                items={lanzamientosArray}
+                                usuarioLogueadoId={usuarioLogueadoId}
+                             />
+                        ) : (
+                            <p className="text-gray-400 italic">No hay lanzamientos aún.</p>
                         )}
                     </div>
                 </div>

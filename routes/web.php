@@ -57,10 +57,17 @@ Route::get('/biblioteca', function () {
          }])
          ->orderBy('loopzs_contenedores.created_at', 'desc')
          ->get();
-
+    $lanzamientos = $usuario->perteneceContenedores()
+        ->whereIn('tipo', ['album', 'ep', 'single'])
+        ->with(['usuarios' => function ($query) {
+            $query->select('users.id', 'users.name')->withPivot('propietario');
+        }])
+        ->orderBy('pertenece_user.created_at', 'desc')
+        ->get();
     return Inertia::render('Biblioteca', [
         'playlists' => $playlists,
         'loopzContenedores' => $loopzs,
+        'lanzamientos' => $lanzamientos,
     ]);
 })->middleware(['auth', 'verified'])->name('biblioteca');
 
