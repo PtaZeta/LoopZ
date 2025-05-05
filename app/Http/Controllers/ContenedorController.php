@@ -213,12 +213,14 @@ class ContenedorController extends Controller
             'canciones' => function ($query) {
                 $query->select('canciones.id', 'canciones.titulo', 'canciones.archivo_url', 'canciones.foto_url', 'canciones.duracion')
                       ->withPivot('id as pivot_id', 'created_at as pivot_created_at')
+                      ->with(['usuarios' => function ($userQuery) {
+                          $userQuery->select('users.id', 'users.name');
+                      }])
                       ->orderBy('pivot_created_at');
             },
             'usuarios:id,name',
             'loopzusuarios:users.id'
         ]);
-
         $contenedor->canciones->each(function ($cancion) use ($loopzSongIds) {
             $cancion->is_in_user_loopz = in_array($cancion->id, $loopzSongIds);
         });
