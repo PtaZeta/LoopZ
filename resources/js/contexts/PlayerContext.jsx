@@ -87,16 +87,13 @@ export const PlayerProvider = ({ children }) => {
     const play = useCallback(() => {
         clearPlayerError();
         if (audioRef.current && currentTrack) {
-            if (!isPlaying && audioRef.current.readyState > 0) {
-                audioRef.current.currentTime = 0;
-                setCurrentTime(0);
-            }
             const playPromise = audioRef.current.play();
             if (playPromise !== undefined) {
                 setIsLoading(true);
                 playPromise
                     .then(() => {
                         setIsPlaying(true);
+                        // Confiamos en el evento 'onPlaying' o 'onCanPlay' para setIsLoading(false)
                     })
                     .catch(() => {
                         setIsPlaying(false);
@@ -105,6 +102,7 @@ export const PlayerProvider = ({ children }) => {
                     });
             } else {
                 setIsPlaying(true);
+                // Para navegadores antiguos, también confiamos en eventos de audio.
             }
         } else if (activeQueue.length > 0) {
             setIsLoading(true);
@@ -263,8 +261,9 @@ export const PlayerProvider = ({ children }) => {
                         });
                     }
                 } else {
-                    audio.pause();
-                    setIsLoading(false);
+                    // Si no está reproduciendo, solo se carga.
+                    // El evento 'canplay' se encargará de setIsLoading(false).
+                    // audio.pause(); // Cambiar src ya detiene la reproducción.
                 }
             } else if (isPlaying && audio.paused) {
                  audio.play().catch((err) => {
@@ -279,10 +278,10 @@ export const PlayerProvider = ({ children }) => {
             }
         } else {
             audio.pause();
-             if (audio.src) {
-                 audio.removeAttribute('src');
-                 audio.load();
-             }
+            if (audio.src) {
+                audio.removeAttribute('src');
+                audio.load();
+            }
             setIsLoading(false);
             setCurrentTime(0);
             setDuration(0);
@@ -294,9 +293,9 @@ export const PlayerProvider = ({ children }) => {
         if (!audioRef.current) return;
         const audio = audioRef.current;
         const onTimeUpdate = () => {
-             if (isFinite(audio.currentTime)) {
-                 setCurrentTime(audio.currentTime);
-             }
+            if (isFinite(audio.currentTime)) {
+                setCurrentTime(audio.currentTime);
+            }
         };
         const onLoaded = () => {
             if (!isNaN(audio.duration) && isFinite(audio.duration)) {
@@ -306,29 +305,31 @@ export const PlayerProvider = ({ children }) => {
             }
         };
         const onCanPlay = () => setIsLoading(false);
+        const onPlaying = () => setIsLoading(false); // AÑADIDO: handler para 'playing'
         const onWaiting = () => setIsLoading(true);
         const onEnded = () => nextTrack();
         const onError = (e) => {
             setIsLoading(false);
             setIsPlaying(false);
             if (audio.src && audio.src === getAudioUrl(currentTrack)) {
-                 let errorMsg = 'Error en reproducción.';
-                 if (e?.target?.error?.code) {
-                     switch (e.target.error.code) {
-                         case e.target.error.MEDIA_ERR_ABORTED: errorMsg = 'Reproducción abortada.'; break;
-                         case e.target.error.MEDIA_ERR_NETWORK: errorMsg = 'Error de red.'; break;
-                         case e.target.error.MEDIA_ERR_DECODE: errorMsg = 'Error de decodificación.'; break;
-                         case e.target.error.MEDIA_ERR_SRC_NOT_SUPPORTED: errorMsg = 'Formato no soportado.'; break;
-                         default: errorMsg = `Error desconocido (${e.target.error.code}).`; break;
-                     }
-                 }
-                 setPlayerError(errorMsg);
+                let errorMsg = 'Error en reproducción.';
+                if (e?.target?.error?.code) {
+                    switch (e.target.error.code) {
+                        case e.target.error.MEDIA_ERR_ABORTED: errorMsg = 'Reproducción abortada.'; break;
+                        case e.target.error.MEDIA_ERR_NETWORK: errorMsg = 'Error de red.'; break;
+                        case e.target.error.MEDIA_ERR_DECODE: errorMsg = 'Error de decodificación.'; break;
+                        case e.target.error.MEDIA_ERR_SRC_NOT_SUPPORTED: errorMsg = 'Formato no soportado.'; break;
+                        default: errorMsg = `Error desconocido (${e.target.error.code}).`; break;
+                    }
+                }
+                setPlayerError(errorMsg);
             }
        };
 
         audio.addEventListener('timeupdate', onTimeUpdate);
         audio.addEventListener('loadedmetadata', onLoaded);
         audio.addEventListener('canplay', onCanPlay);
+        audio.addEventListener('playing', onPlaying); // AÑADIDO: listener para 'playing'
         audio.addEventListener('waiting', onWaiting);
         audio.addEventListener('ended', onEnded);
         audio.addEventListener('error', onError);
@@ -336,6 +337,7 @@ export const PlayerProvider = ({ children }) => {
             audio.removeEventListener('timeupdate', onTimeUpdate);
             audio.removeEventListener('loadedmetadata', onLoaded);
             audio.removeEventListener('canplay', onCanPlay);
+            audio.removeEventListener('playing', onPlaying); // AÑADIDO: remover listener
             audio.removeEventListener('waiting', onWaiting);
             audio.removeEventListener('ended', onEnded);
             audio.removeEventListener('error', onError);
