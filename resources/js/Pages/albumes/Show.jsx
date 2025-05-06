@@ -256,7 +256,20 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
     };
 
     const artistas = useMemo(() => {
-        return contenedor?.usuarios?.map(u => u.name).join(', ') || 'Artista Desconocido';
+        return contenedor?.usuarios?.length > 0
+            ? contenedor.usuarios.map((u, index) => (
+                <React.Fragment key={u.id}>
+                    <Link
+                        href={route('profile.index', { usuario: u.id })}
+                        className="text-blue-400 hover:underline"
+                        title={`Ver perfil de ${u.name}`}
+                    >
+                        {u.name}
+                    </Link>
+                    {index < contenedor.usuarios.length - 1 && ', '}
+                </React.Fragment>
+              ))
+            : 'Artista Desconocido';
     }, [contenedor?.usuarios]);
 
     const isCurrentSource = sourceId === contenedor?.id;

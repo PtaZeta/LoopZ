@@ -21,34 +21,43 @@ class ProfileController extends Controller
     {
         $usuario = $request->user();
 
+        $withUsuariosCallback = function ($query) {
+            $query->select('users.id', 'users.name', 'users.foto_perfil');
+        };
+
         $consultaCanciones = $usuario->perteneceCanciones()
-                                      ->orderBy('pertenece_user.created_at', 'desc')
-                                      ->limit(10)
-                                      ->get();
+                                    ->with(['usuarios' => $withUsuariosCallback])
+                                    ->orderBy('pertenece_user.created_at', 'desc')
+                                    ->limit(10)
+                                    ->get();
 
         $consultaPlaylists = $usuario->perteneceContenedores()
-                                       ->where('contenedores.tipo', 'playlist')
-                                       ->orderBy('pertenece_user.created_at', 'desc')
-                                       ->limit(10)
-                                       ->get();
+                                    ->where('contenedores.tipo', 'playlist')
+                                    ->with(['usuarios' => $withUsuariosCallback])
+                                    ->orderBy('pertenece_user.created_at', 'desc')
+                                    ->limit(10)
+                                    ->get();
 
         $consultaAlbumes = $usuario->perteneceContenedores()
-                                     ->where('contenedores.tipo', 'album')
-                                     ->orderBy('pertenece_user.created_at', 'desc')
-                                     ->limit(10)
-                                     ->get();
+                                    ->where('contenedores.tipo', 'album')
+                                    ->with(['usuarios' => $withUsuariosCallback])
+                                    ->orderBy('pertenece_user.created_at', 'desc')
+                                    ->limit(10)
+                                    ->get();
 
         $consultaEps = $usuario->perteneceContenedores()
-                                 ->where('contenedores.tipo', 'ep')
-                                 ->orderBy('pertenece_user.created_at', 'desc')
-                                 ->limit(10)
-                                 ->get();
+                                    ->where('contenedores.tipo', 'ep')
+                                    ->with(['usuarios' => $withUsuariosCallback])
+                                    ->orderBy('pertenece_user.created_at', 'desc')
+                                    ->limit(10)
+                                    ->get();
 
         $consultaSingles = $usuario->perteneceContenedores()
-                                     ->where('contenedores.tipo', 'single')
-                                     ->orderBy('pertenece_user.created_at', 'desc')
-                                     ->limit(10)
-                                     ->get();
+                                    ->where('contenedores.tipo', 'single')
+                                    ->with(['usuarios' => $withUsuariosCallback])
+                                    ->orderBy('pertenece_user.created_at', 'desc')
+                                    ->limit(10)
+                                    ->get();
 
         return Inertia::render('Profile/Index', [
             'cancionesUsuario' => $consultaCanciones,
@@ -67,8 +76,8 @@ class ProfileController extends Controller
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
-             'auth' => [
-                 'user' => $request->user()->only(['id', 'name', 'email', 'foto_perfil', 'banner_perfil']),
+            'auth' => [
+                'user' => $request->user()->only(['id', 'name', 'email', 'foto_perfil', 'banner_perfil']),
             ],
         ]);
     }
@@ -94,13 +103,13 @@ class ProfileController extends Controller
             $usuario->foto_perfil = $rutaFoto;
         }
 
-         if ($request->hasFile('banner_perfil')) {
-             if ($usuario->banner_perfil && Storage::disk('public')->exists($usuario->banner_perfil)) {
-                 Storage::disk('public')->delete($usuario->banner_perfil);
-             }
-             $rutaBanner = $request->file('banner_perfil')->store('banner_perfil', 'public');
-             $usuario->banner_perfil = $rutaBanner;
-         }
+        if ($request->hasFile('banner_perfil')) {
+            if ($usuario->banner_perfil && Storage::disk('public')->exists($usuario->banner_perfil)) {
+                Storage::disk('public')->delete($usuario->banner_perfil);
+            }
+            $rutaBanner = $request->file('banner_perfil')->store('banner_perfil', 'public');
+            $usuario->banner_perfil = $rutaBanner;
+        }
 
         if ($usuario->isDirty('email') && $usuario instanceof MustVerifyEmail) {
             $usuario->email_verified_at = null;
@@ -126,12 +135,12 @@ class ProfileController extends Controller
 
         $usuario->delete();
 
-         if ($rutaFotoPerfil && Storage::disk('public')->exists($rutaFotoPerfil)) {
-             Storage::disk('public')->delete($rutaFotoPerfil);
-         }
-         if ($rutaBanner && Storage::disk('public')->exists($rutaBanner)) {
-             Storage::disk('public')->delete($rutaBanner);
-         }
+        if ($rutaFotoPerfil && Storage::disk('public')->exists($rutaFotoPerfil)) {
+            Storage::disk('public')->delete($rutaFotoPerfil);
+        }
+        if ($rutaBanner && Storage::disk('public')->exists($rutaBanner)) {
+            Storage::disk('public')->delete($rutaBanner);
+        }
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -145,7 +154,7 @@ class ProfileController extends Controller
         $limite = 10;
 
         if (empty($termino)) {
-             return response()->json([]);
+            return response()->json([]);
         }
 
         $consulta = User::query()
