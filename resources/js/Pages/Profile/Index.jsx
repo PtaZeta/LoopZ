@@ -301,52 +301,124 @@ const ProfileDisplayList = ({ items, usuarioLogueadoId, tipoPredeterminado = 'pl
     );
 };
 
-const CancionListItem = React.memo(({ item, tipoItem, nombreRuta }) => {
+const CancionListItem = React.memo(({
+    item,
+    index,
+    tipoItem,
+    nombreRuta,
+    onPlayPauseClick,
+    isCurrentTrack,
+    isPlayingCurrentTrack,
+    isLoadingTrack
+}) => {
     const routeExists = useCallback((name) => {
         if (typeof route === 'function' && typeof route().has === 'function') return route().has(name);
         return false;
     }, []);
     const rutaItemExiste = routeExists(nombreRuta);
 
+    const [isHovered, setIsHovered] = useState(false);
+
+    const handlePlayButtonClick = (e) => {
+        e.stopPropagation();
+        onPlayPauseClick();
+    };
+
     return (
-        <li className="flex items-center space-x-4 p-3 bg-gray-800/50 hover:bg-gray-700/70 transition duration-150 ease-in-out group rounded-md">
+        <li
+            className="flex items-center space-x-3 p-2 hover:bg-gray-700/60 transition duration-150 ease-in-out group rounded-md cursor-default"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
+                {isLoadingTrack ? (
+                    <LoadingIcon className="w-5 h-5 text-white animate-spin" />
+                ) : isPlayingCurrentTrack ? (
+                    <button onClick={handlePlayButtonClick} className="focus:outline-none" aria-label="Pausar">
+                        <PauseIconSolid className="w-5 h-5 text-indigo-400" />
+                    </button>
+                ) : (isHovered || (isCurrentTrack && !isPlayingCurrentTrack)) ? (
+                    <button onClick={handlePlayButtonClick} className="focus:outline-none" aria-label={isCurrentTrack ? "Continuar reproducción" : "Reproducir"}>
+                        <PlayIconSolid className="w-5 h-5 text-white" />
+                    </button>
+                ) : (
+                    <span className="text-sm text-gray-400 w-full text-center select-none">{index + 1}</span>
+                )}
+            </div>
+
             <div className="flex-shrink-0">
                 <ProfileImagenConPlaceholder
                     src={item.foto_url}
                     alt={`Portada de ${item.titulo}`}
-                    claseImagen="w-12 h-12 rounded-md object-cover"
-                    clasePlaceholder="w-12 h-12 rounded-md bg-gray-700 text-gray-400"
+                    claseImagen="w-10 h-10 rounded object-cover"
+                    clasePlaceholder="w-10 h-10 rounded bg-gray-700 text-gray-400 flex items-center justify-center"
                     tipo={tipoItem}
                     esStorage={!(item.foto_url?.startsWith('http') || item.foto_url?.startsWith('/storage/'))}
                 />
             </div>
+
             <div className="flex-grow min-w-0">
                 {rutaItemExiste ? (
-                    <Link href={route(nombreRuta, item.id)} className="text-sm font-medium text-indigo-400 hover:text-indigo-300 hover:underline truncate block" title={item.titulo}>{item.titulo}</Link>
+                    <Link
+                        href={route(nombreRuta, item.id)}
+                        className={`text-sm font-medium ${isCurrentTrack ? 'text-indigo-400' : 'text-gray-100 group-hover:text-white'} hover:underline truncate block`}
+                        title={item.titulo}
+                    >
+                        {item.titulo}
+                    </Link>
                 ) : (
-                    <span className="text-sm font-medium text-gray-200 truncate block" title={item.titulo}>{item.titulo}</span>
+                    <span
+                        className={`text-sm font-medium ${isCurrentTrack ? 'text-indigo-400' : 'text-gray-200'} truncate block`}
+                        title={item.titulo}
+                    >
+                        {item.titulo}
+                    </span>
                 )}
-                {item.artista && <p className="text-xs text-gray-400 truncate">{typeof item.artista === 'string' ? item.artista : item.artista?.name}</p>}
+                {item.artista && (
+                    <p className="text-xs text-gray-400 truncate">
+                        {typeof item.artista === 'string' ? item.artista : item.artista?.name}
+                    </p>
+                )}
             </div>
         </li>
     );
 });
 
-const ProfileCancionesList = ({ items, tipoItem, nombreRuta }) => {
+const ProfileCancionesList = ({
+    items,
+    tipoItem,
+    nombreRuta,
+    onPlayPauseSong,
+    currentTrackId,
+    isPlaying,
+    isPlayerLoading,
+    currentSourceId,
+    mainSourceId
+}) => {
     if (!items || items.length === 0) {
         return <p className="text-sm text-gray-400 italic px-4 sm:px-6">Aún no has agregado {tipoItem}s a tu perfil.</p>;
     }
 
     return (
-        <ul className="space-y-3 px-4 sm:px-6">
-            {items.map((item) => (
-                <CancionListItem
-                    key={item.id}
-                    item={item}
-                    tipoItem={tipoItem}
-                    nombreRuta={nombreRuta}
-                />
-            ))}
+        <ul className="space-y-1 px-4 sm:px-6">
+            {items.map((item, index) => {
+                const isThisCurrentTrack = item.id === currentTrackId && currentSourceId === mainSourceId;
+                const isLoadingThisTrack = isPlayerLoading && isThisCurrentTrack && !isPlaying;
+
+                return (
+                    <CancionListItem
+                        key={item.id}
+                        item={item}
+                        index={index}
+                        tipoItem={tipoItem}
+                        nombreRuta={nombreRuta}
+                        onPlayPauseClick={() => onPlayPauseSong(item, index)}
+                        isCurrentTrack={isThisCurrentTrack}
+                        isPlayingCurrentTrack={isThisCurrentTrack && isPlaying}
+                        isLoadingTrack={isLoadingThisTrack}
+                    />
+                );
+            })}
         </ul>
     );
 };
@@ -356,11 +428,21 @@ export default function Index() {
     const usuario = auth.user;
     const usuarioLogueadoId = auth.user.id;
     const playerContextValue = useContext(PlayerContext);
-    const { loadQueueAndPlay = () => {}, play = () => {}, pause = () => {}, toggleShuffle = () => {}, isPlaying = false, isShuffled = false, currentTrack = null, sourceId = null, isLoading: isPlayerLoading = false } = playerContextValue || {};
+    const {
+        loadQueueAndPlay = () => {},
+        play = () => {},
+        pause = () => {},
+        toggleShuffle = () => {},
+        isPlaying = false,
+        isShuffled = false,
+        currentTrack = null,
+        sourceId = null,
+        isLoading: isPlayerLoading = false
+    } = playerContextValue || {};
 
     const userSongsSourceId = `user-${usuario.id}-all-songs`;
     const isCurrentSourcePlayingUserSongs = sourceId === userSongsSourceId && isPlaying;
-    const isPlayerLoadingThisSource = isPlayerLoading && sourceId === userSongsSourceId && !isPlaying;
+    const isPlayerLoadingThisSource = isPlayerLoading && sourceId === userSongsSourceId && !isPlaying && (!currentTrack || cancionesUsuario.some(s => s.id === currentTrack.id));
 
     const handlePlayPauseUserSongs = useCallback(() => {
         if (!cancionesUsuario || cancionesUsuario.length === 0) return;
@@ -381,6 +463,27 @@ export default function Index() {
         toggleShuffle();
     }, [cancionesUsuario, toggleShuffle]);
 
+    const handlePlayPauseSingleSong = useCallback((songToPlay, songIndexInList) => {
+        if (!cancionesUsuario || cancionesUsuario.length === 0) return;
+
+        if (currentTrack && currentTrack.id === songToPlay.id && sourceId === userSongsSourceId) {
+            if (isPlaying) {
+                pause();
+            } else {
+                play();
+            }
+        } else {
+            const formattedSongs = cancionesUsuario.map(song => ({ ...song }));
+            loadQueueAndPlay(formattedSongs, {
+                id: userSongsSourceId,
+                name: `Canciones de ${usuario.name}`,
+                type: 'userCollection',
+                startIndex: songIndexInList,
+                isDirectClick: true
+            });
+        }
+    }, [cancionesUsuario, currentTrack, sourceId, userSongsSourceId, isPlaying, pause, play, loadQueueAndPlay, usuario.name]);
+
     return (
         <AuthenticatedLayout user={auth.user} header={<div className="flex justify-between items-center"><h2 className="text-2xl font-bold leading-tight text-gray-100">Mi Perfil</h2></div>}>
             <Head title="Perfil" />
@@ -400,21 +503,26 @@ export default function Index() {
                             <h3 className="text-3xl font-bold text-gray-100 mb-1">{usuario.name}</h3>
                             <p className="text-md text-gray-400 mb-6">{usuario.email}</p>
                             {cancionesUsuario && cancionesUsuario.length > 0 && (
-                                <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-4 mb-6">
+                                <div className="flex items-center justify-center space-x-4 mb-6">
                                     <button
                                         onClick={handlePlayPauseUserSongs}
                                         disabled={isPlayerLoadingThisSource || !cancionesUsuario || cancionesUsuario.length === 0}
-                                        className="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold rounded-full shadow-md hover:from-purple-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed"
+                                        aria-label={isCurrentSourcePlayingUserSongs ? 'Pausar canciones del usuario' : (sourceId === userSongsSourceId && currentTrack ? 'Continuar reproducción de canciones del usuario' : 'Reproducir todas las canciones del usuario')}
+                                        className="flex items-center justify-center p-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-full shadow-md hover:from-purple-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed"
                                     >
-                                        {isPlayerLoadingThisSource ? <LoadingIcon className="w-5 h-5 mr-2 animate-spin" /> : isCurrentSourcePlayingUserSongs ? <PauseIconSolid className="w-5 h-5 mr-2" /> : <PlayIconSolid className="w-5 h-5 mr-2" />}
-                                        {isCurrentSourcePlayingUserSongs ? 'Pausar' : (sourceId === userSongsSourceId && currentTrack ? 'Continuar' : 'Reproducir Todo')}
+                                        {isPlayerLoadingThisSource ? <LoadingIcon className="w-6 h-6 animate-spin" /> : isCurrentSourcePlayingUserSongs ? <PauseIconSolid className="w-6 h-6" /> : <PlayIconSolid className="w-6 h-6" />}
                                     </button>
                                     <button
                                         onClick={handleToggleShuffleUserSongs}
                                         disabled={!cancionesUsuario || cancionesUsuario.length === 0}
-                                        className={`w-full sm:w-auto flex items-center justify-center px-6 py-3 border font-semibold rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed ${isShuffled ? 'bg-indigo-500 text-white border-indigo-500 hover:bg-indigo-600' : 'bg-transparent text-gray-300 border-gray-600 hover:bg-gray-700 hover:text-white'}`}
+                                        aria-label={isShuffled ? "Desactivar modo aleatorio para canciones del usuario" : "Activar modo aleatorio para canciones del usuario"}
+                                        className={`flex items-center justify-center p-3 border rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed ${
+                                            isShuffled
+                                                ? 'bg-indigo-500 text-white border-indigo-500 hover:bg-indigo-600 focus:ring-indigo-500'
+                                                : 'bg-transparent text-gray-300 border-gray-600 hover:bg-gray-700 hover:text-white focus:ring-gray-500'
+                                        }`}
                                     >
-                                        <ShuffleIcon className="w-5 h-5 mr-2" /> Aleatorio {isShuffled ? '(Activado)' : ''}
+                                        <ShuffleIcon className="w-6 h-6" />
                                     </button>
                                 </div>
                             )}
@@ -430,23 +538,32 @@ export default function Index() {
                     </div>
 
                     <div>
-                        <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Mis Canciones</h3>
-                        <ProfileCancionesList items={cancionesUsuario} tipoItem="cancion" nombreRuta="canciones.show" />
+                        <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Canciones</h3>
+                        <ProfileCancionesList
+                            items={cancionesUsuario}
+                            tipoItem="cancion"
+                            onPlayPauseSong={handlePlayPauseSingleSong}
+                            currentTrackId={currentTrack?.id}
+                            isPlaying={isPlaying}
+                            isPlayerLoading={isPlayerLoading}
+                            currentSourceId={sourceId}
+                            mainSourceId={userSongsSourceId}
+                        />
                     </div>
                     <div>
-                        <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Mis Playlists</h3>
+                        <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Playlists</h3>
                         <ProfileDisplayList items={playlistsUsuario} usuarioLogueadoId={usuarioLogueadoId} tipoPredeterminado="playlist" />
                     </div>
                     <div>
-                        <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Mis Álbumes</h3>
+                        <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Álbumes</h3>
                         <ProfileDisplayList items={albumesUsuario} usuarioLogueadoId={usuarioLogueadoId} tipoPredeterminado="album" />
                     </div>
                     <div>
-                        <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Mis EPs</h3>
+                        <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">EPs</h3>
                         <ProfileDisplayList items={epsUsuario} usuarioLogueadoId={usuarioLogueadoId} tipoPredeterminado="ep" />
                     </div>
                     <div>
-                        <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Mis Singles</h3>
+                        <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Singles</h3>
                         <ProfileDisplayList items={singlesUsuario} usuarioLogueadoId={usuarioLogueadoId} tipoPredeterminado="single" />
                     </div>
                 </div>
