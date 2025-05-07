@@ -15,6 +15,10 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // User::factory(10)->create();
-        Contenedor::factory()->count(50)->create();
+        //Contenedor::factory()->count(50)->create();
+        $this->call([
+            SpotifyGenresSeeder::class,
+        ]);
+
     }
 }

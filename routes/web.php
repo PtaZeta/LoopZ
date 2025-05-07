@@ -4,6 +4,7 @@ use App\Http\Controllers\AlbumController;
 use App\Http\Controllers\CancionController;
 use App\Http\Controllers\ContenedorController;
 use App\Http\Controllers\EPController;
+use App\Http\Controllers\GeneroController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SingleController;
 use App\Models\Cancion;
@@ -123,5 +124,21 @@ Route::middleware('auth')->group(function () {
     Route::get('/cancion/{cancion}/loopz', [CancionController::class, 'cancionloopz'])->name('cancion.loopz');
 });
 
+Route::get('/spotify-login', function () {
+    $client_id = env('SPOTIFY_CLIENT_ID');
+    $redirect_uri = env('SPOTIFY_REDIRECT_URI');
+    $scope = 'user-read-private user-read-email';
+
+    $url = 'https://accounts.spotify.com/authorize?' . http_build_query([
+        'response_type' => 'code',
+        'client_id' => $client_id,
+        'redirect_uri' => $redirect_uri,
+        'scope' => $scope,
+    ]);
+
+    return redirect($url);
+});
+
+Route::get('/callback', [GeneroController::class, 'storeGenres']);
 
 require __DIR__.'/auth.php';
