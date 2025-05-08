@@ -1,229 +1,222 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useForm, Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
-import PropTypes from 'prop-types';
+import axios from 'axios';
 import { debounce } from 'lodash';
-import InputError from '@/Components/InputError';
-import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import InputLabel from '@/Components/InputLabel';
-import axios from 'axios';
-import { PencilIcon, TrashIcon, MusicalNoteIcon } from '@heroicons/react/24/solid';
+import InputError from '@/Components/InputError';
 
-const ImagenItem = ({ url, titulo, className = "w-10 h-10", iconoFallback }) => {
-    const [src, setSrc] = useState(url);
-    const [error, setError] = useState(false);
-
-    useEffect(() => {
-        setSrc(url);
-        setError(false);
-    }, [url]);
-
-    const manejarErrorImagen = () => setError(true);
-
-    if (error || !src) {
-        return (
-            <div className={`${className} bg-slate-700 flex items-center justify-center text-slate-500 rounded`}>
-                {iconoFallback || (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" />
-                    </svg>
-                )}
-            </div>
-        );
-    }
-
-    return (
-        <img
-            src={src}
-            alt={`Portada de ${titulo}`}
-            className={`${className} object-cover rounded shadow-sm flex-shrink-0`}
-            loading="lazy"
-            onError={manejarErrorImagen}
-        />
-    );
-};
-
-ImagenItem.propTypes = {
-    url: PropTypes.string,
-    titulo: PropTypes.string.isRequired,
-    className: PropTypes.string,
-    iconoFallback: PropTypes.node,
-};
-
-export default function Editar({ auth, cancion, errors: serverErrors, success: successMessage }) {
-    const [terminoBusqueda, setTerminoBusqueda] = useState('');
-    const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
-    const [usuariosSeleccionados, setUsuariosSeleccionados] = useState(cancion.usuarios || []);
-    const [cargandoBusqueda, setCargandoBusqueda] = useState(false);
-    const [isSearchFocused, setIsSearchFocused] = useState(false);
-
-    const propietarioCancion = cancion.usuarios?.find(u => u.es_propietario);
-    const esUsuarioPropietario = auth.user?.id === propietarioCancion?.id;
-
-    const { data, setData, post, processing, errors, reset, recentlySuccessful } = useForm({
-        _method: 'PUT',
+// Destructure generosSeleccionados from the props
+export default function Edit({ auth, cancion, generos: todosLosGeneros, generosSeleccionados }) {
+    const { data, setData, post, processing, errors, reset } = useForm({
         titulo: cancion.titulo || '',
-        genero: cancion.genero || '',
-        publico: cancion.publico ?? false,
+        publico: cancion.publico !== undefined ? Boolean(cancion.publico) : false,
         licencia: cancion.licencia || '',
-        archivo_nuevo: null,
-        foto_nueva: null,
-        eliminar_foto: false,
-        userIds: (cancion.usuarios || []).map(u => u.id),
+        foto: null,
+        archivo: null,
+        // Initialize 'genero' state with the generosSeleccionados prop
+        genero: generosSeleccionados || [],
+
+        // Correctly handle initial users data from the mapped 'usuarios' prop
+        // The backend passes 'usuarios' inside $cancionData, which becomes the 'cancion' prop here
+        userIds: cancion.usuarios ? cancion.usuarios.map(u => u.id) : [],
+        _method: 'PUT',
     });
 
-    const erroresMostrados = { ...errors, ...(serverErrors || {}) };
+    const [fotoActualUrl, setFotoActualUrl] = useState(cancion.foto_url || null);
+    const [archivoActualNombre, setArchivoActualNombre] = useState(cancion.archivo_nombre || null);
 
-    const añadirUsuario = (usuario) => {
-        if (!esUsuarioPropietario) return;
+    const [termGenero, setTermGenero] = useState('');
+    // Initialize resultadosGenero with all genres minus the selected ones when the component loads
+    const [resultadosGenero, setResultadosGenero] = useState(
+        todosLosGeneros.filter(g => !generosSeleccionados.includes(g))
+    );
+    const [mostrarGenero, setMostrarGenero] = useState(false);
 
-        if (!usuariosSeleccionados.some(selected => selected.id === usuario.id)) {
-            const nuevosUsuariosSeleccionados = [...usuariosSeleccionados, {...usuario, es_propietario: false}];
-            setUsuariosSeleccionados(nuevosUsuariosSeleccionados);
-            setData('userIds', nuevosUsuariosSeleccionados.map(u => u.id));
+    // Adjusted search logic to use the correct results state
+    const buscarGeneros = useCallback(
+        debounce(term => {
+            const limpio = term.trim().toLowerCase();
+            if (limpio) {
+                // Filter from *all* genres, excluding currently selected ones
+                setResultadosGenero(
+                    todosLosGeneros.filter(g => g.toLowerCase().includes(limpio) && !data.genero.includes(g))
+                );
+            } else {
+                 // If search term is empty, show all genres not currently selected
+                setResultadosGenero(todosLosGeneros.filter(g => !data.genero.includes(g)));
+            }
+            // Only show results if there's a term or if we previously searched and want to show all available
+            // setMostrarGenero(true); // This might be handled better by onFocus/onBlur, but keeping the debounce behavior
+        }, 300),
+        [todosLosGeneros, data.genero] // Dependencies
+    );
+
+    const manejarTermGenero = e => {
+        const term = e.target.value;
+        setTermGenero(term);
+        buscarGeneros(term);
+    };
+
+    const agregarGenero = g => {
+        if (!data.genero.includes(g)) {
+            setData('genero', [...data.genero, g]);
+            // Remove the added genre from the results list
+            setResultadosGenero(resultadosGenero.filter(resG => resG !== g));
+             // Re-filter results based on current term and updated selected genres
+            const limpio = termGenero.trim().toLowerCase();
+            if (limpio) {
+                 setResultadosGenero(
+                    todosLosGeneros.filter(gen => gen.toLowerCase().includes(limpio) && ![...data.genero, g].includes(gen))
+                 );
+            } else {
+                setResultadosGenero(todosLosGeneros.filter(gen => ![...data.genero, g].includes(gen)));
+            }
+        }
+        // Optionally clear the search term after adding
+        // setTermGenero(''); // Keeping term allows adding multiple results easily
+        // setMostrarGenero(false); // Don't hide the list unless the input loses focus
+    };
+
+    const quitarGenero = g => {
+        const nuevosGenerosSeleccionados = data.genero.filter(x => x !== g);
+        setData('genero', nuevosGenerosSeleccionados);
+        // Add the removed genre back to the results list if it matches the current search term (or if search is empty)
+        const limpio = termGenero.trim().toLowerCase();
+        if (g.toLowerCase().includes(limpio) || !limpio) {
+             setResultadosGenero(
+                todosLosGeneros.filter(gen => gen.toLowerCase().includes(limpio) && !nuevosGenerosSeleccionados.includes(gen))
+             );
+        }
+        // No need to call buscarGeneros here, the state updates will handle re-render
+    };
+
+    // This filtered list logic is now superseded by the resultsGenero state
+    // You can remove or adapt this if needed elsewhere, but the dropdown uses resultadosGenero
+    // const listaGeneroFiltrada = termGenero
+    //     ? todosLosGeneros.filter(g => g.toLowerCase().includes(termGenero.trim().toLowerCase()) && !data.genero.includes(g))
+    //     : todosLosGeneros.filter(g => !data.genero.includes(g));
+
+
+    // Correctly initialize usuariosSeleccionados from the 'cancion.usuarios' prop
+    const [usuariosSeleccionados, setUsuariosSeleccionados] = useState(cancion.usuarios || []);
+    const [terminoBusqueda, setTerminoBusqueda] = useState('');
+    const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
+    const [cargandoBusqueda, setCargandoBusqueda] = useState(false);
+    const [mostrarResultados, setMostrarResultados] = useState(false);
+
+    // Use useEffect to update userIds when usuariosSeleccionados changes
+    useEffect(() => {
+        setData('userIds', usuariosSeleccionados.map(u => u.id));
+    }, [usuariosSeleccionados, setData]);
+
+
+    const agregarUsuario = (usuario) => {
+        // Ensure the user is not already selected and not the currently authenticated user
+        if (!usuariosSeleccionados.some(seleccionado => seleccionado.id === usuario.id) && usuario.id !== auth.user?.id) {
+            const nuevosSeleccionados = [...usuariosSeleccionados, usuario];
+            setUsuariosSeleccionados(nuevosSeleccionados);
+            // UserIds state will be updated by the useEffect hook
             setTerminoBusqueda('');
             setResultadosBusqueda([]);
-            setIsSearchFocused(false);
+            setMostrarResultados(false);
         }
     };
 
-    const eliminarUsuario = (usuarioId) => {
-        if (!esUsuarioPropietario) return;
-
-        const usuarioAEliminar = usuariosSeleccionados.find(user => user.id === usuarioId);
-
-        if (usuarioAEliminar?.es_propietario) {
-            console.log("No se puede quitar al propietario.");
-            return;
+    const quitarUsuario = (usuarioId) => {
+        // Prevent removing the creator if they are the only user associated AND the current authenticated user
+        if (usuarioId === cancion.creador_id && usuariosSeleccionados.length === 1 && auth.user?.id === usuarioId) {
+             alert('No puedes quitar al creador si es el único colaborador.');
+             return;
         }
+         // Prevent removing the creator if they are the only user associated (regardless of who is logged in)
+         if (usuarioId === cancion.creador_id && usuariosSeleccionados.length === 1) {
+             alert('No puedes quitar al creador si es el único colaborador.');
+             return;
+         }
 
-        const nuevosUsuariosSeleccionados = usuariosSeleccionados.filter(user => user.id !== usuarioId);
-        setUsuariosSeleccionados(nuevosUsuariosSeleccionados);
-        setData('userIds', nuevosUsuariosSeleccionados.map(u => u.id));
+
+        const nuevosSeleccionados = usuariosSeleccionados.filter(usuario => usuario.id !== usuarioId);
+        setUsuariosSeleccionados(nuevosSeleccionados);
+        // UserIds state will be updated by the useEffect hook
     };
 
-    const ejecutarBusqueda = useCallback(
+    const realizarBusqueda = useCallback(
         debounce(async (termino) => {
-            if (!esUsuarioPropietario) {
-                setResultadosBusqueda([]);
-                return;
-            }
+            const terminoLimpio = termino.trim();
+             // Don't search if the term is empty unless explicitly trying to show all available on focus
+            if (!terminoLimpio && !mostrarResultados) { // Adjusted logic here
+                 setResultadosBusqueda([]);
+                 setCargandoBusqueda(false);
+                 return;
+             }
 
             setCargandoBusqueda(true);
+            setMostrarResultados(true); // Ensure results dropdown is shown during search
             try {
-                const terminoLimpio = termino.trim();
-                const response = await axios.get(`/usuarios/buscar?q=${encodeURIComponent(terminoLimpio)}`);
+                const response = await axios.get(route('usuarios.buscar', { q: terminoLimpio }));
+                // Filter out already selected users and the current authenticated user
                 const usuariosDisponibles = response.data.filter(
-                    user => !usuariosSeleccionados.some(selected => selected.id === user.id)
+                    usuario => !usuariosSeleccionados.some(seleccionado => seleccionado.id === usuario.id) && usuario.id !== auth.user?.id
                 );
                 setResultadosBusqueda(usuariosDisponibles);
             } catch (error) {
-                console.error("Error buscando usuarios:", error);
+                console.error("Error searching users:", error);
                 setResultadosBusqueda([]);
             } finally {
                 setCargandoBusqueda(false);
             }
         }, 300),
-        [usuariosSeleccionados, esUsuarioPropietario]
+        [usuariosSeleccionados, auth.user?.id, mostrarResultados] // Dependencies: Recreate if these change
     );
 
     const manejarCambioBusqueda = (e) => {
-        if (!esUsuarioPropietario) return;
-        const term = e.target.value;
-        setTerminoBusqueda(term);
-        ejecutarBusqueda(term);
+        const termino = e.target.value;
+        setTerminoBusqueda(termino);
+        realizarBusqueda(termino);
     };
 
     const manejarFocoBusqueda = () => {
-        if (!esUsuarioPropietario) return;
-        setIsSearchFocused(true);
+        setMostrarResultados(true);
+        // If the search term is empty, perform a search to show all available users
         if (!terminoBusqueda.trim()) {
-            ejecutarBusqueda('');
+            realizarBusqueda(''); // Pass empty string to search all
+        } else {
+             // If there's a term, re-run the search to ensure results are fresh (e.g., if a user was added elsewhere)
+             realizarBusqueda(terminoBusqueda);
         }
-    };
+    }
 
     const manejarPerdidaFocoBusqueda = () => {
-        setTimeout(() => {
-            setIsSearchFocused(false);
-        }, 150);
-    };
+        // Delay hiding results to allow click on a result
+        setTimeout(() => setMostrarResultados(false), 150);
+    }
 
-    const manejarEnvio = (e) => {
+    const enviarFormulario = (e) => {
         e.preventDefault();
-        const dataToSend = { ...data };
-        if (!esUsuarioPropietario) {
-             delete dataToSend.userIds;
-        }
-
         post(route('canciones.update', cancion.id), {
-            data: dataToSend,
-            onSuccess: (page) => {
-                 const inputAudio = document.getElementById('archivo_nuevo');
-                 if (inputAudio) inputAudio.value = null;
-                 const inputFoto = document.getElementById('foto_nueva');
-                 if (inputFoto) inputFoto.value = null;
-
-                if (page.props.cancion && page.props.cancion.usuarios) {
-                     setUsuariosSeleccionados(page.props.cancion.usuarios);
-                     setData(prevData => ({
-                         ...prevData,
-                         userIds: page.props.cancion.usuarios.map(u => u.id),
-                         archivo_nuevo: null,
-                         foto_nueva: null,
-                         eliminar_foto: false,
-                         titulo: page.props.cancion.titulo || prevData.titulo,
-                         genero: page.props.cancion.genero || prevData.genero,
-                         publico: page.props.cancion.publico ?? prevData.publico,
-                         licencia: page.props.cancion.licencia || prevData.licencia,
-                     }));
-                 } else {
-                     setData(prevData => ({
-                         ...prevData,
-                         archivo_nuevo: null,
-                         foto_nueva: null,
-                         eliminar_foto: false,
-                     }));
-                 }
-
-                setTerminoBusqueda('');
-                setResultadosBusqueda([]);
-                setIsSearchFocused(false);
-            },
+            preserveState: true,
             preserveScroll: true,
-            preserveState: false,
-            forceFormData: true,
-             onError: (errors) => {
-                 console.error("Errores de formulario:", errors);
-             }
+            onSuccess: () => {
+                // Reset file inputs manually after successful upload
+                const inputFoto = document.getElementById('foto');
+                if (inputFoto) inputFoto.value = null;
+                const inputArchivo = document.getElementById('archivo');
+                if (inputArchivo) inputArchivo.value = null;
+                setData('foto', null);
+                setData('archivo', null);
+
+                // If the backend returns updated song data, you might want to update state here
+                // E.g., Inertia.reload() or update cancion prop if backend returns it
+                 // Inertia reload often simpler:
+                 // Inertia.reload({ only: ['cancion', 'generosSeleccionados', 'error', 'success']});
+            },
+            onError: (errores) => {
+                console.error("Form errors:", errores);
+                // Inertia handles setting errors state automatically
+            },
         });
-    };
-
-    const manejarCambioInput = (e) => {
-        const { name, value } = e.target;
-        setData(name, value);
-    };
-
-    const manejarCambioArchivo = (e) => {
-        const { name, files } = e.target;
-        if (files[0]) {
-            setData(name, files[0]);
-            if (name === 'foto_nueva') {
-                setData('eliminar_foto', false);
-            }
-        } else {
-            setData(name, null);
-        }
-    };
-
-    const manejarCambioCheckbox = (e) => {
-        const { name, checked } = e.target;
-        setData(name, checked);
-        if (name === 'eliminar_foto' && checked) {
-            setData('foto_nueva', null);
-            const inputFoto = document.getElementById('foto_nueva');
-            if (inputFoto) inputFoto.value = null;
-        }
     };
 
     return (
@@ -235,237 +228,257 @@ export default function Editar({ auth, cancion, errors: serverErrors, success: s
 
             <div className="py-12">
                 <div className="mx-auto max-w-4xl sm:px-6 lg:px-8">
-                    {recentlySuccessful && successMessage && (
-                        <div className="mb-4 p-4 bg-green-900 border border-green-700 text-green-200 rounded shadow-sm">
-                            {successMessage}
-                        </div>
-                    )}
-
-                    {Object.keys(erroresMostrados).length > 0 && !recentlySuccessful && (
-                         <div className="mb-4 p-4 bg-red-900 border border-red-700 text-red-200 rounded shadow-sm">
-                             <p className="font-bold">Por favor corrige los siguientes errores:</p>
-                             <ul className="list-disc list-inside mt-2 text-sm">
-                                 {Object.entries(erroresMostrados).map(([key, value]) => (
-                                     <li key={key}>{value}</li>
-                                 ))}
-                             </ul>
-                         </div>
-                       )}
-
                     <div className="overflow-hidden bg-gray-800 shadow-sm sm:rounded-lg">
                         <div className="p-6 md:p-8 text-gray-100">
-                             <form onSubmit={manejarEnvio} className="space-y-6">
-                                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                                     <div>
-                                         <InputLabel htmlFor="titulo" value="Título *" className="text-gray-300" />
-                                         <TextInput
-                                             type="text" id="titulo" name="titulo"
-                                             value={data.titulo} onChange={manejarCambioInput}
-                                             className={`mt-1 block w-full sm:text-sm ${erroresMostrados.titulo ? 'border-red-500' : ''}`}
-                                             required
-                                         />
-                                          {erroresMostrados.titulo && <span className="text-red-400 text-xs mt-1">{erroresMostrados.titulo}</span>}
-                                     </div>
-                                     <div>
-                                         <InputLabel htmlFor="genero" value="Género" className="text-gray-300" />
-                                         <TextInput
-                                             type="text" id="genero" name="genero"
-                                             value={data.genero ?? ''} onChange={manejarCambioInput}
-                                             className={`mt-1 block w-full sm:text-sm ${erroresMostrados.genero ? 'border-red-500' : ''}`}
-                                         />
-                                          {erroresMostrados.genero && <span className="text-red-400 text-xs mt-1">{erroresMostrados.genero}</span>}
-                                     </div>
-                                     <div className="sm:col-span-2">
-                                         <InputLabel htmlFor="licencia" value="Licencia" className="text-gray-300" />
-                                          <TextInput
-                                              id="licencia" type="text" name="licencia"
-                                              value={data.licencia ?? ''} onChange={manejarCambioInput}
-                                             className={`mt-1 block w-full sm:text-sm ${erroresMostrados.licencia ? 'border-red-500' : ''}`}
-                                          />
-                                           {erroresMostrados.licencia && <span className="text-red-400 text-xs mt-1">{erroresMostrados.licencia}</span>}
-                                     </div>
-                                     <div>
-                                          <label className="block text-sm font-medium text-gray-300">Duración</label>
-                                          <p className="mt-1 text-sm text-gray-400">{cancion.duracion ? `${Math.round(cancion.duracion)} segundos` : 'No disponible'}</p>
-                                          <small className="text-xs text-gray-400">(Se actualiza si subes un nuevo audio)</small>
-                                     </div>
-                                     <div>
-                                         <InputLabel htmlFor="publico" value="Visibilidad *" className="text-gray-300 mb-1" />
-                                         <select
-                                             id="publico" name="publico" value={data.publico.toString()}
-                                             onChange={(e) => setData('publico', e.target.value === 'true')}
-                                             className={`mt-1 block w-full rounded-md border-slate-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-slate-700 text-gray-200 sm:text-sm ${erroresMostrados.publico ? 'border-red-500' : ''}`} required >
-                                             <option value={'false'}>Privado (Solo colaboradores)</option>
-                                             <option value={'true'}>Público (Visible para todos)</option>
-                                         </select>
-                                          {erroresMostrados.publico && <p className="mt-1 text-sm text-red-400">{erroresMostrados.publico}</p>}
-                                     </div>
-                                     <div>
-                                         <label className="block text-sm font-medium text-gray-300">Archivo de Audio Actual</label>
-                                         {cancion.archivo_url ? (
-                                             <p className="mt-1 text-sm">
-                                                 <a href={cancion.archivo_url} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline break-all">
-                                                     {cancion.archivo_url.split('/').pop()}
-                                                 </a>
-                                             </p>
-                                         ) : (
-                                             <p className="mt-1 text-sm text-gray-400">No hay archivo actual.</p>
-                                         )}
-                                     </div>
-                                     <div>
-                                         <label htmlFor="archivo_nuevo" className="block text-sm font-medium text-gray-300">Reemplazar Archivo Audio (MP3, WAV)</label>
-                                         <input
-                                             type="file" id="archivo_nuevo" name="archivo_nuevo"
-                                             onChange={manejarCambioArchivo}
-                                             className={`mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-900 file:text-indigo-300 hover:file:bg-indigo-800 border border-gray-600 rounded-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${erroresMostrados.archivo_nuevo ? 'border-red-500' : ''}`}
-                                             accept=".mp3,.wav"
-                                         />
-                                         {data.archivo_nuevo && <span className="text-xs text-green-400 mt-1 block">Nuevo: {data.archivo_nuevo.name}</span>}
-                                          {erroresMostrados.archivo_nuevo && <span className="text-red-400 text-xs mt-1">{erroresMostrados.archivo_nuevo}</span>}
-                                     </div>
-                                     <div>
-                                         <label htmlFor="foto_nueva" className="block text-sm font-medium text-gray-300">Reemplazar Foto (JPG, PNG)</label>
-                                         {cancion.foto_url && !data.eliminar_foto && (
-                                             <div className="mt-1 mb-2">
-                                                 <p className="text-xs text-gray-400 mb-1">Actual:</p>
-                                                 <img src={cancion.foto_url} alt="Foto actual" className="h-20 w-20 object-cover rounded border border-gray-600" />
-                                             </div>
-                                         )}
-                                         {data.eliminar_foto && (
-                                             <p className="mt-1 text-sm text-orange-400">La foto actual será eliminada.</p>
-                                         )}
-                                         <input
-                                             type="file" id="foto_nueva" name="foto_nueva"
-                                             onChange={manejarCambioArchivo}
-                                             className={`mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-900 file:text-indigo-300 hover:file:bg-indigo-800 border border-gray-600 rounded-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${erroresMostrados.foto_nueva ? 'border-red-500' : ''}`}
-                                             accept="image/jpeg,image/png,image/jpg"
-                                             disabled={data.eliminar_foto}
-                                         />
-                                         {data.foto_nueva && <span className="text-xs text-green-400 mt-1 block">Nueva: {data.foto_nueva.name}</span>}
-                                          {erroresMostrados.foto_nueva && <span className="text-red-400 text-xs mt-1">{erroresMostrados.foto_nueva}</span>}
+                            <form onSubmit={enviarFormulario} className="space-y-6">
+                                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                                    <div className="sm:col-span-2">
+                                        <InputLabel htmlFor="titulo" value="Título *" className="text-gray-300" />
+                                        <TextInput
+                                            id="titulo"
+                                            type="text"
+                                            name="titulo"
+                                            value={data.titulo}
+                                            onChange={(e) => setData('titulo', e.target.value)}
+                                            required
+                                            className={`mt-1 block w-full sm:text-sm ${errors.titulo ? 'border-red-500' : ''}`} />
+                                        <InputError message={errors.titulo} className="mt-1 text-xs" />
+                                    </div>
 
-                                         {cancion.foto_url && (
-                                             <div className="mt-2 flex items-center">
-                                                 <input
-                                                     type="checkbox" id="eliminar_foto" name="eliminar_foto"
-                                                     checked={data.eliminar_foto} onChange={manejarCambioCheckbox}
-                                                     className="h-4 w-4 text-indigo-400 border-gray-600 rounded focus:ring-indigo-500"
-                                                 />
-                                                 <label htmlFor="eliminar_foto" className="ml-2 block text-sm text-gray-300">
-                                                     Eliminar foto actual
-                                                 </label>
-                                             </div>
-                                         )}
-                                          {erroresMostrados.eliminar_foto && <span className="text-red-400 text-xs mt-1">{erroresMostrados.eliminar_foto}</span>}
-                                     </div>
-                                 </div>
+                                    <div className="sm:col-span-2">
+                                        <InputLabel htmlFor="licencia" value="Licencia" className="text-gray-300" />
+                                        <TextInput
+                                            id="licencia"
+                                            type="text"
+                                            name="licencia"
+                                            value={data.licencia}
+                                            onChange={(e) => setData('licencia', e.target.value)}
+                                            className={`mt-1 block w-full sm:text-sm ${errors.licencia ? 'border-red-500' : ''}`} />
+                                        <InputError message={errors.licencia} className="mt-1 text-xs" />
+                                    </div>
+                                    <div>
+                                        <InputLabel htmlFor="publico" value="Visibilidad *" className="text-gray-300 mb-1" />
+                                        <select
+                                            id="publico"
+                                            name="publico"
+                                            value={data.publico.toString()}
+                                            onChange={(e) => setData('publico', e.target.value === 'true')}
+                                            required
+                                            className={`mt-1 block w-full rounded-md border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-700 text-gray-200 sm:text-sm ${errors.publico ? 'border-red-500' : ''}`}>
+                                            <option value="false">Privado (Solo colaboradores)</option>
+                                            <option value="true">Público (Visible para todos)</option>
+                                        </select>
+                                        <InputError message={errors.publico} className="mt-1 text-sm" />
+                                    </div>
 
-                                 <div className={`border-t border-gray-700 pt-6 mt-6 ${!esUsuarioPropietario ? 'opacity-60' : ''}`}>
-                                     <h3 className="text-lg font-medium leading-6 text-gray-100 mb-4">
-                                         Asociar Colaboradores {!esUsuarioPropietario && <span className="text-sm font-normal text-orange-400">(Solo el propietario puede modificar)</span>}
-                                     </h3>
-                                     <div className="relative">
-                                         <label htmlFor="user-search" className={`block text-sm font-medium ${!esUsuarioPropietario ? 'text-gray-500' : 'text-gray-300'}`}>Buscar Usuario por Nombre o Email</label>
-                                         <TextInput
-                                             id="user-search"
-                                             type="search"
-                                             value={terminoBusqueda}
-                                             onChange={manejarCambioBusqueda}
-                                             onFocus={manejarFocoBusqueda}
-                                             onBlur={manejarPerdidaFocoBusqueda}
-                                             className={`mt-1 block w-full sm:text-sm pr-10 ${!esUsuarioPropietario ? 'bg-gray-600 cursor-not-allowed' : ''}`}
-                                             placeholder={esUsuarioPropietario ? "Escribe para buscar..." : "Modificación deshabilitada"}
-                                             autoComplete="off"
-                                             disabled={!esUsuarioPropietario}
-                                         />
-                                         {cargandoBusqueda && esUsuarioPropietario && (
-                                             <div className="absolute inset-y-0 right-0 top-6 pr-3 flex items-center pointer-events-none">
-                                                 <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                 </svg>
-                                             </div>
-                                         )}
+                                    <div>
+                                        <InputLabel htmlFor="foto" value="Cambiar Foto (JPG, PNG)" className="text-gray-300" />
+                                        <input
+                                            id="foto"
+                                            type="file"
+                                            accept=".jpg,.jpeg,.png"
+                                            onChange={(e) => {
+                                                setData('foto', e.target.files[0]);
+                                                if (e.target.files[0]) {
+                                                    setFotoActualUrl(URL.createObjectURL(e.target.files[0]));
+                                                } else if (cancion.foto_url) {
+                                                    setFotoActualUrl(cancion.foto_url);
+                                                } else {
+                                                    setFotoActualUrl(null);
+                                                }
+                                            }}
+                                            className={`mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-900 file:text-indigo-300 hover:file:bg-indigo-800 border border-gray-600 rounded-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${errors.foto ? 'border-red-500' : ''}`} />
+                                        {fotoActualUrl && !data.foto && (
+                                            <div className="mt-2">
+                                                <p className="text-xs text-gray-400">Foto actual:</p>
+                                                <img src={fotoActualUrl} alt="Foto actual" className="mt-1 max-h-32 rounded" />
+                                            </div>
+                                        )}
+                                        {data.foto && <span className="text-xs text-gray-400 mt-1 block">Nueva foto: {data.foto.name}</span>}
+                                        <InputError message={errors.foto} className="mt-1 text-xs" />
+                                    </div>
 
-                                         {isSearchFocused && esUsuarioPropietario && (
-                                             <ul className="mt-2 border border-gray-600 rounded-md bg-gray-700 shadow-lg max-h-60 overflow-auto z-10 absolute w-full">
-                                                 {cargandoBusqueda && terminoBusqueda.trim() && (
-                                                     <li className="px-4 py-2 text-sm text-gray-400">Buscando...</li>
+                                    <div>
+                                        <InputLabel htmlFor="archivo" value="Cambiar Archivo de Audio (MP3, WAV)" className="text-gray-300" />
+                                        <input
+                                            id="archivo"
+                                            type="file"
+                                            accept=".mp3,.wav"
+                                            onChange={(e) => {
+                                                setData('archivo', e.target.files[0]);
+                                                if (e.target.files[0]) {
+                                                    setArchivoActualNombre(e.target.files[0].name);
+                                                } else if (cancion.archivo_nombre) {
+                                                    setArchivoActualNombre(cancion.archivo_nombre);
+                                                } else {
+                                                    setArchivoActualNombre(null);
+                                                }
+                                            }}
+                                            className={`mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-900 file:text-indigo-300 hover:file:bg-indigo-800 border border-gray-600 rounded-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${errors.archivo ? 'border-red-500' : ''}`} />
+                                        {archivoActualNombre && (
+                                            <span className="text-xs text-gray-400 mt-1 block">
+                                                {data.archivo ? `Nuevo archivo: ${data.archivo.name}` : `Archivo actual: ${archivoActualNombre}`}
+                                            </span>
+                                        )}
+                                        <InputError message={errors.archivo} className="mt-1 text-xs" />
+                                    </div>
+                                </div>
+
+                                <div className="relative pt-4">
+                                    <InputLabel htmlFor="busca-genero" value="Géneros" className="text-gray-300" />
+                                    <TextInput
+                                        id="busca-genero"
+                                        type="search"
+                                        value={termGenero}
+                                        onChange={manejarTermGenero}
+                                        onFocus={() => {
+                                            setMostrarGenero(true);
+                                             // If input is empty on focus, show all available genres
+                                            if (!termGenero.trim()) buscarGeneros('');
+                                        }}
+                                        onBlur={() => setTimeout(() => setMostrarGenero(false), 150)}
+                                        placeholder="Busca o desplázate para añadir géneros..."
+                                        className="mt-1 block w-full sm:text-sm pr-10"
+                                    />
+                                    {mostrarGenero && (
+                                        <ul className="absolute z-10 mt-1 w-full bg-gray-700 border border-gray-600 rounded-md max-h-40 overflow-y-auto shadow-lg">
+                                            {resultadosGenero.length > 0 ? ( // Use resultadosGenero here
+                                                resultadosGenero.map((g, i) => (
+                                                    <li
+                                                        key={i}
+                                                        className="px-4 py-2 hover:bg-gray-600 cursor-pointer text-gray-100 text-sm"
+                                                        onMouseDown={() => agregarGenero(g)} // Use onMouseDown for click-like behavior before onBlur fires
+                                                    >
+                                                        {g}
+                                                    </li>
+                                                ))
+                                            ) : (
+                                                <li className="px-4 py-2 text-gray-400 text-sm">
+                                                     {termGenero ? "No hay géneros que coincidan" : "No hay más géneros para añadir"}
+                                                </li>
+                                            )}
+                                        </ul>
+                                    )}
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        {data.genero.map((g, i) => ( // Displaying genres from data.genero
+                                            <span key={i} className="bg-indigo-600 text-white text-xs px-2 py-1 rounded-full inline-flex items-center">
+                                                {g}
+                                                <button type="button" onClick={() => quitarGenero(g)} className="ml-2 text-indigo-100 hover:text-white focus:outline-none">
+                                                    &times;
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <InputError message={errors.genero} className="mt-1 text-xs text-red-500" />
+                                </div>
+
+                                <div className="border-t border-gray-700 pt-6 mt-6">
+                                    <h3 className="text-lg font-medium leading-6 text-gray-100 mb-4">
+                                        Asociar Colaboradores
+                                    </h3>
+                                    <div className="relative">
+                                        <InputLabel htmlFor="user-search" value="Buscar Usuario por Nombre o Email" className="text-gray-300" />
+                                        <TextInput
+                                            id="user-search"
+                                            type="search"
+                                            value={terminoBusqueda}
+                                            onChange={manejarCambioBusqueda}
+                                            onFocus={manejarFocoBusqueda}
+                                            onBlur={manejarPerdidaFocoBusqueda}
+                                            className="mt-1 block w-full sm:text-sm pr-10"
+                                            placeholder="Escribe para buscar..."
+                                            autoComplete="off"
+                                        />
+                                        {cargandoBusqueda && (
+                                            <div className="absolute inset-y-0 right-0 top-6 pr-3 flex items-center pointer-events-none">
+                                                <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                            </div>
+                                        )}
+
+                                        {mostrarResultados && (
+                                            <ul className="mt-2 border border-gray-600 rounded-md bg-gray-700 shadow-lg max-h-60 overflow-auto z-10 absolute w-full">
+                                                {!cargandoBusqueda && resultadosBusqueda.length === 0 && (
+                                                    <li className="px-4 py-2 text-sm text-gray-400">
+                                                         {terminoBusqueda ? 'No se encontraron usuarios que coincidan.' : 'Escribe para buscar o no hay más usuarios disponibles.'} {/* Improved message */}
+                                                    </li>
+                                                )}
+                                                {!cargandoBusqueda && resultadosBusqueda.map(usuario => (
+                                                    <li key={usuario.id} className="px-4 py-2 hover:bg-gray-600 flex justify-between items-center cursor-pointer"
+                                                        onMouseDown={() => agregarUsuario(usuario)} // Use onMouseDown
+                                                    >
+                                                        <div>
+                                                            <span className="font-medium text-sm text-gray-100">{usuario.name}</span>
+                                                            <span className="text-xs text-gray-400 ml-2">({usuario.email})</span>
+                                                        </div>
+                                                    </li>
+                                                ))}
+                                                 {cargandoBusqueda && (
+                                                    <li className="px-4 py-2 text-sm text-gray-400">Buscando...</li>
                                                  )}
-                                                 {!cargandoBusqueda && resultadosBusqueda.length === 0 && (
-                                                     <li className="px-4 py-2 text-sm text-gray-400">
-                                                         {terminoBusqueda.trim() ? 'No se encontraron usuarios.' : 'No hay otros usuarios disponibles.'}
-                                                     </li>
-                                                 )}
-                                                 {!cargandoBusqueda && resultadosBusqueda.map(usuario => (
-                                                     <li key={usuario.id} className="px-4 py-2 hover:bg-gray-600 flex justify-between items-center cursor-pointer"
-                                                         onMouseDown={() => añadirUsuario(usuario)}
-                                                     >
-                                                         <div>
-                                                             <span className="font-medium text-sm text-gray-100">{usuario.name}</span>
-                                                             <span className="text-xs text-gray-400 ml-2">({usuario.email})</span>
-                                                         </div>
-                                                     </li>
-                                                 ))}
-                                             </ul>
-                                         )}
-                                     </div>
-
-                                     {usuariosSeleccionados.length > 0 && (
-                                         <div className="mt-4">
-                                             <h4 className="text-sm font-medium text-gray-300 mb-2">Colaboradores seleccionados:</h4>
-                                             <ul className="space-y-2">
-                                                 {usuariosSeleccionados.map(usuario => (
-                                                     <li key={usuario.id} className="flex justify-between items-center bg-gray-700 p-2 rounded border border-gray-600">
-                                                         <div>
-                                                             <span className="font-medium text-sm text-gray-100">{usuario.name}</span>
-                                                             <span className="text-xs text-gray-400 ml-2">({usuario.email})</span>
-                                                             {usuario.es_propietario && (
-                                                                  <span className="ml-2 text-xs text-blue-400 font-semibold">
-                                                                      {auth.user?.id === usuario.id ? '(Tú - Propietario)' : '(Propietario)'}
-                                                                  </span>
+                                            </ul>
+                                        )}
+                                    </div>
+                                    {usuariosSeleccionados.length > 0 && (
+                                        <div className="mt-4">
+                                            <h4 className="text-sm font-medium text-gray-300 mb-2">Colaboradores seleccionados:</h4>
+                                            <ul className="space-y-2">
+                                                {usuariosSeleccionados.map(usuario => (
+                                                    <li key={usuario.id} className="flex justify-between items-center bg-gray-700 p-2 rounded border border-gray-600">
+                                                        <div>
+                                                            <span className="font-medium text-sm text-gray-100">{usuario.name}</span>
+                                                            <span className="text-xs text-gray-400 ml-2">({usuario.email})</span>
+                                                            {/* Display (Creador) tag */}
+                                                            {cancion.creador_id === usuario.id && (
+                                                                <span className="ml-2 text-xs text-blue-400 font-semibold">(Creador)</span>
+                                                            )}
+                                                            {/* Display (Tú) tag if not the creator */}
+                                                             {auth.user?.id === usuario.id && cancion.creador_id !== usuario.id && (
+                                                                <span className="ml-2 text-xs text-green-400 font-semibold">(Tú)</span>
                                                              )}
-                                                         </div>
-                                                         {!usuario.es_propietario && esUsuarioPropietario && (
-                                                             <button
-                                                                 type="button"
-                                                                 onClick={() => eliminarUsuario(usuario.id)}
-                                                                 className="ml-4 text-xs bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded"
-                                                                 title="Quitar colaborador"
-                                                             >
-                                                                 Quitar
-                                                             </button>
-                                                         )}
-                                                     </li>
-                                                 ))}
-                                             </ul>
-                                              {erroresMostrados.userIds && typeof erroresMostrados.userIds === 'string' && <p className="mt-1 text-xs text-red-400">{erroresMostrados.userIds}</p>}
-                                              {Object.keys(erroresMostrados).filter(key => key.startsWith('userIds.')).map(key => (
-                                                  <p key={key} className="mt-1 text-xs text-red-400">{erroresMostrados[key]}</p>
-                                              ))}
-                                         </div>
-                                     )}
-                                     {usuariosSeleccionados.length === 0 && erroresMostrados.userIds && typeof erroresMostrados.userIds === 'string' && <p className="mt-1 text-xs text-red-400">{erroresMostrados.userIds}</p>}
-                                 </div>
+                                                        </div>
+                                                        {/* Only allow removing if the user is not the creator OR if there's more than one user associated */}
+                                                        {!(cancion.creador_id === usuario.id && usuariosSeleccionados.length === 1) && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => quitarUsuario(usuario.id)}
+                                                                className="ml-4 text-xs bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded"
+                                                                title="Quitar colaborador"
+                                                            >
+                                                                Quitar
+                                                            </button>
+                                                        )}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                             {/* Display errors related to userIds */}
+                                             <InputError message={errors.userIds && typeof errors.userIds === 'string' ? errors.userIds : ''} className="mt-1 text-xs" />
+                                             {Object.keys(errors).filter(key => key.startsWith('userIds.')).map(key => (
+                                                    <InputError key={key} message={errors[key]} className="mt-1 text-xs" />
+                                             ))}
+                                        </div>
+                                    )}
+                                </div>
 
-                                 <div className="flex justify-end items-center pt-5 mt-6 border-t border-gray-700 gap-4">
-                                     <Link
-                                         href={route('canciones.index')}
-                                         className="inline-flex items-center px-4 py-2 bg-gray-800 border border-gray-500 rounded-md font-semibold text-xs text-gray-300 uppercase tracking-widest shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-25 transition ease-in-out duration-150"
-                                         as="button"
-                                         disabled={processing}
-                                     >
-                                         Cancelar
-                                     </Link>
-                                     <button
-                                         type="submit"
-                                         disabled={processing}
-                                         className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 focus:ring-offset-gray-800"
-                                     >
-                                         {processing ? 'Actualizando...' : 'Actualizar Canción'}
-                                     </button>
-                                 </div>
-                             </form>
+
+                                <div className="flex justify-end pt-5 mt-6 border-t border-gray-700">
+                                    <Link
+                                        href={route('canciones.show', cancion.id)}
+                                        className="mr-4 inline-flex justify-center py-2 px-4 border border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-300 bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-gray-800"
+                                    >
+                                        Cancelar
+                                    </Link>
+                                    <button
+                                        type="submit"
+                                        disabled={processing}
+                                        className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 focus:ring-offset-gray-800"
+                                    >
+                                        {processing ? 'Guardando Cambios...' : 'Guardar Cambios'}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>

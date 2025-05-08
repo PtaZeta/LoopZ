@@ -177,7 +177,7 @@ class CancionController extends Controller
             $cancion = Cancion::with(['usuarios' => function ($query) {
                 $query->withPivot('propietario');
             }])->findOrFail($id);
-
+            $generosSeleccionados = $cancion->generos->pluck('nombre')->all();
             $this->authorize('update', $cancion);
 
              $usuariosMapeados = $cancion->usuarios->map(function ($usuario) {
@@ -193,9 +193,13 @@ class CancionController extends Controller
              unset($cancionData['usuarios']);
              $cancionData['usuarios'] = $usuariosMapeados;
 
+            $generos = Genero::all()->pluck('nombre');
+
             return Inertia::render('canciones/Edit', [
                 'cancion' => $cancionData,
+                'generos' => $generos,
                 'success' => session('success'),
+                'generosSeleccionados' => $generosSeleccionados,
                 'error' => session('error')
             ]);
         } catch (ModelNotFoundException $e) {
@@ -203,122 +207,214 @@ class CancionController extends Controller
         }
     }
 
-     public function update(Request $request, $id)
-     {
-         try {
-             $cancion = Cancion::with(['usuarios' => fn($q) => $q->withPivot('propietario')])
-                                 ->findOrFail($id);
-             $this->authorize('update', $cancion);
+    public function update(Request $request, $id)
+    {
+        try {
+            $cancion = Cancion::with(['usuarios' => fn($q) => $q->withPivot('propietario')])
+                               ->findOrFail($id);
 
-             $validated = $request->validate([
-                 'titulo' => 'required|string|max:255',
-                 'genero' => 'nullable|string|max:255',
-                 'publico' => 'required|boolean',
-                 'archivo_nuevo' => 'nullable|file|mimes:mp3,wav|max:10024',
-                 'foto_nueva' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
-                 'eliminar_foto' => 'nullable|boolean',
-                 'licencia' => 'nullable|string|max:255',
-                 'userIds' => 'nullable|array',
-                 'userIds.*' => 'integer|exists:users,id',
-             ]);
+            $this->authorize('update', $cancion);
 
-             $cancion->titulo = $validated['titulo'];
-             $cancion->genero = $validated['genero'] ?? null;
-             $cancion->licencia = $validated['licencia'] ?? null;
-             $cancion->publico = $validated['publico'];
-
-             if ($request->hasFile('archivo_nuevo')) {
-                 $nuevoArchivoAudio = $request->file('archivo_nuevo');
-                 $urlAudioAntiguo = $cancion->archivo_url;
-                 $rutaAudioAntiguo = $this->getRelativePath($urlAudioAntiguo);
-
-                 if ($rutaAudioAntiguo && Storage::disk('public')->exists($rutaAudioAntiguo)) {
-                     Storage::disk('public')->delete($rutaAudioAntiguo);
-                 }
-
-                 $extensionAudio = $nuevoArchivoAudio->getClientOriginalExtension();
-                 $nombreAudio = Str::uuid() . "_song.{$extensionAudio}";
-
-                 try {
-                     $getID3 = new getID3;
-                     $infoAudio = $getID3->analyze($nuevoArchivoAudio->getRealPath());
-                     $cancion->duracion = isset($infoAudio['playtime_seconds']) ? round($infoAudio['playtime_seconds']) : ($cancion->duracion ?? 0);
-                 } catch (\Exception $e) {
-                     $cancion->duracion = $cancion->duracion ?? 0;
-                 }
-
-                 $pathAudio = $nuevoArchivoAudio->storeAs('canciones', $nombreAudio, 'public');
-                  if ($pathAudio) {
-                      $cancion->archivo_url = Storage::disk('public')->url($pathAudio);
-                  } else {
-                      return back()->withErrors(['archivo_nuevo' => 'No se pudo guardar el nuevo archivo de audio.'])->withInput();
-                  }
-             }
-
-             $eliminarFoto = $request->boolean('eliminar_foto');
-             $urlFotoAntigua = $cancion->foto_url;
-             $rutaFotoAntigua = $this->getRelativePath($urlFotoAntigua);
-
-             if ($request->hasFile('foto_nueva')) {
-                 $nuevoArchivoFoto = $request->file('foto_nueva');
-                 if ($rutaFotoAntigua && Storage::disk('public')->exists($rutaFotoAntigua)) {
-                     Storage::disk('public')->delete($rutaFotoAntigua);
-                 }
-
-                 $extensionFoto = $nuevoArchivoFoto->getClientOriginalExtension();
-                 $nombreFoto = Str::uuid() . "_pic.{$extensionFoto}";
-                 $pathFoto = $nuevoArchivoFoto->storeAs('imagenes', $nombreFoto, 'public');
-                  if ($pathFoto) {
-                     $cancion->foto_url = Storage::disk('public')->url($pathFoto);
-                  }
-
-             } elseif ($eliminarFoto) {
-                 if ($rutaFotoAntigua && Storage::disk('public')->exists($rutaFotoAntigua)) {
-                     Storage::disk('public')->delete($rutaFotoAntigua);
-                 }
-                 $cancion->foto_url = null;
-             }
-
-             $cancion->save();
-
-             if (method_exists($cancion, 'usuarios')) {
-
-                 $propietario = $cancion->usuarios()->wherePivot('propietario', true)->first();
-                 $propietarioId = $propietario ? $propietario->id : null;
-
-                 if (!$propietarioId) {
-                      return Redirect::route('canciones.edit', $cancion->id)->with('error', 'Error: No se encontró propietario para esta canción.');
-                 }
-
-                 $idsUsuariosSincronizarInput = $request->input('userIds', []);
-                  if (!is_array($idsUsuariosSincronizarInput)) {
-                      $idsUsuariosSincronizarInput = [];
-                  }
-                  $idsUsuariosSincronizar = array_map('intval', $idsUsuariosSincronizarInput);
+            // --- Validation ---
+            // Adjusted validation for 'genero' to be an array of strings
+            $validated = $request->validate([
+                'titulo' => 'required|string|max:255',
+                // Validate 'genero' as a nullable array
+                'genero' => 'nullable|array',
+                // Validate each item in the 'genero' array: string, max length, and must exist in the 'nombre' column of the 'generos' table
+                'genero.*' => 'string|max:255|exists:generos,nombre',
+                'publico' => 'required|boolean',
+                'archivo_nuevo' => 'nullable|file|mimes:mp3,wav|max:10024', // Max 10MB
+                'foto_nueva' => 'nullable|file|mimes:jpg,jpeg,png|max:5120', // Max 5MB
+                'eliminar_foto' => 'nullable|boolean',
+                'licencia' => 'nullable|string|max:255',
+                'userIds' => 'nullable|array',
+                'userIds.*' => 'integer|exists:users,id',
+            ]);
+            // --- End Validation ---
 
 
-                 if (!in_array($propietarioId, $idsUsuariosSincronizar)) {
+            // --- Update basic song attributes ---
+            $cancion->titulo = $validated['titulo'];
+            // Removed the line that assigned the genre array to a single column
+            // $cancion->genero = $validated['genero'] ?? null;
+            $cancion->licencia = $validated['licencia'] ?? null;
+            $cancion->publico = $validated['publico'];
+            // --- End Update basic song attributes ---
+
+
+            // --- Handle File Uploads (Audio and Photo) ---
+            // Handle Audio File
+            if ($request->hasFile('archivo_nuevo')) {
+                $nuevoArchivoAudio = $request->file('archivo_nuevo');
+                $urlAudioAntiguo = $cancion->archivo_url;
+                $rutaAudioAntiguo = $this->getRelativePath($urlAudioAntiguo); // Assuming getRelativePath method exists
+
+                // Delete old audio file if it exists
+                if ($rutaAudioAntiguo && Storage::disk('public')->exists($rutaAudioAntiguo)) {
+                    Storage::disk('public')->delete($rutaAudioAntiguo);
+                }
+
+                $extensionAudio = $nuevoArchivoAudio->getClientOriginalExtension();
+                $nombreAudio = Str::uuid() . "_song.{$extensionAudio}";
+
+                // Try to get duration using getID3
+                try {
+                    $getID3 = new getID3;
+                    $infoAudio = $getID3->analyze($nuevoArchivoAudio->getRealPath());
+                    $cancion->duracion = isset($infoAudio['playtime_seconds']) ? round($infoAudio['playtime_seconds']) : ($cancion->duracion ?? 0);
+                } catch (\Exception $e) {
+                    // Log the getID3 error if necessary
+                    // \Log::error("getID3 error for song ID {$id}: " . $e->getMessage());
+                    $cancion->duracion = $cancion->duracion ?? 0; // Keep old duration or default to 0
+                }
+
+                // Store the new audio file
+                $pathAudio = $nuevoArchivoAudio->storeAs('canciones', $nombreAudio, 'public');
+                if ($pathAudio) {
+                    $cancion->archivo_url = Storage::disk('public')->url($pathAudio);
+                     // You might also want to store the filename
+                     $cancion->archivo_nombre = $nuevoArchivoAudio->getClientOriginalName();
+                } else {
+                    // If storage fails, return error and don't save the song yet
+                    return back()->withErrors(['archivo_nuevo' => 'No se pudo guardar el nuevo archivo de audio.'])->withInput();
+                }
+            }
+             // You might want logic here to handle deleting the audio if a new file is NOT uploaded but you want to remove the old one
+             // (though the frontend doesn't currently send an explicit 'eliminar_audio' flag)
+
+
+            // Handle Photo File
+            $eliminarFoto = $request->boolean('eliminar_foto'); // Frontend sends this flag if photo should be removed
+            $urlFotoAntigua = $cancion->foto_url;
+            $rutaFotoAntigua = $this->getRelativePath($urlFotoAntigua); // Assuming getRelativePath method exists
+
+            if ($request->hasFile('foto_nueva')) {
+                $nuevoArchivoFoto = $request->file('foto_nueva');
+                 // Delete old photo file if it exists
+                if ($rutaFotoAntigua && Storage::disk('public')->exists($rutaFotoAntigua)) {
+                    Storage::disk('public')->delete($rutaFotoAntigua);
+                }
+
+                $extensionFoto = $nuevoArchivoFoto->getClientOriginalExtension();
+                $nombreFoto = Str::uuid() . "_pic.{$extensionFoto}";
+                $pathFoto = $nuevoArchivoFoto->storeAs('imagenes', $nombreFoto, 'public');
+                if ($pathFoto) {
+                    $cancion->foto_url = Storage::disk('public')->url($pathFoto);
+                } else {
+                     // If storage fails, return error and don't save the song yet
+                     return back()->withErrors(['foto_nueva' => 'No se pudo guardar la nueva foto.'])->withInput();
+                }
+
+            } elseif ($eliminarFoto) {
+                 // If 'eliminar_foto' flag is true and no new photo was uploaded
+                if ($rutaFotoAntigua && Storage::disk('public')->exists($rutaFotoAntigua)) {
+                    Storage::disk('public')->delete($rutaFotoAntigua);
+                }
+                $cancion->foto_url = null; // Set foto_url to null
+            }
+            // --- End Handle File Uploads ---
+
+
+            // Save the Cancion model *before* syncing relationships
+            // This is important if the relationships rely on the song having an ID
+            $cancion->save();
+
+
+            // --- Sync Genres ---
+            // Get the array of genre names from validated data (it's already filtered/validated by `exists:generos,nombre`)
+            $generoNombres = $validated['genero'] ?? [];
+
+            // Find the IDs of the Genero models based on the names
+            // Ensure we only get IDs for names that exist in the database
+            $generoIds = Genero::whereIn('nombre', $generoNombres)->pluck('id')->toArray();
+
+            // Sync the genres relationship using the found IDs
+            // `sync` will detach any existing genres not in $generoIds and attach any in $generoIds that are not already attached
+            $cancion->generos()->sync($generoIds);
+            // --- End Sync Genres ---
+
+
+            // --- Sync Collaborators (Users) ---
+            // Ensure the users relationship exists on the Cancion model
+            if (method_exists($cancion, 'usuarios')) {
+
+                // Find the current owner
+                $propietario = $cancion->usuarios()->wherePivot('propietario', true)->first();
+                $propietarioId = $propietario ? $propietario->id : null;
+
+                if (!$propietarioId) {
+                    // This should ideally not happen if a song always has an owner,
+                    // but it's good defensive programming.
+                    // Note: Redirecting back to edit might lose form data here.
+                    // Consider handling this edge case during song creation or in a different way.
+                    // For now, keep the redirect but be aware.
+                    return Redirect::route('canciones.edit', $cancion->id)->with('error', 'Error: No se encontró propietario para esta canción.');
+                }
+
+                // Get the user IDs from the request input
+                $idsUsuariosSincronizarInput = $request->input('userIds', []);
+                // Ensure it's an array just in case validation somehow failed or input was weird
+                if (!is_array($idsUsuariosSincronizarInput)) {
+                    $idsUsuariosSincronizarInput = [];
+                }
+                 // Map to integers to be safe
+                $idsUsuariosSincronizar = array_map('intval', $idsUsuariosSincronizarInput);
+
+
+                // Ensure the original owner is always included in the list to sync
+                // unless they are explicitly being removed AND there are other users
+                 // The frontend logic should prevent removing the last user if it's the owner
+                 // But this backend check is a safety net.
+                 // The frontend allows removing non-owner users.
+                 // If the input user list does *not* contain the owner, add them back.
+                 // This prevents accidentally removing the owner via the collaborator list.
+                if (!in_array($propietarioId, $idsUsuariosSincronizar)) {
+                     // If the owner is NOT in the list from the frontend, add them back
                      $idsUsuariosSincronizar[] = $propietarioId;
-                 }
-                 $idsUsuariosUnicos = array_unique($idsUsuariosSincronizar);
+                }
 
-                 $usuariosParaSincronizar = [];
-                 foreach ($idsUsuariosUnicos as $userId) {
-                     $esPropietario = ($userId === $propietarioId);
-                     $usuariosParaSincronizar[$userId] = ['propietario' => $esPropietario];
-                 }
+                // Ensure uniqueness
+                $idsUsuariosUnicos = array_unique($idsUsuariosSincronizar);
 
-                 $cancion->usuarios()->sync($usuariosParaSincronizar);
-             }
+                // Prepare the data structure for sync (ID => pivot data)
+                $usuariosParaSincronizar = [];
+                foreach ($idsUsuariosUnicos as $userId) {
+                    // The owner is the one whose ID matches $propietarioId
+                    $esPropietario = ($userId === $propietarioId);
+                    $usuariosParaSincronizar[$userId] = ['propietario' => $esPropietario];
+                }
 
-             return Redirect::route('canciones.index')->with('success', 'Canción actualizada exitosamente.');
+                // Sync the users relationship
+                // `sync` will detach users not in $usuariosParaSincronizar,
+                // attach users in $usuariosParaSincronizar not currently attached,
+                // and update pivot data for users already attached.
+                $cancion->usuarios()->sync($usuariosParaSincronizar);
+            }
+            // --- End Sync Collaborators ---
 
-         } catch (ModelNotFoundException $e) {
-             return redirect()->route('canciones.index')->with('error', 'Canción no encontrada.');
-         } catch (\Exception $e) {
-             return Redirect::route('canciones.edit', $id)->with('error', 'Ocurrió un error al actualizar la canción: ' . $e->getMessage());
-         }
-     }
+
+            // Redirect on success
+            // Redirecting to the index page is fine, or you could redirect to the show page:
+            // return Redirect::route('canciones.show', $cancion->id)->with('success', 'Canción actualizada exitosamente.');
+            return Redirect::route('canciones.index')->with('success', 'Canción actualizada exitosamente.');
+
+        } catch (ModelNotFoundException $e) {
+            // Redirect to index with error if song not found
+            return redirect()->route('canciones.index')->with('error', 'Canción no encontrada.');
+        } catch (\Exception $e) {
+            // Catch any other exceptions during the update process
+            // Log the error for debugging
+            \Log::error("Error updating song ID {$id}: " . $e->getMessage() . " Stack trace: " . $e->getTraceAsString());
+
+            // Redirect back to the edit page with an error message
+            // Consider returning Inertia::render with errors and input if you want
+            // the user to see the form again with pre-filled data and errors.
+             return Redirect::route('canciones.edit', $id)->with('error', 'Ocurrió un error al actualizar la canción: ' . $e->getMessage())->withInput();
+        }
+    }
+
+
 
     public function destroy($id)
     {
