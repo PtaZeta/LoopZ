@@ -10,7 +10,6 @@ class SpotifyGenresSeeder extends Seeder
 {
     public function run()
     {
-        // 1) Obtener token vía Client Credentials
         $tokenResponse = Http::asForm()
             ->withBasicAuth(
                 config('services.spotify.client_id'),
@@ -30,7 +29,6 @@ class SpotifyGenresSeeder extends Seeder
         $accessToken = $tokenResponse->json('access_token');
         $this->command->info("Access Token: {$accessToken}");
 
-        // 2) Intentar obtener géneros desde API (ahora deprecada)
         $apiEndpoint = 'https://api.spotify.com/v1/recommendations/available-genre-seeds';
         $this->command->info("Llamando a: {$apiEndpoint}");
 
@@ -38,8 +36,6 @@ class SpotifyGenresSeeder extends Seeder
             ->get($apiEndpoint);
 
         if ($genresResponse->status() === 404) {
-            // Fallback: listado estático de géneros (endpoint deprecado) citeturn0search3turn0search6
-            $this->command->warn('Endpoint deprecated, usando lista estática de géneros');
             $genres = [
                 'acoustic','afrobeat','alt-rock','alternative','ambient','anime',
                 'black-metal','bluegrass','blues','bossanova','brazil','breakbeat',
@@ -63,13 +59,11 @@ class SpotifyGenresSeeder extends Seeder
         } elseif (! $genresResponse->successful()) {
             $status = $genresResponse->status();
             $body   = $genresResponse->body() ?: '[sin cuerpo]';
-            $this->command->error("Error al obtener géneros: HTTP {$status} - {$body}");
             return;
         } else {
             $genres = $genresResponse->json('genres', []);
         }
 
-        // 3) Insertar o actualizar en la base de datos
         foreach ($genres as $nombre) {
             Genero::updateOrCreate(
                 ['nombre' => $nombre],
