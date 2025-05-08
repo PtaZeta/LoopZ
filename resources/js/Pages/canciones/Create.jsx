@@ -3,26 +3,68 @@ import { useForm, Head, Link } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import axios from 'axios';
 import { debounce } from 'lodash';
-import TextInput from '@/Components/TextInput'; // Importado
-import InputLabel from '@/Components/InputLabel'; // Importado
-import InputError from '@/Components/InputError'; // Importado
+import TextInput from '@/Components/TextInput';
+import InputLabel from '@/Components/InputLabel';
+import InputError from '@/Components/InputError';
 
-export default function Create({ auth }) {
+export default function Create({ auth, generos  }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         titulo: '',
-        genero: '',
         publico: false,
         licencia: '',
         foto: null,
         archivo: null,
+        genero: [],
         userIds: [],
     });
+    const handleGeneroChange = (e) => {
+        const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
+        setData('genero', selectedOptions);
+    };
+
+  const [termGenero, setTermGenero] = useState('');
+  const [resultadosGenero, setResultadosGenero] = useState([]);
+  const [mostrarGenero, setMostrarGenero] = useState(false);
+
+  const buscarGeneros = useCallback(
+    debounce(term => {
+      const limpio = term.trim().toLowerCase();
+      if (limpio) {
+        setResultadosGenero(
+          generos.filter(g => g.toLowerCase().includes(limpio) && !data.genero.includes(g))
+        );
+      } else {
+        setResultadosGenero([]);
+      }
+      setMostrarGenero(true);
+    }, 300),
+    [generos, data.genero]
+  );
+
+  const manejarTermGenero = e => {
+    const term = e.target.value;
+    setTermGenero(term);
+    buscarGeneros(term);
+  };
+
+  const agregarGenero = g => {
+    setData('genero', [...data.genero, g]);
+    setTermGenero('');
+    setResultadosGenero([]);
+    setMostrarGenero(false);
+  };
+
+  const quitarGenero = g => {
+    setData('genero', data.genero.filter(x => x !== g));
+  };
+
 
     const [terminoBusqueda, setTerminoBusqueda] = useState('');
     const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
     const [usuariosSeleccionados, setUsuariosSeleccionados] = useState([]);
     const [cargandoBusqueda, setCargandoBusqueda] = useState(false);
     const [mostrarResultados, setMostrarResultados] = useState(false);
+    const [generoSeleccionado, setGeneroSeleccionado] = useState('');
 
     useEffect(() => {
         if (auth.user && !usuariosSeleccionados.some(u => u.id === auth.user.id)) {
@@ -31,7 +73,7 @@ export default function Create({ auth }) {
              setUsuariosSeleccionados(nuevosSeleccionados);
              setData('userIds', nuevosSeleccionados.map(u => u.id));
         }
-    }, [auth.user]); // Se eliminó setData de las dependencias para evitar bucles
+    }, [auth.user]);
 
     const agregarUsuario = (usuario) => {
         if (!usuariosSeleccionados.some(seleccionado => seleccionado.id === usuario.id)) {
@@ -43,6 +85,9 @@ export default function Create({ auth }) {
             setMostrarResultados(false);
         }
     };
+    const listaGenero = termGenero
+    ? generos.filter(g => g.toLowerCase().includes(termGenero.trim().toLowerCase()) && !data.genero.includes(g))
+    : generos.filter(g => !data.genero.includes(g));
 
     const quitarUsuario = (usuarioId) => {
         if (usuarioId === auth.user?.id) return;
@@ -106,7 +151,6 @@ export default function Create({ auth }) {
                 setTerminoBusqueda('');
                 setResultadosBusqueda([]);
                 setMostrarResultados(false);
-                 // Limpiar inputs de archivo manualmente si es necesario
                  const inputFoto = document.getElementById('foto');
                  if (inputFoto) inputFoto.value = null;
                  const inputArchivo = document.getElementById('archivo');
@@ -130,7 +174,7 @@ export default function Create({ auth }) {
                         <div className="p-6 md:p-8 text-gray-100">
                             <form onSubmit={enviarFormulario} className="space-y-6">
                                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                                    <div>
+                                    <div className="sm:col-span-2">
                                         <InputLabel htmlFor="titulo" value="Título *" className="text-gray-300" />
                                         <TextInput
                                             id="titulo"
@@ -142,17 +186,7 @@ export default function Create({ auth }) {
                                             className={`mt-1 block w-full sm:text-sm ${errors.titulo ? 'border-red-500' : ''}`} />
                                         <InputError message={errors.titulo} className="mt-1 text-xs" />
                                     </div>
-                                    <div>
-                                         <InputLabel htmlFor="genero" value="Género" className="text-gray-300" />
-                                         <TextInput
-                                             id="genero"
-                                             type="text"
-                                             name="genero"
-                                             value={data.genero}
-                                             onChange={(e) => setData('genero', e.target.value)}
-                                             className={`mt-1 block w-full sm:text-sm ${errors.genero ? 'border-red-500' : ''}`} />
-                                        <InputError message={errors.genero} className="mt-1 text-xs" />
-                                    </div>
+
                                     <div className="sm:col-span-2">
                                          <InputLabel htmlFor="licencia" value="Licencia" className="text-gray-300" />
                                          <TextInput
@@ -202,7 +236,46 @@ export default function Create({ auth }) {
                                         <InputError message={errors.archivo} className="mt-1 text-xs" />
                                     </div>
                                 </div>
-
+                                <div className="relative pt-4">
+                                        <InputLabel htmlFor="busca-genero" value="Géneros" className="text-gray-300" />
+                                        <TextInput
+                                            id="busca-genero"
+                                            type="search"
+                                            value={termGenero}
+                                            onChange={manejarTermGenero}
+                                            onFocus={() => setMostrarGenero(true)}
+                                            onBlur={() => setTimeout(() => setMostrarGenero(false), 150)}
+                                            placeholder="Busca o desplázate..."
+                                            className="mt-1 block w-full sm:text-sm pr-10"
+                                        />
+                                        {mostrarGenero && (
+                                            <ul className="absolute z-10 mt-1 w-full bg-gray-700 border border-gray-600 rounded-md max-h-32 overflow-y-auto">
+                                            {listaGenero.map((g, i) => (
+                                                <li
+                                                key={i}
+                                                className="px-4 py-2 hover:bg-gray-600 cursor-pointer text-gray-100 text-sm"
+                                                onMouseDown={() => agregarGenero(g)}
+                                                >
+                                                {g}
+                                                </li>
+                                            ))}
+                                            {listaGenero.length === 0 && (
+                                                <li className="px-4 py-2 text-gray-400 text-sm">No hay géneros disponibles</li>
+                                            )}
+                                            </ul>
+                                        )}
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                            {data.genero.map((g, i) => (
+                                            <span key={i} className="bg-indigo-600 text-white text-xs px-2 py-1 rounded inline-flex items-center">
+                                                {g}
+                                                <button type="button" onClick={() => quitarGenero(g)} className="ml-1 focus:outline-none">
+                                                ×
+                                                </button>
+                                            </span>
+                                            ))}
+                                        </div>
+                                        <InputError message={errors.genero} className="mt-1 text-xs text-red-500" />
+                                        </div>
                                 <div className="border-t border-gray-700 pt-6 mt-6">
                                     <h3 className="text-lg font-medium leading-6 text-gray-100 mb-4">
                                         Asociar Colaboradores
@@ -252,7 +325,6 @@ export default function Create({ auth }) {
                                             </ul>
                                         )}
                                     </div>
-
                                     {usuariosSeleccionados.length > 0 && (
                                         <div className="mt-4">
                                             <h4 className="text-sm font-medium text-gray-300 mb-2">Colaboradores seleccionados:</h4>

@@ -19,7 +19,9 @@ Route::get('/', function () {
     $cancionesAleatorias = Cancion::query()
         ->inRandomOrder()
         ->limit(8)
+        ->with('generos')
         ->get();
+
 
     $artistasPopulares = [];
 
