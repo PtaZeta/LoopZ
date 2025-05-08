@@ -93,7 +93,6 @@ export const PlayerProvider = ({ children }) => {
                 playPromise
                     .then(() => {
                         setIsPlaying(true);
-                        // Confiamos en el evento 'onPlaying' o 'onCanPlay' para setIsLoading(false)
                     })
                     .catch(() => {
                         setIsPlaying(false);
@@ -102,7 +101,6 @@ export const PlayerProvider = ({ children }) => {
                     });
             } else {
                 setIsPlaying(true);
-                // Para navegadores antiguos, también confiamos en eventos de audio.
             }
         } else if (activeQueue.length > 0) {
             setIsLoading(true);
@@ -261,9 +259,7 @@ export const PlayerProvider = ({ children }) => {
                         });
                     }
                 } else {
-                    // Si no está reproduciendo, solo se carga.
-                    // El evento 'canplay' se encargará de setIsLoading(false).
-                    // audio.pause(); // Cambiar src ya detiene la reproducción.
+                    audio.pause();
                 }
             } else if (isPlaying && audio.paused) {
                  audio.play().catch((err) => {
@@ -305,7 +301,7 @@ export const PlayerProvider = ({ children }) => {
             }
         };
         const onCanPlay = () => setIsLoading(false);
-        const onPlaying = () => setIsLoading(false); // AÑADIDO: handler para 'playing'
+        const onPlaying = () => setIsLoading(false);
         const onWaiting = () => setIsLoading(true);
         const onEnded = () => nextTrack();
         const onError = (e) => {
@@ -329,7 +325,7 @@ export const PlayerProvider = ({ children }) => {
         audio.addEventListener('timeupdate', onTimeUpdate);
         audio.addEventListener('loadedmetadata', onLoaded);
         audio.addEventListener('canplay', onCanPlay);
-        audio.addEventListener('playing', onPlaying); // AÑADIDO: listener para 'playing'
+        audio.addEventListener('playing', onPlaying);
         audio.addEventListener('waiting', onWaiting);
         audio.addEventListener('ended', onEnded);
         audio.addEventListener('error', onError);
@@ -337,7 +333,7 @@ export const PlayerProvider = ({ children }) => {
             audio.removeEventListener('timeupdate', onTimeUpdate);
             audio.removeEventListener('loadedmetadata', onLoaded);
             audio.removeEventListener('canplay', onCanPlay);
-            audio.removeEventListener('playing', onPlaying); // AÑADIDO: remover listener
+            audio.removeEventListener('playing', onPlaying);
             audio.removeEventListener('waiting', onWaiting);
             audio.removeEventListener('ended', onEnded);
             audio.removeEventListener('error', onError);

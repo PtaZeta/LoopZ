@@ -73,10 +73,10 @@ export default function Welcome({ auth, cancionesAleatorias }) {
                             Sumérgete en un universo de sonidos. Descubre, reproduce y conecta con la música que moverá tu mundo. Tu próxima obsesión está a un play de distancia.
                         </p>
                         <Link
-                            href={auth.user ? route('dashboard') : route('register')}
+                            href={auth.user ? route('biblioteca') : route('login')}
                             className="relative z-10 px-10 py-4 rounded-full text-lg font-semibold bg-gradient-to-r from-blue-600 to-pink-600 hover:from-blue-500 hover:to-pink-500 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105 duration-300 ease-in-out"
                         >
-                            {auth.user ? 'Ir a Mi Música' : 'Explorar Ahora'}
+                            Ir a Mi Biblioteca
                         </Link>
                     </section>
 
