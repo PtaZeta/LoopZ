@@ -40,4 +40,11 @@ class Cancion extends Model
                     ->withPivot('id')
                     ->withTimestamps();
     }
+
+    public function generos()
+    {
+        return $this->belongsToMany(Genero::class, 'cancion_genero', 'cancion_id', 'genero_id')
+                    ->withPivot('id')
+                    ->withTimestamps();
+    }
 }

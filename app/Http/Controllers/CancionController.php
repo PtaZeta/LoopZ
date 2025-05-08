@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cancion;
+use App\Models\Genero;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -59,14 +60,18 @@ class CancionController extends Controller
 
     public function create()
     {
-         return Inertia::render('canciones/Create');
+        $generos = Genero::all()->pluck('nombre');;
+        return Inertia::render('canciones/Create', [
+            'generos' => $generos,
+        ]);
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
             'titulo' => 'required|string|max:255',
-            'genero' => 'nullable|string|max:255',
+            'genero' => 'nullable|array',
+            'genero.*' => 'exists:generos,nombre',
             'publico' => 'required|boolean',
             'archivo' => 'required|file|mimes:mp3,wav|max:10024',
             'foto' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
@@ -76,10 +81,9 @@ class CancionController extends Controller
         ]);
 
         $cancion = new Cancion();
-        $cancion->titulo = $request->input('titulo');
-        $cancion->genero = $request->input('genero');
-        $cancion->publico = $request->input('publico');
-        $cancion->licencia = $request->input('licencia');
+        $cancion->titulo = $validated['titulo'];
+        $cancion->publico = $validated['publico'];
+        $cancion->licencia = $validated['licencia'] ?? '';
 
         if ($request->hasFile('archivo')) {
             $archivoAudio = $request->file('archivo');
@@ -89,19 +93,17 @@ class CancionController extends Controller
             try {
                 $getID3 = new getID3;
                 $infoAudio = $getID3->analyze($archivoAudio->getRealPath());
-                $cancion->duracion = isset($infoAudio['playtime_seconds']) ? round($infoAudio['playtime_seconds']) : 0;
+                $cancion->duracion = isset($infoAudio['playtime_seconds'])
+                    ? round($infoAudio['playtime_seconds'])
+                    : 0;
             } catch (\Exception $e) {
                 $cancion->duracion = 0;
             }
 
             $pathAudio = $archivoAudio->storeAs('canciones', $nombreAudio, 'public');
-            if ($pathAudio) {
-                 $cancion->archivo_url = Storage::disk('public')->url($pathAudio);
-            } else {
-                 return back()->withErrors(['archivo' => 'No se pudo guardar el archivo de audio.'])->withInput();
-            }
-        } else {
-            return back()->withErrors(['archivo' => 'El archivo de audio es obligatorio.'])->withInput();
+            $cancion->archivo_url = $pathAudio
+                ? Storage::disk('public')->url($pathAudio)
+                : null;
         }
 
         if ($request->hasFile('foto')) {
@@ -109,15 +111,20 @@ class CancionController extends Controller
             $extensionFoto = $archivoFoto->getClientOriginalExtension();
             $nombreFoto = Str::uuid() . "_pic.{$extensionFoto}";
             $pathFoto = $archivoFoto->storeAs('imagenes', $nombreFoto, 'public');
-             if ($pathFoto) {
-                 $cancion->foto_url = Storage::disk('public')->url($pathFoto);
-             }
+            $cancion->foto_url = $pathFoto
+                ? Storage::disk('public')->url($pathFoto)
+                : null;
         }
 
         $cancion->save();
 
+        if (!empty($validated['genero'])) {
+            $idsGeneros = Genero::whereIn('nombre', $validated['genero'])->pluck('id');
+            $cancion->generos()->attach($idsGeneros);
+        }
+
         $idCreador = Auth::id();
-        $idsColaboradores = $request->input('userIds', []);
+        $idsColaboradores = $validated['userIds'] ?? [];
         $usuariosParaAsociar = [];
 
         if ($idCreador) {
@@ -125,9 +132,8 @@ class CancionController extends Controller
         }
 
         foreach (array_unique($idsColaboradores) as $colaboradorId) {
-            $colaboradorIdInt = (int)$colaboradorId;
-            if ($colaboradorIdInt !== $idCreador) {
-                $usuariosParaAsociar[$colaboradorIdInt] = ['propietario' => false];
+            if ((int) $colaboradorId !== $idCreador) {
+                $usuariosParaAsociar[(int) $colaboradorId] = ['propietario' => false];
             }
         }
 
@@ -135,8 +141,10 @@ class CancionController extends Controller
             $cancion->usuarios()->attach($usuariosParaAsociar);
         }
 
-        return redirect()->route('canciones.index')->with('success', 'Canción creada exitosamente.');
+        return redirect()->route('canciones.index')
+                         ->with('success', 'Canción creada exitosamente.');
     }
+
 
     public function show($id)
     {
