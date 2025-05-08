@@ -81,45 +81,47 @@ export default function Welcome({ auth, cancionesAleatorias }) {
                     </section>
 
                     <section id="explore" className="container mx-auto px-6 py-16">
-                        <h2 className="text-3xl font-bold mb-8 text-center text-white">Descubre al Azar</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-                            {cancionesAleatorias && cancionesAleatorias.length > 0 ? (
-                                cancionesAleatorias.map((cancion) => {
-                                    const estaSonandoActual = idCancionSonando === cancion.id;
-                                    return (
-                                        <div key={cancion.id} className={`bg-gray-800 rounded-lg shadow-lg overflow-hidden group transition-all transform hover:-translate-y-1 hover:shadow-xl ${estaSonandoActual ? 'ring-2 ring-blue-500' : ''}`}>
-                                            <div className="w-full h-48 bg-gray-700 flex items-center justify-center text-gray-500">
-                                                {cancion.foto_url ? (
-                                                    <img src={cancion.foto_url} alt={cancion.titulo} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <MusicNoteIcon />
-                                                )}
-                                            </div>
-                                            <div className="p-4">
-                                                <h3 className="font-semibold text-lg text-white mb-1 group-hover:text-blue-400 transition-colors truncate">{cancion.titulo}</h3>
-                                                {cancion.genero && (
-                                                    <p className="text-sm text-gray-400 mb-3 truncate">{cancion.genero}</p>
-                                                )}
-                                                {!cancion.genero && (
-                                                     <p className="text-sm text-gray-500 mb-3 italic">Sin género</p>
-                                                )}
-                                                <button
-                                                    onClick={() => manejarReproducirPausa(cancion)}
-                                                    className={`w-full flex items-center justify-center px-4 py-2 rounded-md text-white text-sm font-medium transition-colors ${estaSonandoActual ? 'bg-pink-600 hover:bg-pink-700' : 'bg-blue-600 hover:bg-blue-700 opacity-0 group-hover:opacity-100'}`}
-                                                    disabled={!cancion.archivo_url}
-                                                >
-                                                    {estaSonandoActual ? <PauseIcon /> : <PlayIcon />}
-                                                    <span className="ml-2">{estaSonandoActual ? 'Pausar' : 'Reproducir'}</span>
-                                                </button>
-                                            </div>
+                    <h2 className="text-3xl font-bold mb-8 text-center text-white">Descubre al Azar</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                        {cancionesAleatorias && cancionesAleatorias.length > 0 ? (
+                            cancionesAleatorias.map((cancion) => {
+                                const estaSonandoActual = idCancionSonando === cancion.id;
+                                return (
+                                    <div key={cancion.id} className={`bg-gray-800 rounded-lg shadow-lg overflow-hidden group transition-all transform hover:-translate-y-1 hover:shadow-xl ${estaSonandoActual ? 'ring-2 ring-blue-500' : ''}`}>
+                                        <div className="w-full h-48 bg-gray-700 flex items-center justify-center text-gray-500">
+                                            {cancion.foto_url ? (
+                                                <img src={cancion.foto_url} alt={cancion.titulo} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <MusicNoteIcon />
+                                            )}
                                         </div>
-                                    );
-                                })
-                            ) : (
-                                <p className="text-center col-span-full text-gray-500">No se encontraron canciones.</p>
-                            )}
-                        </div>
-                    </section>
+                                        <div className="p-4">
+                                            <h3 className="font-semibold text-lg text-white mb-1 group-hover:text-blue-400 transition-colors truncate">{cancion.titulo}</h3>
+                                            {cancion.generos && cancion.generos.length > 0 ? (
+                                                <p className="text-sm text-gray-400 mb-3 truncate">
+                                                    Género/s: {cancion.generos.map(g => g.nombre).join(', ') }
+
+                                                </p>
+                                            ) : (
+                                                <p className="text-sm text-gray-500 mb-3 italic">Sin género</p>
+                                            )}
+                                            <button
+                                                onClick={() => manejarReproducirPausa(cancion)}
+                                                className={`w-full flex items-center justify-center px-4 py-2 rounded-md text-white text-sm font-medium transition-colors ${estaSonandoActual ? 'bg-pink-600 hover:bg-pink-700' : 'bg-blue-600 hover:bg-blue-700 opacity-0 group-hover:opacity-100'}`}
+                                                disabled={!cancion.archivo_url}
+                                            >
+                                                {estaSonandoActual ? <PauseIcon /> : <PlayIcon />}
+                                                <span className="ml-2">{estaSonandoActual ? 'Pausar' : 'Reproducir'}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <p className="text-center col-span-full text-gray-500">No se encontraron canciones.</p>
+                        )}
+                    </div>
+                </section>
 
                     <section id="genres" className="container mx-auto px-6 py-16">
                         <h2 className="text-3xl font-bold mb-8 text-center text-white">Explora por Género</h2>
