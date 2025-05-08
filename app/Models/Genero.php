@@ -11,4 +11,11 @@ class Genero extends Model
     use HasFactory;
 
     protected $fillable = ['nombre'];
+
+    public function canciones()
+    {
+        return $this->belongsToMany(Cancion::class, 'cancion_genero', 'genero_id', 'cancion_id')
+                    ->withPivot('id')
+                    ->withTimestamps();
+    }
 }
