@@ -74,7 +74,7 @@ class ContenedorController extends Controller
         }
     }
 
-    private function getLoopzSongIdsForUser($user): array
+    private function getLoopZUsuario($user): array
     {
         if (!$user) {
             return [];
@@ -108,14 +108,14 @@ class ContenedorController extends Controller
             ->latest();
 
         if ($usuario) {
-             $consultaContenedores->where(function ($query) use ($usuario) {
-                 $query->where('publico', true)
-                       ->orWhereHas('usuarios', function ($subQuery) use ($usuario) {
-                           $subQuery->where('users.id', $usuario->id);
-                       });
-             });
+            $consultaContenedores->where(function ($query) use ($usuario) {
+                $query->where('publico', true)
+                    ->orWhereHas('usuarios', function ($subQuery) use ($usuario) {
+                        $subQuery->where('users.id', $usuario->id);
+                    });
+            });
         } else {
-             $consultaContenedores->where('publico', true);
+            $consultaContenedores->where('publico', true);
         }
         $contenedores = $consultaContenedores->get();
 
@@ -127,12 +127,15 @@ class ContenedorController extends Controller
                     'delete' => $usuario->can('delete', $contenedor),
                 ];
             } else {
-                 $contenedor->can = [
+                $contenedor->can = [
                     'view'   => $contenedor->publico ?? false,
                     'edit'   => false,
                     'delete' => false,
-                 ];
+                ];
             }
+
+            $contenedor->genero = $contenedor->generoPredominante();
+
             return $contenedor;
         });
 
@@ -140,6 +143,7 @@ class ContenedorController extends Controller
             'contenedores' => $contenedoresConPermisos,
         ]);
     }
+
 
     public function create(Request $peticion)
     {
@@ -207,20 +211,21 @@ class ContenedorController extends Controller
         $this->validarTipoContenedor($contenedor, $tipoEsperado);
 
         $usuario = Auth::user();
-        $loopzSongIds = $this->getLoopzSongIdsForUser($usuario);
+        $loopzSongIds = $this->getLoopZUsuario($usuario);
 
         $contenedor->load([
             'canciones' => function ($query) {
                 $query->select('canciones.id', 'canciones.titulo', 'canciones.archivo_url', 'canciones.foto_url', 'canciones.duracion')
-                      ->withPivot('id as pivot_id', 'created_at as pivot_created_at')
-                      ->with(['usuarios' => function ($userQuery) {
-                          $userQuery->select('users.id', 'users.name');
-                      }])
-                      ->orderBy('pivot_created_at');
+                    ->withPivot('id as pivot_id', 'created_at as pivot_created_at')
+                    ->with(['usuarios' => function ($userQuery) {
+                        $userQuery->select('users.id', 'users.name');
+                    }])
+                    ->orderBy('pivot_created_at');
             },
             'usuarios:id,name',
             'loopzusuarios:users.id'
         ]);
+
         $contenedor->canciones->each(function ($cancion) use ($loopzSongIds) {
             $cancion->is_in_user_loopz = in_array($cancion->id, $loopzSongIds);
         });
@@ -233,18 +238,19 @@ class ContenedorController extends Controller
             ];
             $contenedor->is_liked_by_user = $contenedor->loopzusuarios->contains('id', $usuario->id);
         } else {
-             $contenedor->can = [
+            $contenedor->can = [
                 'view'   => $contenedor->publico ?? false,
                 'edit'   => false,
                 'delete' => false,
-             ];
-             $contenedor->is_liked_by_user = false;
+            ];
+            $contenedor->is_liked_by_user = false;
         }
 
         return Inertia::render($nombreVista, [
             'contenedor' => $contenedor,
         ]);
     }
+
 
     public function edit(Request $peticion, $id)
     {
@@ -380,7 +386,7 @@ class ContenedorController extends Controller
         }
 
         $usuario = Auth::user();
-        $loopzSongIds = $this->getLoopzSongIdsForUser($usuario);
+        $loopzSongIds = $this->getLoopZUsuario($usuario);
         $consulta = $peticion->input('query', '');
         $minimoBusqueda = 1;
         $limite = 30;
