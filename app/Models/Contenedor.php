@@ -49,4 +49,14 @@ class Contenedor extends Model
     {
         return $this->belongsToMany(Cancion::class, 'loopzs_canciones', 'contenedor_id', 'cancion_id');
     }
+
+    public function generoPredominante()
+    {
+        $generos = $this->canciones()->with('generos')->get()->pluck('generos.*.nombre')->flatten();
+        if ($generos->isEmpty()) {
+            return 'Sin género';
+        }
+        $frecuencias = $generos->countBy();
+        return $frecuencias->sortDesc()->keys()->first();
+    }
 }
