@@ -81,7 +81,6 @@ const ProfileImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, 
                     className={`${claseImagen} ${loading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
                     onLoad={handleImageLoad}
                     onError={handleImageError}
-                    loading="lazy"
                 />
             ) : (
                 <div key={claveParaPlaceholderWrapper} className="w-full h-full flex items-center justify-center">
@@ -125,7 +124,6 @@ const CardImagenConPlaceholder = React.memo(({ src, alt, claseImagen, clasePlace
             alt={alt}
             className={claseImagen}
             onError={handleImageError}
-            loading="lazy"
         />
     ) : (
         <div key={claveUnicaParaElemento} className={`${clasePlaceholder} flex items-center justify-center overflow-hidden`}>
@@ -136,6 +134,7 @@ const CardImagenConPlaceholder = React.memo(({ src, alt, claseImagen, clasePlace
 
 const CardListaUsuarios = React.memo(({ tipo, usuarios: usuariosProp, usuarioLogueadoId }) => {
     const usuarios = Array.isArray(usuariosProp) ? usuariosProp : [];
+
     if (usuarios.length === 0) {
         const textoDefault = tipo === 'playlist' ? 'Sin colaboradores' : 'Artista desconocido';
         return <span className="text-xs text-gray-500 mt-1 truncate w-full">{textoDefault}</span>;
@@ -159,11 +158,15 @@ const CardListaUsuarios = React.memo(({ tipo, usuarios: usuariosProp, usuarioLog
     usuarios.forEach(u => { if (!addedIds.has(u.id)) { displayOrder.push(u); addedIds.add(u.id); } });
     if (displayOrder.length === 0 && usuarios.length > 0) displayOrder = [...usuarios];
 
+
     const usuariosMostrados = displayOrder.slice(0, MAX_SHOWN);
     const usuariosTooltip = displayOrder.slice(MAX_SHOWN);
+
     const textoMostrado = usuariosMostrados.map(u => u.name).join(', ');
     const numOcultos = usuariosTooltip.length;
+
     const tipoCapitalizado = tipo ? tipo.charAt(0).toUpperCase() + tipo.slice(1) : 'Item';
+
     const tituloCompleto = `${tipoCapitalizado} · ${displayOrder.map(u => u.name).join(', ')}`;
 
     return (
@@ -200,34 +203,29 @@ const ItemCard = React.memo(({ item, tipoPredeterminado, usuarioLogueadoId }) =>
     const nombreRuta = `${rutaBase}.show`;
     const rutaExiste = typeof route === 'function' && route().has(nombreRuta);
 
+    const cardContent = (
+        <div className="block w-full p-4 pb-0 group cursor-default">
+            <div className="relative w-full aspect-square mb-3">
+                <CardImagenConPlaceholder src={item.imagen_url || item.imagen} alt={`Portada de ${item.nombre}`} claseImagen="absolute inset-0 w-full h-full object-cover rounded transition-transform duration-300 ease-in-out group-hover:scale-105" clasePlaceholder="absolute inset-0 w-full h-full rounded bg-gray-750 flex items-center justify-center" tipo={tipoItem} esStorage={true} />
+                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded">
+                    <PlayIconSolid className="w-10 h-10 sm:w-12 sm:h-12 text-white transform transition-transform duration-300 ease-in-out group-hover:scale-110" />
+                </div>
+            </div>
+            <div className="w-full px-3 sm:px-4 pb-4 flex flex-col items-center">
+                <span className="text-sm font-semibold text-gray-100 group-hover:text-white group-hover:underline line-clamp-2" title={item.nombre}>{item.nombre}</span>
+                <CardListaUsuarios tipo={tipoItem} usuarios={item.usuarios || (item.artista ? [{ name: item.artista, id: `art-${item.id}` }] : [])} usuarioLogueadoId={usuarioLogueadoId} />
+            </div>
+        </div>
+    );
+
     return (
         <li className={`bg-gradient-to-b from-gray-800 to-gray-850 rounded-lg shadow-lg overflow-hidden flex flex-col items-center text-center transition duration-300 ease-in-out hover:from-gray-700 hover:to-gray-750 hover:shadow-xl w-48 sm:w-56 flex-shrink-0`}>
             {rutaExiste ? (
                 <Link href={route(nombreRuta, item.id)} className="block w-full p-4 pb-0 group">
-                    <div className="relative w-full aspect-square mb-3">
-                        <CardImagenConPlaceholder src={item.imagen_url || item.imagen} alt={`Portada de ${item.nombre}`} claseImagen="absolute inset-0 w-full h-full object-cover rounded transition-transform duration-300 ease-in-out group-hover:scale-105" clasePlaceholder="absolute inset-0 w-full h-full rounded bg-gray-750 flex items-center justify-center" tipo={tipoItem} esStorage={true} />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded">
-                            <PlayIconSolid className="w-10 h-10 sm:w-12 sm:h-12 text-white transform transition-transform duration-300 ease-in-out group-hover:scale-110" />
-                        </div>
-                    </div>
-                    <div className="w-full px-3 sm:px-4 pb-4 flex flex-col items-center">
-                        <span className="text-sm font-semibold text-gray-100 group-hover:text-white group-hover:underline line-clamp-2" title={item.nombre}>{item.nombre}</span>
-                        <CardListaUsuarios tipo={tipoItem} usuarios={item.usuarios || (item.artista ? [{ name: item.artista, id: `art-${item.id}` }] : [])} usuarioLogueadoId={usuarioLogueadoId} />
-                    </div>
+                    {cardContent.props.children}
                 </Link>
             ) : (
-                <div className="block w-full p-4 pb-0 group cursor-default">
-                    <div className="relative w-full aspect-square mb-3">
-                        <CardImagenConPlaceholder src={item.imagen_url || item.imagen} alt={`Portada de ${item.nombre}`} claseImagen="absolute inset-0 w-full h-full object-cover rounded transition-transform duration-300 ease-in-out group-hover:scale-105" clasePlaceholder="absolute inset-0 w-full h-full rounded bg-gray-750 flex items-center justify-center" tipo={tipoItem} esStorage={true} />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded">
-                            <PlayIconSolid className="w-10 h-10 sm:w-12 sm:h-12 text-white transform transition-transform duration-300 ease-in-out group-hover:scale-110" />
-                        </div>
-                    </div>
-                    <div className="w-full px-3 sm:px-4 pb-4 flex flex-col items-center">
-                        <span className="text-sm font-semibold text-gray-100 group-hover:text-white group-hover:underline line-clamp-2" title={item.nombre}>{item.nombre}</span>
-                        <CardListaUsuarios tipo={tipoItem} usuarios={item.usuarios || (item.artista ? [{ name: item.artista, id: `art-${item.id}` }] : [])} usuarioLogueadoId={usuarioLogueadoId} />
-                    </div>
-                </div>
+                cardContent
             )}
         </li>
     );
@@ -239,6 +237,7 @@ const ProfileDisplayList = ({ items, usuarioLogueadoId, tipoPredeterminado = 'pl
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
     const scrollAmount = 400;
+
     const itemsArray = Array.isArray(items) ? items : [];
 
     const updateScrollability = useCallback(() => {
@@ -315,7 +314,7 @@ const CancionListItem = React.memo(({
         if (typeof route === 'function' && typeof route().has === 'function') return route().has(name);
         return false;
     }, []);
-    const rutaItemExiste = routeExists(nombreRuta);
+    const rutaItemExiste = nombreRuta ? routeExists(nombreRuta) : false;
 
     const [isHovered, setIsHovered] = useState(false);
 
@@ -424,7 +423,10 @@ const ProfileCancionesList = ({
 };
 
 export default function Index() {
-    const { auth, cancionesUsuario = [], playlistsUsuario = [], albumesUsuario = [], epsUsuario = [], singlesUsuario = [] } = usePage().props;
+    // Get props and url from Inertia page
+    const { props, url } = usePage();
+    const { auth, cancionesUsuario = [], playlistsUsuario = [], albumesUsuario = [], epsUsuario = [], singlesUsuario = [] } = props;
+
     const usuario = auth.user;
     const usuarioLogueadoId = auth.user.id;
     const playerContextValue = useContext(PlayerContext);
@@ -487,7 +489,8 @@ export default function Index() {
     return (
         <AuthenticatedLayout user={auth.user} header={<div className="flex justify-between items-center"><h2 className="text-2xl font-bold leading-tight text-gray-100">Mi Perfil</h2></div>}>
             <Head title="Perfil" />
-            <div className="py-12 min-h-screen">
+            {/* Add key={url} to force remount on URL change (including back/forward) */}
+            <div key={url} className="py-12 min-h-screen">
                 <div className="mx-auto max-w-7xl space-y-10 sm:px-6 lg:px-8">
                     <div className="relative px-4 sm:px-0">
                         <div className="bg-gray-800 shadow-xl sm:rounded-lg overflow-hidden">
@@ -542,6 +545,7 @@ export default function Index() {
                         <ProfileCancionesList
                             items={cancionesUsuario}
                             tipoItem="cancion"
+                            nombreRuta={null}
                             onPlayPauseSong={handlePlayPauseSingleSong}
                             currentTrackId={currentTrack?.id}
                             isPlaying={isPlaying}
