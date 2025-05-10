@@ -7,7 +7,7 @@ use App\Http\Requests\UpdateGeneroRequest;
 use App\Models\Genero;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
-
+use Inertia\Inertia;
 
 class GeneroController extends Controller
 {
@@ -89,7 +89,9 @@ class GeneroController extends Controller
      */
     public function show(Genero $genero)
     {
-        //
+        return Inertia::render('Genero/Show', [
+            'genero' => $genero,
+        ]);
     }
 
     /**

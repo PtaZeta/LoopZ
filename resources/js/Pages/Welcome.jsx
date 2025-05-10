@@ -8,7 +8,8 @@ const PauseIcon = () => <svg className="w-6 h-6" fill="currentColor" viewBox="0 
 const MusicNoteIcon = () => <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20"><path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z"></path></svg>;
 
 
-export default function Welcome({ auth, cancionesAleatorias }) {
+export default function Welcome({ auth, cancionesAleatorias, generos }) {
+    const [mostrarTodosGeneros, setMostrarTodosGeneros] = useState(false);
 
     const [urlCancionActual, setUrlCancionActual] = useState(null);
     const [idCancionSonando, setIdCancionSonando] = useState(null);
@@ -123,22 +124,28 @@ export default function Welcome({ auth, cancionesAleatorias }) {
                     </div>
                 </section>
 
-                    <section id="genres" className="container mx-auto px-6 py-16">
-                        <h2 className="text-3xl font-bold mb-8 text-center text-white">Explora por Género</h2>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                            {['Pop', 'Rock', 'Electrónica', 'Hip Hop', 'Techno', 'House', 'Dance', 'Indie', 'Synthwave', 'EDM'].map(genero => (
-                                <Link key={genero} href={`/genres/${genero.toLowerCase()}`}
-                                    className="block p-6 rounded-lg text-center font-semibold text-white bg-gradient-to-br from-gray-700 to-gray-800 hover:from-blue-600 hover:to-pink-600 transition-all transform hover:scale-105 shadow-md"
-                                >
-                                    {genero}
-                                </Link>
-                            ))}
-                        </div>
-                    </section>
+                <section id="genres" className="container mx-auto px-6 py-16 relative">
+                    <div className="flex items-center justify-between mb-8">
+                        <h2 className="text-3xl font-bold text-white inline-block">Explora por Género</h2>
+
+                        {generos.length > 8 && (
+                            <button onClick={() => setMostrarTodosGeneros(!mostrarTodosGeneros)} className="text-white hover:text-gray-300 ml-4"> {/* Added ml-4 for spacing */}
+                                {mostrarTodosGeneros ? 'Mostrar menos' : 'Mostrar todos'}
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                        {generos.slice(0, mostrarTodosGeneros ? generos.length : 10).map(genero => (
+                            <Link key={genero.id} href={`/genero/${genero.id}`} className="block p-6 rounded-lg text-center font-semibold text-white bg-gradient-to-br from-gray-700 to-gray-800 hover:from-blue-600 hover:to-pink-600 transition-all transform hover:scale-105 shadow-md">
+                                {genero.nombre}
+                            </Link>
+                        ))}
+                    </div>
+                </section>
                 </main>
 
                 <audio ref={referenciaAudio} className="hidden" />
-
         </Layout>
     );
 }

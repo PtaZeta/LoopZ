@@ -8,6 +8,7 @@ use App\Http\Controllers\GeneroController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SingleController;
 use App\Models\Cancion;
+use App\Models\Genero;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +26,7 @@ Route::get('/', function () {
 
     $artistasPopulares = [];
 
+    $generos = Genero::all();
     return Inertia::render('Welcome', [
         'auth' => [
             'user' => Auth::user(),
@@ -33,6 +35,7 @@ Route::get('/', function () {
         'canRegister' => Route::has('register'),
         'cancionesAleatorias' => $cancionesAleatorias,
         'artistasPopulares' => $artistasPopulares,
+        'generos' => $generos,
     ]);
 })->name('welcome');
 
@@ -124,6 +127,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('loopzs', ContenedorController::class);
     Route::get('/loopzs/{contenedor}/songs/search', [ContenedorController::class, 'buscarCanciones'])->name('loopzs.songs.search');
     Route::get('/cancion/{cancion}/loopz', [CancionController::class, 'cancionloopz'])->name('cancion.loopz');
+    Route::get('/genero/{genero}', [GeneroController::class, 'show'])->name('genero.show');
 });
 
 Route::get('/spotify-login', function () {
