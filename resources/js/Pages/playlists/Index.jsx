@@ -16,7 +16,6 @@ export default function PlaylistIndex() {
     const { auth, contenedores, flash } = props;
 
     const mensajeExitoFlash = flash?.success;
-
     const [eliminandoId, setEliminandoId] = useState(null);
 
     const manejarEliminar = (id) => {
@@ -119,6 +118,10 @@ export default function PlaylistIndex() {
                                                     </h2>
                                                     <p className="text-xs text-gray-400 mb-3 line-clamp-2">
                                                         {contenedor.descripcion || 'Sin descripción'}
+                                                    </p>
+
+                                                    <p className="text-xs text-gray-400">
+                                                        Género: {contenedor.genero || 'Desconocido'}
                                                     </p>
                                                 </Link>
 
