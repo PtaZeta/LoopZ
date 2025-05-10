@@ -6,6 +6,7 @@ use App\Http\Controllers\ContenedorController;
 use App\Http\Controllers\EPController;
 use App\Http\Controllers\GeneroController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SingleController;
 use App\Models\Cancion;
 use App\Models\Genero;
@@ -92,7 +93,7 @@ Route::get('/dashboard', function () {
 
 Route::middleware('auth')->group(function () {
 
-    Route::get('/profile/index', [ProfileController::class, 'index'])->name('profile.index');
+    Route::get('/profile/{user}', [ProfileController::class, 'show'])->name('profile.show');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -128,6 +129,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/loopzs/{contenedor}/songs/search', [ContenedorController::class, 'buscarCanciones'])->name('loopzs.songs.search');
     Route::get('/cancion/{cancion}/loopz', [CancionController::class, 'cancionloopz'])->name('cancion.loopz');
     Route::get('/genero/{genero}', [GeneroController::class, 'show'])->name('genero.show');
+
+    Route::get('/search', [SearchController::class, 'index'])->name('search.index');
+
 });
 
 Route::get('/spotify-login', function () {

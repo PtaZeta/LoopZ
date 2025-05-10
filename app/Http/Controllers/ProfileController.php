@@ -17,9 +17,9 @@ use App\Models\Contenedor;
 
 class ProfileController extends Controller
 {
-    public function index(Request $request): Response
+    public function show(Request $request, $id): Response
     {
-        $usuario = $request->user();
+        $usuario = User::findOrFail($id);
 
         $withUsuariosCallback = function ($query) {
             $query->select('users.id', 'users.name', 'users.foto_perfil');
@@ -59,7 +59,7 @@ class ProfileController extends Controller
                                     ->limit(10)
                                     ->get();
 
-        return Inertia::render('Profile/Index', [
+        return Inertia::render('Profile/Show', [
             'cancionesUsuario' => $consultaCanciones,
             'playlistsUsuario' => $consultaPlaylists,
             'albumesUsuario' => $consultaAlbumes,
