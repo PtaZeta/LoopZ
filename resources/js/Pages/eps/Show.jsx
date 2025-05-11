@@ -260,7 +260,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             ? contenedor.usuarios.map((u, index) => (
                 <React.Fragment key={u.id}>
                     <Link
-                        href={route('profile.index', { usuario: u.id })}
+                        href={route('profile.show', u.id)}
                         className="text-blue-400 hover:underline"
                         title={`Ver perfil de ${u.name}`}
                     >
