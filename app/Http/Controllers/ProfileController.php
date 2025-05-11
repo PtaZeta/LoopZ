@@ -26,38 +26,38 @@ class ProfileController extends Controller
         };
 
         $consultaCanciones = $usuario->perteneceCanciones()
-                                    ->with(['usuarios' => $withUsuariosCallback])
-                                    ->orderBy('pertenece_user.created_at', 'desc')
-                                    ->limit(10)
-                                    ->get();
+            ->with(['usuarios' => $withUsuariosCallback])
+            ->orderBy('pertenece_user.created_at', 'desc')
+            ->limit(10)
+            ->get();
 
         $consultaPlaylists = $usuario->perteneceContenedores()
-                                    ->where('contenedores.tipo', 'playlist')
-                                    ->with(['usuarios' => $withUsuariosCallback])
-                                    ->orderBy('pertenece_user.created_at', 'desc')
-                                    ->limit(10)
-                                    ->get();
+            ->where('contenedores.tipo', 'playlist')
+            ->with(['usuarios' => $withUsuariosCallback])
+            ->orderBy('pertenece_user.created_at', 'desc')
+            ->limit(10)
+            ->get();
 
         $consultaAlbumes = $usuario->perteneceContenedores()
-                                    ->where('contenedores.tipo', 'album')
-                                    ->with(['usuarios' => $withUsuariosCallback])
-                                    ->orderBy('pertenece_user.created_at', 'desc')
-                                    ->limit(10)
-                                    ->get();
+            ->where('contenedores.tipo', 'album')
+            ->with(['usuarios' => $withUsuariosCallback])
+            ->orderBy('pertenece_user.created_at', 'desc')
+            ->limit(10)
+            ->get();
 
         $consultaEps = $usuario->perteneceContenedores()
-                                    ->where('contenedores.tipo', 'ep')
-                                    ->with(['usuarios' => $withUsuariosCallback])
-                                    ->orderBy('pertenece_user.created_at', 'desc')
-                                    ->limit(10)
-                                    ->get();
+            ->where('contenedores.tipo', 'ep')
+            ->with(['usuarios' => $withUsuariosCallback])
+            ->orderBy('pertenece_user.created_at', 'desc')
+            ->limit(10)
+            ->get();
 
         $consultaSingles = $usuario->perteneceContenedores()
-                                    ->where('contenedores.tipo', 'single')
-                                    ->with(['usuarios' => $withUsuariosCallback])
-                                    ->orderBy('pertenece_user.created_at', 'desc')
-                                    ->limit(10)
-                                    ->get();
+            ->where('contenedores.tipo', 'single')
+            ->with(['usuarios' => $withUsuariosCallback])
+            ->orderBy('pertenece_user.created_at', 'desc')
+            ->limit(10)
+            ->get();
 
         return Inertia::render('Profile/Show', [
             'cancionesUsuario' => $consultaCanciones,
@@ -88,7 +88,7 @@ class ProfileController extends Controller
 
         $datosValidados = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class.',email,'.$usuario->id],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:' . User::class . ',email,' . $usuario->id],
             'foto_perfil' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
             'banner_perfil' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:4096'],
         ]);
@@ -158,9 +158,9 @@ class ProfileController extends Controller
         }
 
         $consulta = User::query()
-            ->where(function($q) use ($termino) {
+            ->where(function ($q) use ($termino) {
                 $q->where('name', 'LIKE', "%{$termino}%")
-                  ->orWhere('email', 'LIKE', "%{$termino}%");
+                    ->orWhere('email', 'LIKE', "%{$termino}%");
             })
             ->select('id', 'name', 'email', 'foto_perfil')
             ->limit($limite);
