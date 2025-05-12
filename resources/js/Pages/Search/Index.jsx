@@ -28,7 +28,7 @@ const ResultItemCard = ({ item, tipo, href }) => {
     const imageUrl = obtenerUrlImagenResultado(item, tipo);
     const isCircular = tipo === 'user';
 
-    const primaryText = item.titulo || item.name || 'Título desconocido';
+    const primaryText = item.titulo || item.name || item.nombre || 'Título desconocido';
     let secondaryText = '';
     if (tipo === 'cancion' && item.usuarios?.length > 0) {
         secondaryText = item.usuarios.map(u => u.name).join(', ');
@@ -123,26 +123,6 @@ export default function SearchIndex({ searchQuery, results }) {
             <Head title={`Resultados de "${searchQuery}"`} />
 
             <div className="container mx-auto px-4 py-6">
-                <nav className="flex space-x-2 mb-8 overflow-x-auto pb-2">
-                     <Link
-                         href={route('search.index', { q: searchQuery })}
-                         className="flex-shrink-0 px-4 py-2 rounded-full bg-white text-black text-sm font-semibold"
-                     >
-                         Todo
-                     </Link>
-                    {secciones.map(sec =>
-                        sec.items?.length > 0 ? (
-                            <Link
-                                key={sec.key}
-                                href={route('search.index', { q: searchQuery, filter: sec.key })}
-                                className="flex-shrink-0 px-4 py-2 rounded-full bg-gray-700 text-white text-sm font-semibold hover:bg-gray-600 transition-colors duration-200"
-                            >
-                                {sec.label}
-                            </Link>
-                        ) : null
-                    )}
-                </nav>
-
                 {(principal || filteredResults.canciones.length > 0) && (
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                          {principal && (
