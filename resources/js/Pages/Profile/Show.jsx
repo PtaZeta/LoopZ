@@ -13,7 +13,6 @@ import {
 import { ArrowPathIcon as LoadingIcon } from '@heroicons/react/20/solid';
 
 const ProfileImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, tipo = 'perfil', nombre = '', esStorage = false }) => {
-    const [loading, setLoading] = useState(true);
     const [errorCarga, setErrorCarga] = useState(false);
     const cacheBuster = '';
     const baseUrl = esStorage ? '/storage/' : '';
@@ -21,22 +20,10 @@ const ProfileImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, 
 
     const handleImageError = useCallback(() => {
         setErrorCarga(true);
-        setLoading(false);
-    }, []);
-
-    const handleImageLoad = useCallback(() => {
-        setLoading(false);
-        setErrorCarga(false);
     }, []);
 
     useEffect(() => {
-        if (src) {
-            setLoading(true);
-            setErrorCarga(false);
-        } else {
-            setLoading(false);
-            setErrorCarga(false);
-        }
+        setErrorCarga(false);
     }, [src]);
 
     const obtenerIniciales = useCallback((nombreCompleto) => {
@@ -57,39 +44,29 @@ const ProfileImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, 
     }, [tipo]);
 
     const PlaceholderContenido = useCallback(() => {
-        if (tipo === 'perfil' && !src && !esStorage && nombre) {
+         if (tipo === 'perfil' && !src && nombre) {
             return <span className="text-white text-4xl font-semibold pointer-events-none">{obtenerIniciales(nombre)}</span>;
-        }
+         }
         return <PlaceholderIcono />;
-    }, [tipo, src, esStorage, nombre, obtenerIniciales, PlaceholderIcono]);
+    }, [tipo, src, nombre, obtenerIniciales, PlaceholderIcono]);
+
 
     const claveParaImagen = urlImagenCompleta ? `img-${urlImagenCompleta}` : null;
     const claveParaPlaceholderWrapper = `ph-wrapper-${tipo}-${alt.replace(/\s+/g, '-')}-${nombre || 'no-nombre'}`;
 
     return (
         <div className={`${clasePlaceholder} flex items-center justify-center overflow-hidden relative`}>
-            {loading && urlImagenCompleta && !errorCarga && (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-700 animate-pulse">
-                    <LoadingIcon className="w-8 h-8 text-gray-400" />
-                </div>
-            )}
             {urlImagenCompleta && !errorCarga ? (
                 <img
                     key={claveParaImagen}
                     src={urlImagenCompleta}
                     alt={alt}
-                    className={`${claseImagen} ${loading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
-                    onLoad={handleImageLoad}
+                    className={`${claseImagen}`}
                     onError={handleImageError}
                 />
             ) : (
                 <div key={claveParaPlaceholderWrapper} className="w-full h-full flex items-center justify-center">
                     <PlaceholderContenido />
-                </div>
-            )}
-            {errorCarga && src && (
-                <div key={`${claveParaPlaceholderWrapper}-error`} className="absolute inset-0 flex items-center justify-center">
-                    <PlaceholderIcono />
                 </div>
             )}
         </div>
@@ -104,9 +81,7 @@ const CardImagenConPlaceholder = React.memo(({ src, alt, claseImagen, clasePlace
     const handleImageError = useCallback(() => { setErrorCarga(true); }, []);
 
     const PlaceholderContenido = useCallback(() => (
-        <svg className="w-10 h-10 text-gray-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
-        </svg>
+         <MusicalNoteIconSolid className="w-1/2 h-1/2 text-gray-500" />
     ), []);
 
     const claveUnicaParaElemento = urlImagenCompleta
@@ -141,22 +116,44 @@ const CardListaUsuarios = React.memo(({ tipo, usuarios: usuariosProp, usuarioLog
     }
 
     const MAX_SHOWN = 1;
-    let displayOrder = [], owner = null, authUser = null;
+     let displayOrder = [];
+     const processedUserIds = new Set();
+     let finalOwner = null;
+     let finalAuthUser = null;
 
-    for (const u of usuarios) {
-        if (u.pivot?.propietario === true) owner = u;
-        if (u.id === usuarioLogueadoId) authUser = u;
-        if (owner && authUser) break;
-    }
+     for(const u of usuarios) {
+         if(u.id === usuarioLogueadoId) finalAuthUser = u;
+         if(u.pivot?.propietario === true) finalOwner = u;
+     }
 
-    const addedIds = new Set();
-    if (authUser) { displayOrder.push(authUser); addedIds.add(authUser.id); }
-    if (owner && !addedIds.has(owner.id)) {
-        if (!authUser) displayOrder.unshift(owner); else displayOrder.push(owner);
-        addedIds.add(owner.id);
-    }
-    usuarios.forEach(u => { if (!addedIds.has(u.id)) { displayOrder.push(u); addedIds.add(u.id); } });
-    if (displayOrder.length === 0 && usuarios.length > 0) displayOrder = [...usuarios];
+     if (finalAuthUser) {
+         displayOrder.push(finalAuthUser);
+         processedUserIds.add(finalAuthUser.id);
+     }
+
+     if (finalOwner && !processedUserIds.has(finalOwner.id)) {
+         if (finalAuthUser) {
+              const authIndex = displayOrder.findIndex(u => u.id === finalAuthUser.id);
+              if (authIndex !== -1) {
+                 displayOrder.splice(authIndex + 1, 0, finalOwner);
+              } else {
+                 displayOrder.push(finalOwner);
+              }
+         } else {
+             displayOrder.unshift(finalOwner);
+         }
+         processedUserIds.add(finalOwner.id);
+     }
+
+     usuarios.forEach(u => {
+         if (!processedUserIds.has(u.id)) {
+             displayOrder.push(u);
+         }
+     });
+
+      if (displayOrder.length === 0 && usuarios.length > 0) {
+          displayOrder = [...usuarios];
+      }
 
 
     const usuariosMostrados = displayOrder.slice(0, MAX_SHOWN);
@@ -352,7 +349,7 @@ const CancionListItem = React.memo(({
                     claseImagen="w-10 h-10 rounded object-cover"
                     clasePlaceholder="w-10 h-10 rounded bg-gray-700 text-gray-400 flex items-center justify-center"
                     tipo={tipoItem}
-                    esStorage={!(item.foto_url?.startsWith('http') || item.foto_url?.startsWith('/storage/'))}
+                    esStorage={item.foto_url && !(item.foto_url.startsWith('http://') || item.foto_url.startsWith('https://'))}
                 />
             </div>
 
@@ -423,7 +420,6 @@ const ProfileCancionesList = ({
 };
 
 export default function Index() {
-    // Get props and url from Inertia page
     const { props, url } = usePage();
     const { auth, cancionesUsuario = [], playlistsUsuario = [], albumesUsuario = [], epsUsuario = [], singlesUsuario = [] } = props;
 
@@ -444,31 +440,37 @@ export default function Index() {
 
     const userSongsSourceId = `user-${usuario.id}-all-songs`;
     const isCurrentSourcePlayingUserSongs = sourceId === userSongsSourceId && isPlaying;
-    const isPlayerLoadingThisSource = isPlayerLoading && sourceId === userSongsSourceId && !isPlaying && (!currentTrack || cancionesUsuario.some(s => s.id === currentTrack.id));
+    const isPlayerLoadingThisSource = isPlayerLoading && sourceId === userSongsSourceId;
 
     const handlePlayPauseUserSongs = useCallback(() => {
         if (!cancionesUsuario || cancionesUsuario.length === 0) return;
-        if (isCurrentSourcePlayingUserSongs) {
-            pause();
-        } else {
-            if (sourceId === userSongsSourceId && !isPlaying && currentTrack) {
-                play();
+        if (sourceId === userSongsSourceId) {
+            if (isPlaying) {
+                pause();
             } else {
-                const formattedSongs = cancionesUsuario.map(song => ({ ...song, }));
-                loadQueueAndPlay(formattedSongs, { id: userSongsSourceId, name: `Canciones de ${usuario.name}`, type: 'userCollection', startIndex: 0 });
+                play();
             }
+        } else {
+            const formattedSongs = cancionesUsuario.map(song => ({ ...song, }));
+            loadQueueAndPlay(formattedSongs, { id: userSongsSourceId, name: `Canciones de ${usuario.name}`, type: 'userCollection', startIndex: 0 });
         }
-    }, [cancionesUsuario, isCurrentSourcePlayingUserSongs, pause, sourceId, userSongsSourceId, isPlaying, currentTrack, play, loadQueueAndPlay, usuario.name]);
+    }, [cancionesUsuario, pause, sourceId, userSongsSourceId, isPlaying, play, loadQueueAndPlay, usuario.name]);
 
     const handleToggleShuffleUserSongs = useCallback(() => {
         if (!cancionesUsuario || cancionesUsuario.length === 0) return;
-        toggleShuffle();
-    }, [cancionesUsuario, toggleShuffle]);
+        if (sourceId === userSongsSourceId) {
+             toggleShuffle();
+        } else {
+             toggleShuffle();
+        }
+    }, [cancionesUsuario, toggleShuffle, sourceId, userSongsSourceId]);
 
     const handlePlayPauseSingleSong = useCallback((songToPlay, songIndexInList) => {
         if (!cancionesUsuario || cancionesUsuario.length === 0) return;
 
-        if (currentTrack && currentTrack.id === songToPlay.id && sourceId === userSongsSourceId) {
+        const isClickedSongCurrent = currentTrack && currentTrack.id === songToPlay.id && sourceId === userSongsSourceId;
+
+        if (isClickedSongCurrent) {
             if (isPlaying) {
                 pause();
             } else {
@@ -489,12 +491,11 @@ export default function Index() {
     return (
         <AuthenticatedLayout user={auth.user} header={<div className="flex justify-between items-center"><h2 className="text-2xl font-bold leading-tight text-gray-100">Mi Perfil</h2></div>}>
             <Head title="Perfil" />
-            {/* Add key={url} to force remount on URL change (including back/forward) */}
             <div key={url} className="py-12 min-h-screen">
                 <div className="mx-auto max-w-7xl space-y-10 sm:px-6 lg:px-8">
                     <div className="relative px-4 sm:px-0">
                         <div className="bg-gray-800 shadow-xl sm:rounded-lg overflow-hidden">
-                            <ProfileImagenConPlaceholder src={usuario.banner_perfil} alt="Banner del perfil" claseImagen="w-full h-52 sm:h-72 object-cover" clasePlaceholder="w-full h-52 sm:h-72 bg-gray-700" tipo="banner" esStorage={true} />
+                            <ProfileImagenConPlaceholder src={usuario.banner_perfil} alt="Banner del perfil" claseImagen="w-full h-52 sm:h-72 object-cover" clasePlaceholder="w-full h-52 sm:h-72 bg-gray-700 flex items-center justify-center" tipo="banner" esStorage={true} />
                         </div>
                         <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 sm:translate-y-1/2">
                             <ProfileImagenConPlaceholder src={usuario.foto_perfil} alt={`Foto de perfil de ${usuario.name}`} claseImagen="w-28 h-28 sm:w-36 sm:h-36 rounded-full object-cover border-4 border-slate-900 shadow-2xl" clasePlaceholder="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-slate-900 bg-gray-700 flex items-center justify-center text-white text-4xl sm:text-5xl shadow-2xl" tipo="perfil" nombre={usuario.name} esStorage={true} />

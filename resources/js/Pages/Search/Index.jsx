@@ -54,11 +54,12 @@ const ResultItemCard = ({ item, tipo }) => {
 
   if ((tipo === 'cancion' || tipo === 'playlist') && item.usuarios?.length) {
     subtitle = item.usuarios.map(u => u.name).join(', ');
-  } else if (['album','ep','single'].includes(tipo) && item.artista) {
-    subtitle = item.artista;
+  } else if (['album','ep','single'].includes(tipo) && item.usuarios?.length) {
+    subtitle = item.usuarios.map(u => u.name).join(', ');
   } else if (tipo === 'user') {
     subtitle = 'Artista';
   }
+
 
   return (
     <Link href={href} className="flex flex-col items-center bg-gray-800 rounded-lg p-4 hover:bg-gray-700 transition duration-200 group">
