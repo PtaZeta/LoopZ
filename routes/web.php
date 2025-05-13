@@ -10,28 +10,19 @@ use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SingleController;
 use App\Models\Cancion;
 use App\Models\Genero;
+use App\Models\User;
 use Illuminate\Foundation\Application;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
-use App\Models\User;
 
 Route::get('/', function () {
-    $cancionesAleatorias = Cancion::query()
-        ->inRandomOrder()
-        ->limit(8)
-        ->with('generos')
-        ->get();
-
-
+    $cancionesAleatorias = Cancion::inRandomOrder()->limit(8)->with('generos')->get();
     $artistasPopulares = [];
-
     $generos = Genero::all();
     return Inertia::render('Welcome', [
-        'auth' => [
-            'user' => Auth::user(),
-        ],
+        'auth' => ['user' => Auth::user()],
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
         'cancionesAleatorias' => $cancionesAleatorias,
@@ -44,33 +35,23 @@ Route::get('/biblioteca', function () {
     $usuario = Auth::user();
 
     $playlists = $usuario->perteneceContenedores()
-        ->where(function ($query) {
-            $query->where('tipo', 'playlist')
-                  ->orWhere('tipo', 'loopz');
-        })
-        ->with(['usuarios' => function ($query) {
-           $query->select('users.id', 'users.name')->withPivot('propietario');
-        }])
+        ->where(fn($q) => $q->where('tipo', 'playlist')->orWhere('tipo', 'loopz'))
+        ->with(['usuarios' => fn($q) => $q->select('users.id', 'users.name')->withPivot('propietario')])
         ->orderBy('pertenece_user.created_at', 'desc')
         ->get()
-        ->map(function ($item) {
-            $item->tipo = $item->tipo === 'loopz' ? 'loopz' : 'playlist';
-            return $item;
-         });
+        ->map(fn($item) => tap($item, fn($i) => $i->tipo = $i->tipo === 'loopz' ? 'loopz' : 'playlist'));
 
     $loopzs = $usuario->loopzContenedores()
-         ->with(['usuarios' => function ($query) {
-             $query->select('users.id', 'users.name')->withPivot('propietario');
-         }])
-         ->orderBy('loopzs_contenedores.created_at', 'desc')
-         ->get();
+        ->with(['usuarios' => fn($q) => $q->select('users.id', 'users.name')->withPivot('propietario')])
+        ->orderBy('loopzs_contenedores.created_at', 'desc')
+        ->get();
+
     $lanzamientos = $usuario->perteneceContenedores()
         ->whereIn('tipo', ['album', 'ep', 'single'])
-        ->with(['usuarios' => function ($query) {
-            $query->select('users.id', 'users.name')->withPivot('propietario');
-        }])
+        ->with(['usuarios' => fn($q) => $q->select('users.id', 'users.name')->withPivot('propietario')])
         ->orderBy('pertenece_user.created_at', 'desc')
         ->get();
+
     return Inertia::render('Biblioteca', [
         'playlists' => $playlists,
         'loopzContenedores' => $loopzs,
@@ -78,21 +59,14 @@ Route::get('/biblioteca', function () {
     ]);
 })->middleware(['auth', 'verified'])->name('biblioteca');
 
-
 Route::inertia('/terms', 'Static/Terms')->name('terms');
 Route::inertia('/privacy', 'Static/Privacy')->name('privacy');
 Route::inertia('/contact', 'Static/Contact')->name('contact');
 
-
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard', [
-        'auth' => ['user' => Auth::user()],
-    ]);
-})->middleware(['auth', 'verified'])->name('dashboard');
-
+Route::get('/dashboard', fn() => Inertia::render('Dashboard', ['auth' => ['user' => Auth::user()]]))
+    ->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
-
     Route::get('/profile/{user}', [ProfileController::class, 'show'])->name('profile.show');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -122,8 +96,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/singles/{contenedor}/songs/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('singles.songs.remove');
 
     Route::post('/contenedores/{contenedor}/toggle-loopz', [ContenedorController::class, 'toggleLoopz'])
-         ->name('contenedores.toggle-loopz')
-         ->where('contenedor', '[0-9]+');
+        ->name('contenedores.toggle-loopz')
+        ->where('contenedor', '[0-9]+');
 
     Route::resource('loopzs', ContenedorController::class);
     Route::get('/loopzs/{contenedor}/songs/search', [ContenedorController::class, 'buscarCanciones'])->name('loopzs.songs.search');
@@ -131,21 +105,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/genero/{genero}', [GeneroController::class, 'show'])->name('genero.show');
 
     Route::get('/search', [SearchController::class, 'index'])->name('search.index');
-
 });
 
 Route::get('/spotify-login', function () {
     $client_id = env('SPOTIFY_CLIENT_ID');
     $redirect_uri = env('SPOTIFY_REDIRECT_URI');
     $scope = 'user-read-private user-read-email';
-
     $url = 'https://accounts.spotify.com/authorize?' . http_build_query([
         'response_type' => 'code',
         'client_id' => $client_id,
         'redirect_uri' => $redirect_uri,
         'scope' => $scope,
     ]);
-
     return redirect($url);
 });
 

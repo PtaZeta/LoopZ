@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Cancion;
 use App\Models\Contenedor;
-use App\Models\Genero;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -15,26 +14,44 @@ class SearchController extends Controller
     {
         $query = $request->input('query', '');
 
-        $canciones   = Cancion::where('titulo', 'like', "%{$query}%")->get();
-        $users       = User::where('name', 'like', "%{$query}%")->get();
-        $contenedores= Contenedor::where('nombre','like', "%{$query}%")->get();
+        $canciones = Cancion::with('usuarios')
+            ->where('titulo', 'like', "%{$query}%")
+            ->get();
 
-        $playlists = $contenedores->where('tipo','playlist')->values();
-        $eps       = $contenedores->where('tipo','ep')->values();
-        $singles   = $contenedores->where('tipo','single')->values();
-        $albumes   = $contenedores->where('tipo','album')->values();
+        $users = User::where('name', 'like', "%{$query}%")->get();
+
+        $playlists = Contenedor::with('usuarios')
+            ->where('tipo', 'playlist')
+            ->where('nombre', 'like', "%{$query}%")
+            ->get();
+
+        $eps = Contenedor::with('usuarios')
+            ->where('tipo', 'ep')
+            ->where('nombre', 'like', "%{$query}%")
+            ->get();
+
+        $singles = Contenedor::with('usuarios')
+            ->where('tipo', 'single')
+            ->where('nombre', 'like', "%{$query}%")
+            ->get();
+
+        $albumes = Contenedor::with('usuarios')
+            ->where('tipo', 'album')
+            ->where('nombre', 'like', "%{$query}%")
+            ->get();
 
         return Inertia::render('Search/Index', [
             'searchQuery' => $query,
-            'results'     => [
+            'results' => [
                 'canciones' => $canciones,
                 'users'     => $users,
                 'playlists' => $playlists,
                 'eps'       => $eps,
                 'singles'   => $singles,
-                'albumes'   => $albumes,
+                'albumes'   => $albumes
             ],
-            'filters'     => [],
+            'filters' => [],
         ]);
     }
 }
+
