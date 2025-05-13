@@ -91,6 +91,7 @@ class GeneroController extends Controller
 
         $generoFiltro = $genero->nombre;
 
+
         $playlistFiltradas = $playlistTodas->filter(function ($playlist) use ($generoFiltro) {
             return $playlist->generoPredominante() === $generoFiltro;
         });
