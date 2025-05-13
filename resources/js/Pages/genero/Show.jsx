@@ -124,7 +124,7 @@ export default function PlaylistComunidad({ auth, genero, playlists, usuariosDel
                 </section>
 
                 <section id="playlists" className="container mx-auto px-6 py-10">
-                    <h2 className="text-2xl font-semibold text-white mb-6">Playlists de {genero.nombre}</h2>
+                    <h2 className="text-2xl font-semibold text-white mb-6">Playlists</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
                         {playlists && playlists.length > 0 ? (
                             playlists.map((playlist) => {
@@ -157,7 +157,7 @@ export default function PlaylistComunidad({ auth, genero, playlists, usuariosDel
 
                 {usuariosDelGenero && usuariosDelGenero.length > 0 && (
                     <section id="usuarios" className="container mx-auto px-6 py-10">
-                        <h2 className="text-2xl font-semibold text-white mb-6">Creadores de {genero.nombre}</h2>
+                        <h2 className="text-2xl font-semibold text-white mb-6">Artistas</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
                             {usuariosDelGenero.map((usuario) => (
                                 <div key={usuario.id} className="bg-gray-800 rounded-lg shadow-lg overflow-hidden group transition-all transform hover:-translate-y-1 hover:shadow-xl">
