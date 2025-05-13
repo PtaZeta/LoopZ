@@ -73,6 +73,7 @@ const ProfileImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, 
     );
 };
 
+
 const CardImagenConPlaceholder = React.memo(({ src, alt, claseImagen, clasePlaceholder, tipo = 'playlist', esStorage = false }) => {
     const [errorCarga, setErrorCarga] = useState(false);
     const baseUrl = esStorage ? '/storage/' : '';
