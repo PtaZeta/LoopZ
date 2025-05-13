@@ -2,29 +2,29 @@ import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 
-const obtenerUrlImagenResultado = (item, tipo) => {
-  if (!item) return null;
-  if (tipo === 'user' && item.foto_perfil) {
-    return item.foto_perfil.startsWith('http')
-      ? item.foto_perfil
-      : `/storage/${item.foto_perfil}`;
+const obtenerUrlImagenResultado = (objeto, tipo) => {
+  if (!objeto) return null;
+  if (tipo === 'user' && objeto.foto_perfil) {
+    return objeto.foto_perfil.startsWith('http')
+      ? objeto.foto_perfil
+      : `/storage/${objeto.foto_perfil}`;
   }
-  if (tipo === 'cancion' && item.foto_url) {
-    return item.foto_url.startsWith('http')
-      ? item.foto_url
-      : `/storage/${item.foto_url}`;
+  if (tipo === 'cancion' && objeto.foto_url) {
+    return objeto.foto_url.startsWith('http')
+      ? objeto.foto_url
+      : `/storage/${objeto.foto_url}`;
   }
-  if (['album','ep','single','playlist'].includes(tipo) && item.imagen) {
-    return item.imagen.startsWith('http')
-      ? item.imagen
-      : `/storage/${item.imagen}`;
+  if (['album','ep','single','playlist'].includes(tipo) && objeto.imagen) {
+    return objeto.imagen.startsWith('http')
+      ? objeto.imagen
+      : `/storage/${objeto.imagen}`;
   }
-  if (tipo === 'cancion' && item.album?.imagen) {
-    return item.album.imagen.startsWith('http')
-      ? item.album.imagen
-      : `/storage/${item.album.imagen}`;
+  if (tipo === 'cancion' && objeto.album?.imagen) {
+    return objeto.album.imagen.startsWith('http')
+      ? objeto.album.imagen
+      : `/storage/${objeto.album.imagen}`;
   }
-  return item.image_url || null;
+  return objeto.image_url || null;
 };
 
 const construirRuta = (tipo, id) => {
@@ -35,27 +35,26 @@ const construirRuta = (tipo, id) => {
     case 'album':     return route('albumes.show', id);
     case 'ep':        return route('eps.show', id);
     case 'single':    return route('singles.show', id);
-    default:          return '#';
   }
 };
 
-const formatDuration = seconds => {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
+const formatearDuracion = segundos => {
+  const m = Math.floor(segundos / 60);
+  const s = segundos % 60;
   return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
-const ResultItemCard = ({ item, tipo }) => {
-  const href = construirRuta(tipo, item.id);
-  const imageUrl = obtenerUrlImagenResultado(item, tipo);
+const Resultado = ({ objeto, tipo }) => {
+  const href = construirRuta(tipo, objeto.id);
+  const imageUrl = obtenerUrlImagenResultado(objeto, tipo);
   const isUser = tipo === 'user';
-  const title = item.titulo || item.name || item.nombre || 'Desconocido';
+  const title = objeto.titulo || objeto.name || objeto.nombre || 'Desconocido';
   let subtitle = '';
 
-  if ((tipo === 'cancion' || tipo === 'playlist') && item.usuarios?.length) {
-    subtitle = item.usuarios.map(u => u.name).join(', ');
-  } else if (['album','ep','single'].includes(tipo) && item.usuarios?.length) {
-    subtitle = item.usuarios.map(u => u.name).join(', ');
+  if ((tipo === 'cancion' || tipo === 'playlist') && objeto.usuarios?.length) {
+    subtitle = objeto.usuarios.map(u => u.name).join(', ');
+  } else if (['album','ep','single'].includes(tipo) && objeto.usuarios?.length) {
+    subtitle = objeto.usuarios.map(u => u.name).join(', ');
   } else if (tipo === 'user') {
     subtitle = 'Artista';
   }
@@ -83,15 +82,15 @@ export default function SearchIndex({ searchQuery, results }) {
   const { users, canciones, playlists, albumes, eps, singles } = results;
 
   const principalList = [
-    { items: users, tipo: 'user' },
-    { items: canciones, tipo: 'cancion' },
-    { items: playlists, tipo: 'playlist' },
-    { items: albumes, tipo: 'album' },
-    { items: eps, tipo: 'ep' },
-    { items: singles, tipo: 'single' },
+    { objetos: users, tipo: 'user' },
+    { objetos: canciones, tipo: 'cancion' },
+    { objetos: playlists, tipo: 'playlist' },
+    { objetos: albumes, tipo: 'album' },
+    { objetos: eps, tipo: 'ep' },
+    { objetos: singles, tipo: 'single' },
   ];
-  const primero = principalList.find(section => section.items.length > 0);
-  const principal = primero ? primero.items[0] : null;
+  const primero = principalList.find(section => section.objetos.length > 0);
+  const principal = primero ? primero.objetos[0] : null;
   const principalTipo = primero ? primero.tipo : null;
 
   const filtered = {
@@ -104,12 +103,12 @@ export default function SearchIndex({ searchQuery, results }) {
   };
 
   const secciones = [
-    { items: filtered.cancion,  tipo: 'cancion',  label: 'Canciones' },
-    { items: filtered.user,     tipo: 'user',     label: 'Perfiles'  },
-    { items: filtered.playlist, tipo: 'playlist', label: 'Playlists' },
-    { items: filtered.ep,       tipo: 'ep',       label: 'EPs'       },
-    { items: filtered.single,   tipo: 'single',   label: 'Singles'   },
-    { items: filtered.album,    tipo: 'album',    label: 'Álbumes'   },
+    { objetos: filtered.cancion,  tipo: 'cancion',  label: 'Canciones' },
+    { objetos: filtered.user,     tipo: 'user',     label: 'Perfiles'  },
+    { objetos: filtered.playlist, tipo: 'playlist', label: 'Playlists' },
+    { objetos: filtered.ep,       tipo: 'ep',       label: 'EPs'       },
+    { objetos: filtered.single,   tipo: 'single',   label: 'Singles'   },
+    { objetos: filtered.album,    tipo: 'album',    label: 'Álbumes'   },
   ];
 
   return (
@@ -155,7 +154,7 @@ export default function SearchIndex({ searchQuery, results }) {
                   )}
                   {principalTipo === 'cancion' && principal.duracion && (
                     <p className="text-xs">
-                      Duración: {formatDuration(principal.duracion)}
+                      Duración: {formatearDuracion(principal.duracion)}
                     </p>
                   )}
                   {( ['album','ep','single'].includes(principalTipo) && principal.artista ) && (
@@ -182,20 +181,20 @@ export default function SearchIndex({ searchQuery, results }) {
           </div>
         )}
 
-        {secciones.map(({ items, tipo, label }) =>
-          items.length > 0 && (
+        {secciones.map(({ objetos, tipo, label }) =>
+          objetos.length > 0 && (
             <section key={tipo} className="mb-8">
               <h2 className="text-white text-xl font-semibold mb-4">{label}</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {items.map(item => (
-                  <ResultItemCard key={item.id} item={item} tipo={tipo} />
+                {objetos.map(objeto => (
+                  <Resultado key={objeto.id} objeto={objeto} tipo={tipo} />
                 ))}
               </div>
             </section>
           )
         )}
 
-        {!principal && secciones.every(s => s.items.length === 0) && (
+        {!principal && secciones.every(s => s.objetos.length === 0) && (
           <p className="text-gray-400">No se encontraron resultados.</p>
         )}
       </div>
