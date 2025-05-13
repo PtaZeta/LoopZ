@@ -174,7 +174,7 @@ export default function PlaylistComunidad({ auth, genero, playlists, usuariosDel
                                     </div>
                                     <div className="p-4 text-center">
                                         <h3 className="font-semibold text-lg text-white mb-1 group-hover:text-blue-400 transition-colors truncate">{usuario.name}</h3>
-                                        <Link href={`/profile/index?usuario=${usuario.id}`} className="text-sm text-blue-400 hover:text-blue-500">Ver Perfil</Link>
+                                        <Link href={`/profile/${usuario.id}`} className="text-sm text-blue-400 hover:text-blue-500">Ver Perfil</Link>
                                     </div>
                                 </div>
                             ))}

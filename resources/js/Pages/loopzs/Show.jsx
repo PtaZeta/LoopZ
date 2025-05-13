@@ -247,16 +247,16 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
 
     const artistas = useMemo(() => {
         return contenedor?.usuarios?.length > 0
-            ? contenedor.usuarios.map((u, index) => (
+            ? contenedor.usuarios.map((u, show) => (
                 <React.Fragment key={u.id}>
                     <Link
-                        href={route('profile.index', { usuario: u.id })}
+                        href={route('profile.show', u.id )}
                         className="text-blue-400 hover:underline"
                         title={`Ver perfil de ${u.name}`}
                     >
                         {u.name}
                     </Link>
-                    {index < contenedor.usuarios.length - 1 && ', '}
+                    {show < contenedor.usuarios.length - 1 && ', '}
                 </React.Fragment>
                 ))
             : 'Artista Desconocido';
