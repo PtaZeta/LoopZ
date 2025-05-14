@@ -43,9 +43,6 @@ class ContenedorController extends Controller
             $tipo = 'loopz';
             $vistaBase = 'loopzs/';
             $nombreRutaBase = 'loopzs';
-        } else {
-            Log::warning('Acceso a ContenedorController desde ruta no reconocida: ' . $peticion->path());
-            abort(404, 'Tipo de recurso no soportado.');
         }
         return ['tipo' => $tipo, 'vista' => $vistaBase, 'ruta' => $nombreRutaBase];
     }
@@ -53,12 +50,6 @@ class ContenedorController extends Controller
     private function validarTipoContenedor(Contenedor $contenedor, string $tipoEsperado): void
     {
         if ($contenedor->tipo !== $tipoEsperado) {
-            Log::warning("Discrepancia de tipo al acceder al contenedor.", [
-                'id' => $contenedor->id,
-                'actual_type' => $contenedor->tipo,
-                'expected_type' => $tipoEsperado,
-                'route' => Route::currentRouteName() ?? 'N/A'
-            ]);
             abort(404);
         }
     }
@@ -70,7 +61,6 @@ class ContenedorController extends Controller
             case 'playlist': return 'playlist';
             case 'ep': return 'EP';
             case 'single': return 'single';
-            default: return 'elemento';
         }
     }
 
