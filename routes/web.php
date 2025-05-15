@@ -6,6 +6,8 @@ use App\Http\Controllers\ContenedorController;
 use App\Http\Controllers\EPController;
 use App\Http\Controllers\GeneroController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RecomendacionController;
+use App\Http\Controllers\ReproduccionController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SingleController;
 use App\Models\Cancion;
@@ -107,6 +109,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/genero/{genero}', [GeneroController::class, 'show'])->name('genero.show');
 
     Route::get('/search', [SearchController::class, 'index'])->name('search.index');
+    Route::post('/api/recomendaciones', [RecomendacionController::class, 'index']);
+    Route::middleware(['auth'])->group(function () {
+    Route::post('/track-played', [ReproduccionController::class, 'store'])
+         ->name('track.played');
+});
 });
 
 Route::get('/spotify-login', function () {
