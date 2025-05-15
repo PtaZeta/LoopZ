@@ -16,10 +16,12 @@ class Cancion extends Model
         'titulo',
         'genero',
         'duracion',
-        'licencia',
+        'licencia_id',
         'foto_url',
         'archivo_url',
         'publico',
+        'remix',
+        'cancion_original_id',
     ];
 
     public function contenedores()
@@ -47,4 +49,14 @@ class Cancion extends Model
                     ->withPivot('id')
                     ->withTimestamps();
     }
+    public function licencia()
+    {
+        return $this->belongsTo(Licencia::class);
+    }
+
+    public function cancionOriginal()
+    {
+        return $this->belongsTo(Cancion::class, 'cancion_original_id');
+    }
+
 }
