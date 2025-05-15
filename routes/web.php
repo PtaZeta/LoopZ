@@ -72,8 +72,10 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    Route::resource('canciones', CancionController::class);
+    Route::get('/canciones/buscar-originales', [CancionController::class, 'buscarCancionesOriginales'])->name('canciones.buscar-originales');
     Route::get('/usuarios/buscar', [CancionController::class, 'buscarUsuarios'])->name('usuarios.buscar');
+
+    Route::resource('canciones', CancionController::class);
 
     Route::resource('playlists', ContenedorController::class);
     Route::get('/playlists/{contenedor}/songs/search', [ContenedorController::class, 'buscarCanciones'])->name('playlists.songs.search');
