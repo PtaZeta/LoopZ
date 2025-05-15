@@ -16,8 +16,12 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
         //Contenedor::factory()->count(50)->create();
-        $this->call([
+        /*$this->call([
             SpotifyGenresSeeder::class,
+        ]);*/
+
+        $this->call([
+            LicenciaSeeder::class,
         ]);
 
     }

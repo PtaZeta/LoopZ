@@ -18,7 +18,7 @@ return new class extends Migration
             $table->integer('duracion');
             $table->string('archivo_url');
             $table->string('foto_url')->nullable();
-            $table->string('licencia')->nullable();
+            $table->foreignId('licencia_id')->constrained('licencias')->onDelete('cascade');
             $table->integer('visualizaciones')->default(0);
             $table->timestamps();
         });
