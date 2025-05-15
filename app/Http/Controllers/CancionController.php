@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Cancion;
 use App\Models\Genero;
+use App\Models\Licencia;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Validation\Rule;
 
 class CancionController extends Controller
 {
@@ -59,30 +61,58 @@ class CancionController extends Controller
 
     public function create()
     {
+        $licencias = Licencia::all();
         $generos = Genero::all()->pluck('nombre');;
         return Inertia::render('canciones/Create', [
             'generos' => $generos,
+            'licencias' => $licencias,
         ]);
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $rules = [
             'titulo' => 'required|string|max:255',
             'genero' => 'nullable|array',
             'genero.*' => 'exists:generos,nombre',
             'publico' => 'required|boolean',
             'archivo' => 'required|file|mimes:mp3,wav|max:10024',
             'foto' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
-            'licencia' => 'nullable|string|max:255',
+            'licencia_id' => 'required|integer|exists:licencias,id',
             'userIds' => 'nullable|array',
             'userIds.*' => 'integer|exists:users,id',
-        ]);
+            'remix' => 'required|boolean',
+            'cancion_original_id' => 'nullable|integer|exists:canciones,id',
+        ];
+
+
+        $validated = $request->validate($rules);
+
+        $isRemix = $validated['remix'];
+        $originalSongId = $validated['cancion_original_id'];
+
+        if ($isRemix && !is_null($originalSongId)) {
+            $validOriginal = Cancion::query()
+                ->join('licencias', 'canciones.licencia_id', '=', 'licencias.id')
+                ->where('canciones.id', $originalSongId) // Asegurarse de que es el ID correcto
+                ->where('licencias.id', 2)
+                ->exists();
+
+            if (!$validOriginal) {
+                return redirect()->back()->withErrors([
+                    'cancion_original_id' => 'La obra original seleccionada no existe o no tiene la licencia CC BY 4.0 requerida para ser remezclada.',
+                ])->withInput();
+            }
+        }
+
 
         $cancion = new Cancion();
         $cancion->titulo = $validated['titulo'];
         $cancion->publico = $validated['publico'];
-        $cancion->licencia = $validated['licencia'] ?? '';
+        $cancion->licencia_id = $validated['licencia_id'];
+        $cancion->remix = $validated['remix'];
+        $cancion->cancion_original_id = $validated['cancion_original_id'] ?? null;
+
 
         if ($request->hasFile('archivo')) {
             $archivoAudio = $request->file('archivo');
@@ -143,7 +173,6 @@ class CancionController extends Controller
         return redirect()->route('canciones.index')
                          ->with('success', 'Canción creada exitosamente.');
     }
-
     public function show($id)
     {
         try {
@@ -221,13 +250,13 @@ class CancionController extends Controller
                 'archivo_nuevo' => 'nullable|file|mimes:mp3,wav|max:10024',
                 'foto_nueva' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
                 'eliminar_foto' => 'nullable|boolean',
-                'licencia' => 'nullable|string|max:255',
+                'licencia_id' => 'required|integer|exists:licencias,id',
                 'userIds' => 'nullable|array',
                 'userIds.*' => 'integer|exists:users,id',
             ]);
 
             $cancion->titulo = $validated['titulo'];
-            $cancion->licencia = $validated['licencia'] ?? null;
+            $cancion->licencia_id = $validated['licencia_id'];
             $cancion->publico = $validated['publico'];
 
             if ($request->hasFile('archivo_nuevo')) {
@@ -430,5 +459,26 @@ class CancionController extends Controller
             }
         }
     }
+    public function buscarCancionesOriginales(Request $request)
+    {
+        $termino = $request->query('q', '');
+        $limite = 10;
+        $query = Cancion::query();
 
+        $query->where('canciones.licencia_id', 2);
+
+        if (!empty($termino)) {
+            $query->where('canciones.titulo', 'LIKE', '%' . $termino . '%');
+        }
+
+        $query->select('canciones.id', 'canciones.titulo', 'canciones.foto_url');
+
+         $query->select('canciones.id', 'canciones.titulo', 'canciones.foto_url');
+
+
+        $canciones = $query->take($limite)
+                           ->get();
+
+        return response()->json($canciones);
+    }
 }
