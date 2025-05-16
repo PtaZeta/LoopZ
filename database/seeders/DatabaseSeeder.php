@@ -20,6 +20,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
+        $this->call([
+            SpotifyGenresSeeder::class,
+            LicenciaSeeder::class,
+        ]);
         DB::table('cancion_contenedor')->truncate();
         DB::table('cancion_genero')->truncate();
         DB::table('loopzs_canciones')->truncate();
@@ -50,9 +54,9 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        $songs = collect();
+        $canciones = collect();
         for ($i = 1; $i <= 500; $i++) {
-            $song = Cancion::create([
+            $cancion = Cancion::create([
                 'titulo'       => "Cancion {$i}",
                 'duracion'     => rand(120, 300),
                 'licencia_id'  => $licencias->random()->id,
@@ -60,13 +64,13 @@ class DatabaseSeeder extends Seeder
                 'publico'      => (bool) rand(0,1),
                 'remix'        => false,
             ]);
-            $song->generos()->attach(
+            $cancion->generos()->attach(
                 $generos->random(rand(1, min(3, $generos->count())))->pluck('id')->toArray()
             );
-            $songs->push($song);
+            $canciones->push($cancion);
         }
 
-        foreach ($songs->random(50) as $base) {
+        foreach ($canciones->random(50) as $base) {
             $rmx = Cancion::create([
                 'titulo'               => $base->titulo . ' (Remix)',
                 'duracion'             => $base->duracion + rand(10,60),
@@ -77,7 +81,7 @@ class DatabaseSeeder extends Seeder
                 'cancion_original_id'  => $base->id,
             ]);
             $rmx->generos()->attach($base->generos->pluck('id')->toArray());
-            $songs->push($rmx);
+            $canciones->push($rmx);
         }
 
         $tipos = ['playlist','album','ep','single','loopz'];
@@ -90,7 +94,7 @@ class DatabaseSeeder extends Seeder
                     'tipo'        => $tipo,
                 ]);
                 $cont->canciones()->attach(
-                    $songs->random(rand(10,50))->pluck('id')->toArray()
+                    $canciones->random(rand(10,50))->pluck('id')->toArray()
                 );
                 $owner = $users->random();
                 $cont->usuarios()->attach($owner->id, ['propietario'=>true]);
@@ -105,7 +109,7 @@ class DatabaseSeeder extends Seeder
 
         foreach ($users as $usr) {
             $usr->loopzCanciones()->attach(
-                $songs->random(20)->pluck('id')->toArray()
+                $canciones->random(20)->pluck('id')->toArray()
             );
         }
 

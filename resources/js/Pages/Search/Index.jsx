@@ -68,28 +68,28 @@ const ResultadoCard = memo(({ objeto, tipo }) => {
   const imageUrl = obtenerUrlImagen(objeto, tipo);
   const title = objeto.titulo || objeto.name || objeto.nombre || 'Desconocido';
   const {
-    loadQueueAndPlay,
-    isPlaying,
+    cargarColaYIniciar,
+    Reproduciendo,
     play,
     pause,
-    currentTrack,
+    cancionActual,
     sourceId,
-    isLoading
+    cargando
   } = useContext(PlayerContext);
 
   const sourceKey = tipo === 'cancion'
-    ? `search-song-${objeto.id}`
+    ? `search-cancion-${objeto.id}`
     : `search-container-${objeto.id}`;
   const isCurrent = sourceId === sourceKey;
-  const songs = (tipo === 'cancion' && objeto.archivo_url) ? [objeto] : (objeto.canciones || []);
+  const canciones = (tipo === 'cancion' && objeto.archivo_url) ? [objeto] : (objeto.canciones || []);
 
   const handlePlayClick = e => {
     e.preventDefault(); e.stopPropagation();
     if (isCurrent) {
-      return isPlaying ? pause() : play();
+      return Reproduciendo ? pause() : play();
     }
-    if (songs.length) {
-      loadQueueAndPlay(songs, { id: sourceKey, type: 'search-container', startIndex: 0 });
+    if (canciones.length) {
+      cargarColaYIniciar(canciones, { id: sourceKey, type: 'search-container', iniciar: 0 });
     } else {
       alert(`No hay canciones para reproducir en ${getTipoNombreMayuscula(tipo)}.`);
     }
@@ -104,15 +104,15 @@ const ResultadoCard = memo(({ objeto, tipo }) => {
           claseImagen={`absolute inset-0 w-full h-full object-cover ${tipo==='user'?'rounded-full':'rounded'}`}
           clasePlaceholder={`absolute inset-0 w-full h-full bg-gray-750 flex items-center justify-center ${tipo==='user'?'rounded-full':'rounded'}`}
         />
-        {songs.length > 0 && (
+        {canciones.length > 0 && (
           <button
             onClick={handlePlayClick}
             className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded"
-            disabled={isLoading && !isCurrent}
+            disabled={cargando && !isCurrent}
           >
-            {isLoading && isCurrent
+            {cargando && isCurrent
               ? <LoadingIconSolid className="w-7 h-7 animate-spin text-white" />
-              : isCurrent && isPlaying
+              : isCurrent && Reproduciendo
                 ? <PauseIcon className="w-7 h-7 text-white" />
                 : <PlayIcon className="w-7 h-7 text-white" />}
           </button>
@@ -131,23 +131,23 @@ const ResultadoCard = memo(({ objeto, tipo }) => {
 
 const CancionListaItem = ({ cancion }) => {
   const {
-    loadQueueAndPlay,
-    isPlaying,
+    cargarColaYIniciar,
+    Reproduciendo,
     play,
     pause,
-    currentTrack,
+    cancionActual,
     sourceId,
-    isLoading
+    cargando
   } = useContext(PlayerContext);
-  const isThis = currentTrack?.id === cancion.id;
-  const isThisLoading = isLoading && isThis;
+  const isThis = cancionActual?.id === cancion.id;
+  const isThisLoading = cargando && isThis;
 
   const handlePlay = () => {
     if (!cancion.archivo_url) return;
-    if (sourceId === `search-song-${cancion.id}`) {
-      return isPlaying ? pause() : play();
+    if (sourceId === `search-cancion-${cancion.id}`) {
+      return Reproduciendo ? pause() : play();
     }
-    loadQueueAndPlay([cancion], { id: `search-song-${cancion.id}`, type: 'search-result' });
+    cargarColaYIniciar([cancion], { id: `search-cancion-${cancion.id}`, type: 'search-result' });
   };
 
   return (
@@ -200,21 +200,21 @@ export default function SearchIndex({ searchQuery, results }) {
   });
 
   const {
-    loadQueueAndPlay,
-    isPlaying,
+    cargarColaYIniciar,
+    Reproduciendo,
     play,
     pause,
-    currentTrack,
+    cancionActual,
     sourceId,
-    isLoading
+    cargando
   } = useContext(PlayerContext);
 
   const principalSourceKey = `search-principal-${principal?.id}`;
   const isPrincipal = sourceId === principalSourceKey;
   const handlePrincipalPlay = () => {
     if (!principal) return;
-    if (isPrincipal) return isPlaying ? pause() : play();
-    loadQueueAndPlay([principal], { id: principalSourceKey, type: 'search-principal' });
+    if (isPrincipal) return Reproduciendo ? pause() : play();
+    cargarColaYIniciar([principal], { id: principalSourceKey, type: 'search-principal' });
   };
 
   return (
@@ -254,11 +254,11 @@ export default function SearchIndex({ searchQuery, results }) {
               <button
                 onClick={handlePrincipalPlay}
                 className="absolute top-4 right-4 inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full text-white shadow-lg hover:scale-105 transition-transform focus:outline-none"
-                disabled={isLoading && !isPrincipal}
+                disabled={cargando && !isPrincipal}
               >
-                {isLoading && !isPrincipal
+                {cargando && !isPrincipal
                   ? <LoadingIconSolid className="h-7 w-7 animate-spin" />
-                  : isPrincipal && isPlaying
+                  : isPrincipal && Reproduciendo
                     ? <PauseIcon className="h-7 w-7" />
                     : <PlayIcon className="h-7 w-7" />}
               </button>

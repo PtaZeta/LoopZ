@@ -80,31 +80,31 @@ Route::middleware('auth')->group(function () {
     Route::resource('canciones', CancionController::class);
 
     Route::resource('playlists', ContenedorController::class);
-    Route::get('/playlists/{contenedor}/songs/search', [ContenedorController::class, 'buscarCanciones'])->name('playlists.songs.search');
-    Route::post('/playlists/{contenedor}/songs', [ContenedorController::class, 'anadirCancion'])->name('playlists.songs.add');
-    Route::delete('/playlists/{contenedor}/songs/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('playlists.songs.remove');
+    Route::get('/playlists/{contenedor}/canciones/search', [ContenedorController::class, 'buscarCanciones'])->name('playlists.canciones.search');
+    Route::post('/playlists/{contenedor}/canciones', [ContenedorController::class, 'anadirCancion'])->name('playlists.canciones.add');
+    Route::delete('/playlists/{contenedor}/canciones/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('playlists.canciones.remove');
 
     Route::resource('albumes', ContenedorController::class);
-    Route::get('/albumes/{contenedor}/songs/search', [ContenedorController::class, 'buscarCanciones'])->name('albumes.songs.search');
-    Route::post('/albumes/{contenedor}/songs', [ContenedorController::class, 'anadirCancion'])->name('albumes.songs.add');
-    Route::delete('/albumes/{contenedor}/songs/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('albumes.songs.remove');
+    Route::get('/albumes/{contenedor}/canciones/search', [ContenedorController::class, 'buscarCanciones'])->name('albumes.canciones.search');
+    Route::post('/albumes/{contenedor}/canciones', [ContenedorController::class, 'anadirCancion'])->name('albumes.canciones.add');
+    Route::delete('/albumes/{contenedor}/canciones/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('albumes.canciones.remove');
 
     Route::resource('eps', ContenedorController::class);
-    Route::get('/eps/{contenedor}/songs/search', [ContenedorController::class, 'buscarCanciones'])->name('eps.songs.search');
-    Route::post('/eps/{contenedor}/songs', [ContenedorController::class, 'anadirCancion'])->name('eps.songs.add');
-    Route::delete('/eps/{contenedor}/songs/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('eps.songs.remove');
+    Route::get('/eps/{contenedor}/canciones/search', [ContenedorController::class, 'buscarCanciones'])->name('eps.canciones.search');
+    Route::post('/eps/{contenedor}/canciones', [ContenedorController::class, 'anadirCancion'])->name('eps.canciones.add');
+    Route::delete('/eps/{contenedor}/canciones/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('eps.canciones.remove');
 
     Route::resource('singles', ContenedorController::class);
-    Route::get('/singles/{contenedor}/songs/search', [ContenedorController::class, 'buscarCanciones'])->name('singles.songs.search');
-    Route::post('/singles/{contenedor}/songs', [ContenedorController::class, 'anadirCancion'])->name('singles.songs.add');
-    Route::delete('/singles/{contenedor}/songs/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('singles.songs.remove');
+    Route::get('/singles/{contenedor}/canciones/search', [ContenedorController::class, 'buscarCanciones'])->name('singles.canciones.search');
+    Route::post('/singles/{contenedor}/canciones', [ContenedorController::class, 'anadirCancion'])->name('singles.canciones.add');
+    Route::delete('/singles/{contenedor}/canciones/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('singles.canciones.remove');
 
     Route::post('/contenedores/{contenedor}/toggle-loopz', [ContenedorController::class, 'toggleLoopz'])
         ->name('contenedores.toggle-loopz')
         ->where('contenedor', '[0-9]+');
 
     Route::resource('loopzs', ContenedorController::class);
-    Route::get('/loopzs/{contenedor}/songs/search', [ContenedorController::class, 'buscarCanciones'])->name('loopzs.songs.search');
+    Route::get('/loopzs/{contenedor}/canciones/search', [ContenedorController::class, 'buscarCanciones'])->name('loopzs.canciones.search');
     Route::get('/cancion/{cancion}/loopz', [CancionController::class, 'cancionloopz'])->name('cancion.loopz');
     Route::get('/genero/{genero}', [GeneroController::class, 'show'])->name('genero.show');
 

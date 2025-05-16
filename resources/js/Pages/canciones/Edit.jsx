@@ -92,7 +92,7 @@ export default function Edit({ auth, cancion, generos: todosLosGeneros, generosS
         // No need to call buscarGeneros here, the state updates will handle re-render
     };
 
-    // This filtered list logic is now superseded by the resultsGenero state
+    // This cancionesRecomendadasFiltradas list logic is now superseded by the resultsGenero state
     // You can remove or adapt this if needed elsewhere, but the dropdown uses resultadosGenero
     // const listaGeneroFiltrada = termGenero
     //     ? todosLosGeneros.filter(g => g.toLowerCase().includes(termGenero.trim().toLowerCase()) && !data.genero.includes(g))
@@ -207,7 +207,7 @@ export default function Edit({ auth, cancion, generos: todosLosGeneros, generosS
                 setData('foto', null);
                 setData('archivo', null);
 
-                // If the backend returns updated song data, you might want to update state here
+                // If the backend returns updated cancion data, you might want to update state here
                 // E.g., Inertia.reload() or update cancion prop if backend returns it
                  // Inertia reload often simpler:
                  // Inertia.reload({ only: ['cancion', 'generosSeleccionados', 'error', 'success']});
