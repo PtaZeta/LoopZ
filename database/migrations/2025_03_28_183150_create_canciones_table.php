@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('canciones', function (Blueprint $table) {
             $table->id();
             $table->string('titulo');
-            $table->string('genero')->nullable();
             $table->integer('duracion');
             $table->string('archivo_url');
             $table->string('foto_url')->nullable();

@@ -45,7 +45,7 @@ const VolumeMuteIcon = (props) => (
 const ShuffleIcon = ArrowsRightLeftIcon;
 
 const formatTime = (seconds) => {
-    if (isNaN(seconds) || seconds < 0) return '0:00';
+    if (isNaN(seconds) || seconds < 0 || !isFinite(seconds)) return '0:00';
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = Math.floor(seconds % 60);
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
@@ -111,12 +111,13 @@ export default function AuthenticatedLayout({ children }) {
 
     const playerContextValue = useContext(PlayerContext);
     const {
-        currentTrack, currentTrackIndex, isPlaying, currentTime, duration, volume,
-        isShuffled, isLooping, isLoading, playerError, sourceId,
-        play = () => { }, pause = () => { }, nextTrack = () => { }, previousTrack = () => { },
-        seek = () => { }, setVolume = () => { }, toggleShuffle = () => { }, toggleLoop = () => { },
-        playFromQueue = () => { }, clearPlayerError = () => { }, queue = []
+        cancionActual, cancionActualIndex, Reproduciendo, tiempoActual, duration, volumen,
+        aleatorio, looping, cargando, playerError, sourceId,
+        play, pause, siguienteCancion, anteriorCancion,
+        seek, setVolumen, toggleAleatorio, toggleLoop,
+        playCola, limpiarErrores, queue
     } = playerContextValue || {};
+
 
     const queueButtonRef = useRef(null);
     const queueDropdownRef = useRef(null);
@@ -138,40 +139,73 @@ export default function AuthenticatedLayout({ children }) {
         };
     }, [isQueueVisible]);
 
-    const [seekValue, setSeekValue] = useState(currentTime);
-    useEffect(() => { setSeekValue(currentTime); }, [currentTime]);
-    const handleSeekChange = (e) => { setSeekValue(parseFloat(e.target.value)); };
-    const commitSeek = () => { seek(seekValue); };
-    const handleVolumeChange = (e) => { setVolume(parseFloat(e.target.value)); };
+    const [seekValue, setSeekValue] = useState(tiempoActual);
+    const isSeekingRef = useRef(false);
+
+    useEffect(() => {
+        if (!isSeekingRef.current) {
+            setSeekValue(tiempoActual);
+        }
+    }, [tiempoActual]);
+
+    const handleSeekChange = (e) => {
+        const newValue = parseFloat(e.target.value);
+        setSeekValue(newValue);
+        isSeekingRef.current = true;
+    };
+
+    const commitSeek = () => {
+        if (seek) {
+             seek(seekValue);
+        }
+        isSeekingRef.current = false;
+    };
+
+    const handleVolumeChange = (e) => {
+         const newVolume = parseFloat(e.target.value);
+         if (setVolumen) {
+            setVolumen(newVolume);
+         }
+    };
 
     const togglePlayPause = () => {
-        if (!currentTrack && queue.length > 0) play();
-        else if (isPlaying) pause();
-        else play();
+        if (!playerContextValue) {
+             return;
+        }
+
+        if (!cancionActual && queue.length > 0) {
+            play();
+        } else if (Reproduciendo) {
+            pause();
+        } else {
+            play();
+        }
     };
 
     const CurrentVolumeIcon = useMemo(() => {
-        if (volume === 0) return VolumeMuteIcon;
-        if (volume < 0.5) return VolumeLowIcon;
+        if (volumen === 0) return VolumeMuteIcon;
+        if (volumen < 0.5) return VolumeLowIcon;
         return VolumeIcon;
-    }, [volume]);
+    }, [volumen]);
 
-    const progressPercent = useMemo(() => (duration > 0 ? (currentTime / duration) * 100 : 0), [currentTime, duration]);
+    const progressPercent = useMemo(() => (duration > 0 && isFinite(tiempoActual) && isFinite(duration) ? (tiempoActual / duration) * 100 : 0), [tiempoActual, duration]);
     const progressBarStyle = useMemo(() => ({ background: `linear-gradient(to right, #007FFF ${progressPercent}%, #4a5568 ${progressPercent}%)` }), [progressPercent]);
-    const currentTrackImageUrl = obtenerUrlImagenLayout(currentTrack);
+    const currentTrackImageUrl = obtenerUrlImagenLayout(cancionActual);
 
     const currentTrackArtist = useMemo(() => {
-        if (!currentTrack) return 'Artista Desconocido';
-        const artistsFromUsers = currentTrack.usuarios?.map(u => u.name).join(', ');
+        if (!cancionActual) return 'Artista Desconocido';
+        const artistsFromUsers = cancionActual.usuarios?.map(u => u.name).join(', ');
         if (artistsFromUsers) return artistsFromUsers;
-        if (currentTrack.artista) return currentTrack.artista;
-        if (currentTrack.album?.artista) return currentTrack.album.artista;
+        if (cancionActual.artista) return cancionActual.artista;
+        if (cancionActual.album?.artista) return cancionActual.album.artista;
         return 'Artista Desconocido';
-    }, [currentTrack]);
+    }, [cancionActual]);
 
     const handlePlayFromQueueClick = (index) => {
-        playFromQueue(index);
-        setIsQueueVisible(false);
+         if (playCola) {
+            playCola(index);
+            setIsQueueVisible(false);
+         }
     };
 
     const handleSearchSubmit = (e) => {
@@ -180,7 +214,7 @@ export default function AuthenticatedLayout({ children }) {
         }
     };
 
-    const hasQueue = queue.length > 0 || currentTrack;
+    const hasQueue = queue && queue.length > 0 || cancionActual; // Added null/undefined check for queue
     const mainPaddingBottom = hasQueue ? 'pb-24 md:pb-28' : 'pb-5';
 
     return (
@@ -265,7 +299,7 @@ export default function AuthenticatedLayout({ children }) {
                                     <Link href={route('profile.show', usuario.id)} className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50">
                                         Perfil
                                     </Link>
-                                    <button onClick={() => null} className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50">
+                                    <button onClick={() => { router.post(route('logout')); }} className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50">
                                         Logout
                                     </button>
                                 </>
@@ -296,60 +330,86 @@ export default function AuthenticatedLayout({ children }) {
                     {playerError && (
                         <div className="bg-red-800/80 text-white text-xs text-center py-1 px-4 flex justify-between items-center">
                             <span>{playerError}</span>
-                            <button onClick={clearPlayerError} className="p-0.5 hover:bg-red-700 rounded-full focus:outline-none focus:ring-1 focus:ring-white" aria-label="Cerrar error">
+                            <button onClick={limpiarErrores} className="p-0.5 hover:bg-red-700 rounded-full focus:outline-none focus:ring-1 focus:ring-white" aria-label="Cerrar error">
                                 <XCircleIcon className="h-4 w-4" />
                             </button>
                         </div>
                     )}
+                    {/* Mobile Progress Bar */}
                     <div className="w-full px-2 pt-1 md:hidden">
-                        <input type="range" min="0" max={duration || 0} value={seekValue} onChange={handleSeekChange} onMouseUp={commitSeek} onTouchEnd={commitSeek} disabled={!currentTrack || !duration || isLoading} aria-label="Progreso de la canción" className="w-full h-1 rounded-lg appearance-none cursor-pointer range-progress-gradient disabled:opacity-50 disabled:cursor-not-allowed" style={progressBarStyle} />
+                        <input
+                            type="range"
+                            min="0"
+                            max={duration || 0}
+                            value={seekValue}
+                            onChange={handleSeekChange}
+                            onMouseUp={commitSeek}
+                            onTouchEnd={commitSeek}
+                            disabled={!cancionActual || !duration || cargando}
+                            aria-label="Progreso de la canción"
+                            className="w-full h-1 rounded-lg appearance-none cursor-pointer range-progress-gradient disabled:opacity-50 disabled:cursor-not-allowed"
+                            style={progressBarStyle}
+                        />
                     </div>
                     <div className="container mx-auto w-full px-3 sm:px-4 py-2 flex items-center justify-between space-x-2 sm:space-x-3">
                         <div className="flex items-center space-x-2 flex-1 min-w-0 md:flex-initial md:w-1/4 lg:w-1/3 md:space-x-3">
-                            <PlayerImagenItem url={currentTrackImageUrl} titulo={currentTrack?.titulo || ''} className="w-10 h-10 md:w-12 md:h-12" />
+                            <PlayerImagenItem url={currentTrackImageUrl} titulo={cancionActual?.titulo || ''} className="w-10 h-10 md:w-12 md:h-12" />
                             <div className="overflow-hidden hidden sm:block">
-                                <p className="text-sm font-medium text-blue-400 truncate" title={currentTrack?.titulo || 'Ninguna Canción'}>{currentTrack?.titulo || 'Ninguna Canción'}</p>
+                                <p className="text-sm font-medium text-blue-400 truncate" title={cancionActual?.titulo || 'Ninguna Canción'}>{cancionActual?.titulo || 'Ninguna Canción'}</p>
                                 <p className="text-xs text-gray-400 truncate hidden md:block" title={currentTrackArtist}>{currentTrackArtist}</p>
                             </div>
                         </div>
                         <div className="flex flex-col items-center md:flex-grow">
                             <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4">
-                                <button onClick={toggleShuffle} title={isShuffled ? "Desactivar aleatorio" : "Activar aleatorio"} aria-label={isShuffled ? "Desactivar aleatorio" : "Activar aleatorio"} className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${isShuffled ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'}`}><ShuffleIcon className="h-5 w-5" /></button>
-                                <button onClick={previousTrack} disabled={queue.length <= 1 || isLoading} aria-label="Canción anterior" className="text-gray-400 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"><PreviousIcon className="h-5 w-5" /></button>
-                                <button onClick={togglePlayPause} disabled={(!currentTrack && queue.length === 0) || isLoading} aria-label={isPlaying ? "Pausar" : "Reproducir"} className="bg-blue-600 hover:bg-blue-500 rounded-full text-white transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-900">
-                                    {isLoading ? <LoadingIcon className="h-5 w-5 sm:h-6 sm:w-6 animate-spin" /> : (isPlaying ? <PauseIcon className="h-5 w-5 sm:h-6 sm:w-6" /> : <PlayIcon className="h-5 w-5 sm:h-6 sm:w-6" />)}
+                                <button onClick={toggleAleatorio} title={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"} aria-label={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"} className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${aleatorio ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'}`}><ShuffleIcon className="h-5 w-5" /></button>
+                                <button onClick={anteriorCancion} disabled={queue.length <= 1 || cargando} aria-label="Canción anterior" className="text-gray-400 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"><PreviousIcon className="h-5 w-5" /></button>
+                                <button onClick={togglePlayPause} disabled={(!cancionActual && queue.length === 0) || cargando} aria-label={Reproduciendo ? "Pausar" : "Reproducir"} className="bg-blue-600 hover:bg-blue-500 rounded-full text-white transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-900">
+                                    {cargando ? <LoadingIcon className="h-5 w-5 sm:h-6 sm:w-6 animate-spin" /> : (Reproduciendo ? <PauseIcon className="h-5 w-5 sm:h-6 sm:w-6" /> : <PlayIcon className="h-5 w-5 sm:h-6 sm-w-6" />)}
                                 </button>
-                                <button onClick={nextTrack} disabled={queue.length <= 1 || isLoading} aria-label="Siguiente canción" className="text-gray-400 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"><NextIcon className="h-5 w-5" /></button>
-                                <button onClick={toggleLoop} title={isLooping ? "Desactivar repetición" : "Activar repetición"} aria-label={isLooping ? "Desactivar repetición" : "Activar repetición"} className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${isLooping ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'}`}><LoopIcon className="h-5 w-5" /></button>
+                                <button onClick={siguienteCancion} disabled={queue.length <= 1 || cargando} aria-label="Siguiente canción" className="text-gray-400 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"><NextIcon className="h-5 w-5" /></button>
+                                <button onClick={toggleLoop} title={looping ? "Desactivar repetición" : "Activar repetición"} aria-label={looping ? "Desactivar repetición" : "Activar repetición"} className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${looping ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'}`}><LoopIcon className="h-5 w-5" /></button>
                             </div>
+                            {/* Desktop Progress Bar */}
                             <div className="w-full max-w-xl hidden md:flex items-center space-x-2 mt-1">
-                                <span className="text-xs text-gray-500 font-mono w-10 text-right">{formatTime(currentTime)}</span>
-                                <input type="range" min="0" max={duration || 0} value={seekValue} onChange={handleSeekChange} onMouseUp={commitSeek} onTouchEnd={commitSeek} disabled={!currentTrack || !duration || isLoading} aria-label="Progreso de la canción" className="w-full h-1.5 rounded-lg appearance-none cursor-pointer range-progress-gradient disabled:opacity-50 disabled:cursor-not-allowed" style={progressBarStyle} />
+                                <span className="text-xs text-gray-500 font-mono w-10 text-right">{formatTime(tiempoActual)}</span>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max={duration || 0}
+                                    value={seekValue}
+                                    onChange={handleSeekChange}
+                                    onMouseUp={commitSeek}
+                                    onTouchEnd={commitSeek}
+                                    disabled={!cancionActual || !duration || cargando}
+                                    aria-label="Progreso de la canción"
+                                    className="w-full h-1.5 rounded-lg appearance-none cursor-pointer range-progress-gradient disabled:opacity-50 disabled:cursor-not-allowed"
+                                    style={progressBarStyle}
+                                />
                                 <span className="text-xs text-gray-500 font-mono w-10 text-left">{formatTime(duration)}</span>
                             </div>
                         </div>
                         <div className="flex items-center justify-end space-x-2 flex-1 md:flex-initial md:w-1/4 lg:w-1/3">
                             <div className="hidden lg:flex items-center space-x-2">
                                 <button className="text-gray-400 hover:text-blue-400 transition-colors p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900" aria-label="Volumen"><CurrentVolumeIcon className="h-5 w-5" /></button>
-                                <input type="range" min="0" max="1" step="0.01" value={volume} onChange={handleVolumeChange} aria-label="Control de volumen" className="w-20 h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer range-sm accent-blue-500 hover:accent-blue-400" />
+                                <input type="range" min="0" max="1" step="0.01" value={volumen} onChange={handleVolumeChange} aria-label="Control de volumen" className="w-20 h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer range-sm accent-blue-500 hover:accent-blue-400" />
                             </div>
                             <button ref={queueButtonRef} onClick={() => setIsQueueVisible(!isQueueVisible)} title="Mostrar cola de reproducción" aria-label="Mostrar cola de reproducción" className="text-gray-400 hover:text-blue-400 transition-colors p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900"><QueueListIcon className="h-5 w-5" /></button>
                             {isQueueVisible && (
                                 <div ref={queueDropdownRef} className="absolute bottom-full right-0 mb-2 w-64 sm:w-80 max-h-80 overflow-y-auto bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 p-2">
                                     <h4 className="text-sm font-semibold text-gray-300 px-2 pb-2 border-b border-slate-600 mb-2">Cola de Reproducción</h4>
-                                    {queue.length > 0 ? (
+                                    {queue && queue.length > 0 ? (
                                         <ul className="space-y-1">
-                                            {queue.map((song, index) => (
-                                                <li key={`${song.id}-${index}`} className={`flex items-center justify-between p-2 rounded cursor-pointer group ${index === currentTrackIndex ? 'bg-blue-900/50' : 'hover:bg-slate-700/70'}`} onClick={() => handlePlayFromQueueClick(index)}>
+                                            {queue.map((cancion, index) => (
+                                                <li key={`${cancion.id}-${index}`} className={`flex items-center justify-between p-2 rounded cursor-pointer group ${index === cancionActualIndex ? 'bg-blue-900/50' : 'hover:bg-slate-700/70'}`} onClick={() => handlePlayFromQueueClick(index)}>
                                                     <div className="flex items-center space-x-2 overflow-hidden">
-                                                        <PlayerImagenItem url={obtenerUrlImagenLayout(song)} titulo={song.titulo} className="w-8 h-8" iconoFallback={<MusicalNoteIcon className="h-4 w-4" />} isQueueItem={true} />
+                                                        <PlayerImagenItem url={obtenerUrlImagenLayout(cancion)} titulo={cancion.titulo} className="w-8 h-8" iconoFallback={<MusicalNoteIcon className="h-4 w-4" />} isQueueItem={true} />
                                                         <div className="overflow-hidden">
-                                                            <p className={`text-xs truncate ${index === currentTrackIndex ? 'text-blue-300 font-semibold' : 'text-gray-200 group-hover:text-white'}`} title={song.titulo}>{song.titulo}</p>
-                                                            <p className={`text-xs truncate ${index === currentTrackIndex ? 'text-blue-400' : 'text-gray-400 group-hover:text-gray-300'}`} title={song.usuarios?.map(u => u.name).join(', ') || song.artista || ''}>{song.usuarios?.map(u => u.name).join(', ') || song.artista || 'Artista Desconocido'}</p>
+                                                            <p className={`text-xs truncate ${index === cancionActualIndex ? 'text-blue-300 font-semibold' : 'text-gray-200 group-hover:text-white'}`} title={cancion.titulo}>{cancion.titulo}</p>
+                                                            <p className={`text-xs truncate ${index === cancionActualIndex ? 'text-blue-400' : 'text-gray-400 group-hover:text-gray-300'}`} title={cancion.usuarios?.map(u => u.name).join(', ') || cancion.artista || ''}>{cancion.usuarios?.map(u => u.name).join(', ') || cancion.artista || 'Artista Desconocido'}</p>
                                                         </div>
                                                     </div>
-                                                    {isPlaying && index === currentTrackIndex && (<PauseIcon className="h-4 w-4 text-blue-400 flex-shrink-0 ml-2" />)}
-                                                    {!isPlaying && index === currentTrackIndex && (<PlayIcon className="h-4 w-4 text-blue-400 flex-shrink-0 ml-2" />)}
+                                                    {Reproduciendo && index === cancionActualIndex && (<PauseIcon className="h-4 w-4 text-blue-400 flex-shrink-0 ml-2" />)}
+                                                    {!Reproduciendo && index === cancionActualIndex && (<PlayIcon className="h-4 w-4 text-blue-400 flex-shrink-0 ml-2" />)}
                                                 </li>
                                             ))}
                                         </ul>

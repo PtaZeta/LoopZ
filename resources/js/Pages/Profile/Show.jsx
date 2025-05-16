@@ -387,7 +387,7 @@ const ProfileCancionesList = ({
     nombreRuta,
     onPlayPauseSong,
     currentTrackId,
-    isPlaying,
+    Reproduciendo,
     isPlayerLoading,
     currentSourceId,
     mainSourceId
@@ -400,7 +400,7 @@ const ProfileCancionesList = ({
         <ul className="space-y-1 px-4 sm:px-6">
             {items.map((item, index) => {
                 const isThisCurrentTrack = item.id === currentTrackId && currentSourceId === mainSourceId;
-                const isLoadingThisTrack = isPlayerLoading && isThisCurrentTrack && !isPlaying;
+                const isLoadingThisTrack = isPlayerLoading && isThisCurrentTrack && !Reproduciendo;
 
                 return (
                     <CancionListItem
@@ -411,7 +411,7 @@ const ProfileCancionesList = ({
                         nombreRuta={nombreRuta}
                         onPlayPauseClick={() => onPlayPauseSong(item, index)}
                         isCurrentTrack={isThisCurrentTrack}
-                        isPlayingCurrentTrack={isThisCurrentTrack && isPlaying}
+                        isPlayingCurrentTrack={isThisCurrentTrack && Reproduciendo}
                         isLoadingTrack={isLoadingThisTrack}
                     />
                 );
@@ -428,66 +428,66 @@ export default function Index() {
     const usuarioLogueadoId = auth.user.id;
     const playerContextValue = useContext(PlayerContext);
     const {
-        loadQueueAndPlay = () => {},
+        cargarColaYIniciar = () => {},
         play = () => {},
         pause = () => {},
-        toggleShuffle = () => {},
-        isPlaying = false,
-        isShuffled = false,
-        currentTrack = null,
+        toggleAleatorio = () => {},
+        Reproduciendo = false,
+        aleatorio = false,
+        cancionActual = null,
         sourceId = null,
-        isLoading: isPlayerLoading = false
+        cargando: isPlayerLoading = false
     } = playerContextValue || {};
 
-    const userSongsSourceId = `user-${usuario.id}-all-songs`;
-    const isCurrentSourcePlayingUserSongs = sourceId === userSongsSourceId && isPlaying;
+    const userSongsSourceId = `user-${usuario.id}-all-canciones`;
+    const isCurrentSourcePlayingUserSongs = sourceId === userSongsSourceId && Reproduciendo;
     const isPlayerLoadingThisSource = isPlayerLoading && sourceId === userSongsSourceId;
 
     const handlePlayPauseUserSongs = useCallback(() => {
         if (!cancionesUsuario || cancionesUsuario.length === 0) return;
         if (sourceId === userSongsSourceId) {
-            if (isPlaying) {
+            if (Reproduciendo) {
                 pause();
             } else {
                 play();
             }
         } else {
-            const formattedSongs = cancionesUsuario.map(song => ({ ...song, }));
-            loadQueueAndPlay(formattedSongs, { id: userSongsSourceId, name: `Canciones de ${usuario.name}`, type: 'userCollection', startIndex: 0 });
+            const formattedSongs = cancionesUsuario.map(cancion => ({ ...cancion, }));
+            cargarColaYIniciar(formattedSongs, { id: userSongsSourceId, name: `Canciones de ${usuario.name}`, type: 'userCollection', iniciar: 0 });
         }
-    }, [cancionesUsuario, pause, sourceId, userSongsSourceId, isPlaying, play, loadQueueAndPlay, usuario.name]);
+    }, [cancionesUsuario, pause, sourceId, userSongsSourceId, Reproduciendo, play, cargarColaYIniciar, usuario.name]);
 
     const handleToggleShuffleUserSongs = useCallback(() => {
         if (!cancionesUsuario || cancionesUsuario.length === 0) return;
         if (sourceId === userSongsSourceId) {
-             toggleShuffle();
+             toggleAleatorio();
         } else {
-             toggleShuffle();
+             toggleAleatorio();
         }
-    }, [cancionesUsuario, toggleShuffle, sourceId, userSongsSourceId]);
+    }, [cancionesUsuario, toggleAleatorio, sourceId, userSongsSourceId]);
 
     const handlePlayPauseSingleSong = useCallback((songToPlay, songIndexInList) => {
         if (!cancionesUsuario || cancionesUsuario.length === 0) return;
 
-        const isClickedSongCurrent = currentTrack && currentTrack.id === songToPlay.id && sourceId === userSongsSourceId;
+        const isClickedSongCurrent = cancionActual && cancionActual.id === songToPlay.id && sourceId === userSongsSourceId;
 
         if (isClickedSongCurrent) {
-            if (isPlaying) {
+            if (Reproduciendo) {
                 pause();
             } else {
                 play();
             }
         } else {
-            const formattedSongs = cancionesUsuario.map(song => ({ ...song }));
-            loadQueueAndPlay(formattedSongs, {
+            const formattedSongs = cancionesUsuario.map(cancion => ({ ...cancion }));
+            cargarColaYIniciar(formattedSongs, {
                 id: userSongsSourceId,
                 name: `Canciones de ${usuario.name}`,
                 type: 'userCollection',
-                startIndex: songIndexInList,
-                isDirectClick: true
+                iniciar: songIndexInList,
+                clickDirecto: true
             });
         }
-    }, [cancionesUsuario, currentTrack, sourceId, userSongsSourceId, isPlaying, pause, play, loadQueueAndPlay, usuario.name]);
+    }, [cancionesUsuario, cancionActual, sourceId, userSongsSourceId, Reproduciendo, pause, play, cargarColaYIniciar, usuario.name]);
 
     return (
         <AuthenticatedLayout user={auth.user} header={<div className="flex justify-between items-center"><h2 className="text-2xl font-bold leading-tight text-gray-100">Mi Perfil</h2></div>}>
@@ -512,7 +512,7 @@ export default function Index() {
                                     <button
                                         onClick={handlePlayPauseUserSongs}
                                         disabled={isPlayerLoadingThisSource || !cancionesUsuario || cancionesUsuario.length === 0}
-                                        aria-label={isCurrentSourcePlayingUserSongs ? 'Pausar canciones del usuario' : (sourceId === userSongsSourceId && currentTrack ? 'Continuar reproducción de canciones del usuario' : 'Reproducir todas las canciones del usuario')}
+                                        aria-label={isCurrentSourcePlayingUserSongs ? 'Pausar canciones del usuario' : (sourceId === userSongsSourceId && cancionActual ? 'Continuar reproducción de canciones del usuario' : 'Reproducir todas las canciones del usuario')}
                                         className="flex items-center justify-center p-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-full shadow-md hover:from-purple-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed"
                                     >
                                         {isPlayerLoadingThisSource ? <LoadingIcon className="w-6 h-6 animate-spin" /> : isCurrentSourcePlayingUserSongs ? <PauseIconSolid className="w-6 h-6" /> : <PlayIconSolid className="w-6 h-6" />}
@@ -520,9 +520,9 @@ export default function Index() {
                                     <button
                                         onClick={handleToggleShuffleUserSongs}
                                         disabled={!cancionesUsuario || cancionesUsuario.length === 0}
-                                        aria-label={isShuffled ? "Desactivar modo aleatorio para canciones del usuario" : "Activar modo aleatorio para canciones del usuario"}
+                                        aria-label={aleatorio ? "Desactivar modo aleatorio para canciones del usuario" : "Activar modo aleatorio para canciones del usuario"}
                                         className={`flex items-center justify-center p-3 border rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed ${
-                                            isShuffled
+                                            aleatorio
                                                 ? 'bg-indigo-500 text-white border-indigo-500 hover:bg-indigo-600 focus:ring-indigo-500'
                                                 : 'bg-transparent text-gray-300 border-gray-600 hover:bg-gray-700 hover:text-white focus:ring-gray-500'
                                         }`}
@@ -549,8 +549,8 @@ export default function Index() {
                             tipoItem="cancion"
                             nombreRuta={null}
                             onPlayPauseSong={handlePlayPauseSingleSong}
-                            currentTrackId={currentTrack?.id}
-                            isPlaying={isPlaying}
+                            currentTrackId={cancionActual?.id}
+                            Reproduciendo={Reproduciendo}
                             isPlayerLoading={isPlayerLoading}
                             currentSourceId={sourceId}
                             mainSourceId={userSongsSourceId}
