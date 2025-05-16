@@ -96,15 +96,15 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
 
     const playerContextValue = useContext(PlayerContext);
     const {
-        loadQueueAndPlay = () => {},
+        cargarColaYIniciar = () => {},
         play = () => {},
         pause = () => {},
-        toggleShuffle = () => {},
-        isPlaying = false,
-        isShuffled = false,
-        currentTrack = null,
+        toggleAleatorio = () => {},
+        Reproduciendo = false,
+        aleatorio = false,
+        cancionActual = null,
         sourceId = null,
-        isLoading: isPlayerLoading = false
+        cargando: isPlayerLoading = false
     } = playerContextValue || {};
 
     const [contenedor, setContenedor] = useState(contenedorInicial);
@@ -127,7 +127,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         setEstaBuscando(true);
         startTransition(() => { setResultadosBusqueda([]); });
         try {
-            const nombreRutaBusqueda = `${rutaBase}.songs.search`;
+            const nombreRutaBusqueda = `${rutaBase}.canciones.search`;
             const urlBusqueda = route(nombreRutaBusqueda, { contenedor: contenedor.id, query: consulta });
             const respuesta = await fetch(urlBusqueda, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
             if (!respuesta.ok) {
@@ -192,7 +192,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
 
     const manejarEliminarCancion = (pivotId) => {
         if (!pivotId || eliminandoPivotId === pivotId) { return; }
-        const nombreRutaRemove = `${rutaBase}.songs.remove`;
+        const nombreRutaRemove = `${rutaBase}.canciones.remove`;
         setEliminandoPivotId(pivotId);
         router.delete(route(nombreRutaRemove, { contenedor: contenedor.id, pivotId: pivotId }), {
             preserveScroll: true, preserveState: false,
@@ -214,7 +214,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
     const manejarAnadirCancion = (idCancion) => {
         if (anadiendoCancionId === idCancion || !contenedor?.id) return;
         setAnadiendoCancionId(idCancion);
-        const nombreRutaAdd = `${rutaBase}.songs.add`;
+        const nombreRutaAdd = `${rutaBase}.canciones.add`;
         router.post(route(nombreRutaAdd, contenedor.id), { cancion_id: idCancion, }, {
             preserveScroll: true, preserveState: false,
             onSuccess: (page) => {
@@ -225,7 +225,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                     setContenedor(page.props.contenedor);
                     setIsLiked(page.props.contenedor?.is_liked_by_user || false);
                 }
-                 startTransition(() => { setResultadosBusqueda(prev => prev.filter(song => song.id !== idCancion)); });
+                 startTransition(() => { setResultadosBusqueda(prev => prev.filter(cancion => cancion.id !== idCancion)); });
             },
             onFinish: () => setAnadiendoCancionId(null),
             onError: (errores) => {
@@ -273,28 +273,28 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
     }, [contenedor?.usuarios]);
 
     const isCurrentSource = sourceId === contenedor?.id;
-    const showPauseButton = isPlaying && isCurrentSource;
+    const showPauseButton = Reproduciendo && isCurrentSource;
 
     const handleMainPlayPause = () => {
         if (showPauseButton) {
             pause();
         } else {
-            if (isCurrentSource && !isPlaying && currentTrack) {
+            if (isCurrentSource && !Reproduciendo && cancionActual) {
                  play();
             } else if (contenedor?.canciones && contenedor.canciones.length > 0) {
-                loadQueueAndPlay(contenedor.canciones, { id: contenedor.id, startIndex: 0 });
+                cargarColaYIniciar(contenedor.canciones, { id: contenedor.id, iniciar: 0 });
             }
         }
     };
 
     const handleSongPlay = (index) => {
-        if (isPlaying && currentTrack?.id === contenedor.canciones[index]?.id) {
+        if (Reproduciendo && cancionActual?.id === contenedor.canciones[index]?.id) {
             pause();
         } else if (contenedor?.canciones && contenedor.canciones.length > 0) {
-            loadQueueAndPlay(contenedor.canciones, {
-                startIndex: index,
+            cargarColaYIniciar(contenedor.canciones, {
+                iniciar: index,
                 id: contenedor.id,
-                isDirectClick: true
+                clickDirecto: true
             });
         }
     };
@@ -336,14 +336,14 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                     onClick={handleMainPlayPause}
                                     className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full font-semibold text-white shadow-lg hover:scale-105 transform transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-wait"
                                     title={showPauseButton ? `Pausar ${tipoNombreMayuscula}` : `Reproducir ${tipoNombreMayuscula}`}
-                                    disabled={!contenedor?.canciones || contenedor.canciones.length === 0 || (isPlayerLoading && !isPlaying)}
+                                    disabled={!contenedor?.canciones || contenedor.canciones.length === 0 || (isPlayerLoading && !Reproduciendo)}
                                 >
-                                    {isPlayerLoading && !isPlaying && isCurrentSource ? <LoadingIcon className="h-7 w-7 animate-spin"/> : (showPauseButton ? <PauseIcon className="h-7 w-7" /> : <PlayIcon className="h-7 w-7" />)}
+                                    {isPlayerLoading && !Reproduciendo && isCurrentSource ? <LoadingIcon className="h-7 w-7 animate-spin"/> : (showPauseButton ? <PauseIcon className="h-7 w-7" /> : <PlayIcon className="h-7 w-7" />)}
                                 </button>
                                 <button
-                                    onClick={toggleShuffle}
-                                    className={`inline-flex items-center justify-center p-3 border border-slate-600 rounded-full font-semibold text-xs uppercase tracking-widest shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 transition ease-in-out duration-150 ${isShuffled ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-gray-300 hover:bg-slate-700'}`}
-                                    title={isShuffled ? "Desactivar aleatorio" : "Activar aleatorio"}
+                                    onClick={toggleAleatorio}
+                                    className={`inline-flex items-center justify-center p-3 border border-slate-600 rounded-full font-semibold text-xs uppercase tracking-widest shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 transition ease-in-out duration-150 ${aleatorio ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-gray-300 hover:bg-slate-700'}`}
+                                    title={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"}
                                     disabled={!contenedor?.canciones || contenedor.canciones.length === 0}
                                 >
                                     <ShuffleIcon className="h-6 w-6" />
@@ -378,10 +378,10 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                              onClick={() => handleSongPlay(index)}
                                              className="flex-shrink-0 text-gray-400 hover:text-blue-400 p-1 disabled:opacity-50 disabled:cursor-wait"
                                              title={`Reproducir ${cancion.titulo}`}
-                                             disabled={isPlayerLoading && currentTrack?.id !== cancion.id}
+                                             disabled={isPlayerLoading && cancionActual?.id !== cancion.id}
                                          >
-                                            { isPlayerLoading && currentTrack?.id === cancion.id ? <LoadingIcon className="h-5 w-5 animate-spin text-blue-500"/> :
-                                             (isPlaying && currentTrack?.id === cancion.id) ? <PauseIcon className="h-5 w-5 text-blue-500"/> :
+                                            { isPlayerLoading && cancionActual?.id === cancion.id ? <LoadingIcon className="h-5 w-5 animate-spin text-blue-500"/> :
+                                             (Reproduciendo && cancionActual?.id === cancion.id) ? <PauseIcon className="h-5 w-5 text-blue-500"/> :
                                              <PlayIcon className="h-5 w-5"/>
                                             }
                                         </button>

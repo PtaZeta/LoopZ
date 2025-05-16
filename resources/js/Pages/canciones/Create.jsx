@@ -311,9 +311,9 @@ export default function Create({ auth, generos, licencias }) {
                                             </h3>
                                              {!originalSongSelected ? (
                                                 <div className="relative">
-                                                    <InputLabel htmlFor="original-song-search" value="Buscar Obra Original por Título (CC BY 4.0)" className="text-gray-300" />
+                                                    <InputLabel htmlFor="original-cancion-search" value="Buscar Obra Original por Título (CC BY 4.0)" className="text-gray-300" />
                                                     <TextInput
-                                                        id="original-song-search"
+                                                        id="original-cancion-search"
                                                         type="search"
                                                         value={terminoBusquedaCancion}
                                                         onChange={manejarCambioBusquedaCancion}

@@ -94,7 +94,7 @@ class CancionController extends Controller
         if ($isRemix && !is_null($originalSongId)) {
             $validOriginal = Cancion::query()
                 ->join('licencias', 'canciones.licencia_id', '=', 'licencias.id')
-                ->where('canciones.id', $originalSongId) // Asegurarse de que es el ID correcto
+                ->where('canciones.id', $originalSongId)
                 ->where('licencias.id', 2)
                 ->exists();
 
@@ -354,7 +354,7 @@ class CancionController extends Controller
         } catch (ModelNotFoundException $e) {
             return redirect()->route('canciones.index')->with('error', 'Canción no encontrada.');
         } catch (\Exception $e) {
-            \Log::error("Error updating song ID {$id}: " . $e->getMessage() . " Stack trace: " . $e->getTraceAsString());
+            \Log::error("Error updating cancion ID {$id}: " . $e->getMessage() . " Stack trace: " . $e->getTraceAsString());
              return Redirect::route('canciones.edit', $id)->with('error', 'Ocurrió un error al actualizar la canción: ' . $e->getMessage())->withInput();
         }
     }

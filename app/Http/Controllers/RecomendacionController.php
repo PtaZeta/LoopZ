@@ -14,6 +14,7 @@ class RecomendacionController extends Controller
         $seedId = $request->input('seedSongId');
 
         $query = Cancion::query()
+            ->with('generos')
             ->where('publico', true)
             ->when($seedId, fn($q) => $q->where('id', '<>', $seedId));
 
@@ -22,12 +23,15 @@ class RecomendacionController extends Controller
             if ($seed && $seed->generos->isNotEmpty()) {
                 $genreIds = $seed->generos->pluck('id')->toArray();
                 $query->whereHas('generos', fn($q) => $q->whereIn('genero_id', $genreIds));
+            } else {
             }
         }
 
         $result = $query->inRandomOrder()->limit(10)->get();
+
         if ($result->isEmpty()) {
             $result = Cancion::where('publico', true)
+                ->with('generos')
                 ->inRandomOrder()
                 ->limit(10)
                 ->get();
