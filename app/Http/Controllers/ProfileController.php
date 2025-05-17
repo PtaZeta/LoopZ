@@ -17,7 +17,7 @@ use App\Models\Contenedor;
 
 class ProfileController extends Controller
 {
-    public function show(Request $request, $id): Response
+    public function show($id): Response
     {
         $usuario = User::findOrFail($id);
 
@@ -59,15 +59,16 @@ class ProfileController extends Controller
             ->limit(10)
             ->get();
 
+        $isOwner = auth()->check() && auth()->user()->id === $usuario->id;
+
         return Inertia::render('Profile/Show', [
+            'usuario' => $usuario->only(['id', 'name', 'email', 'foto_perfil', 'banner_perfil']),
             'cancionesUsuario' => $consultaCanciones,
             'playlistsUsuario' => $consultaPlaylists,
             'albumesUsuario' => $consultaAlbumes,
             'epsUsuario' => $consultaEps,
             'singlesUsuario' => $consultaSingles,
-            'auth' => [
-                'user' => $usuario->only(['id', 'name', 'email', 'foto_perfil', 'banner_perfil']),
-            ],
+            'is_owner' => $isOwner,
         ]);
     }
 

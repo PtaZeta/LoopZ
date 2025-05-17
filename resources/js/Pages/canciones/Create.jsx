@@ -50,10 +50,10 @@ export default function Create({ auth, generos, licencias }) {
         }
     }, [auth.user, licencias]);
 
-     useEffect(() => {
+      useEffect(() => {
         const license = licencias.find(lic => lic.id.toString() === data.licencia_id);
         setSelectedLicenseDetails(license || null);
-     }, [data.licencia_id, licencias]);
+      }, [data.licencia_id, licencias]);
 
 
     const buscarGeneros = useCallback(
@@ -100,7 +100,10 @@ export default function Create({ auth, generos, licencias }) {
     };
 
     const quitarUsuario = (usuarioId) => {
-        if (usuarioId === auth.user?.id) return;
+        if (auth.user && usuarioId === auth.user.id) {
+            console.warn("No puedes quitar al usuario creador.");
+            return;
+        }
 
         const nuevosSeleccionados = usuariosSeleccionados.filter(usuario => usuario.id !== usuarioId);
         setUsuariosSeleccionados(nuevosSeleccionados);
@@ -113,18 +116,24 @@ export default function Create({ auth, generos, licencias }) {
             setMostrarResultados(true);
             try {
                 const terminoLimpio = termino.trim();
+                 if (!terminoLimpio) {
+                     setResultadosBusqueda([]);
+                     setCargandoBusqueda(false);
+                     return;
+                 }
                 const response = await axios.get(route('usuarios.buscar', { q: terminoLimpio }));
                 const usuariosDisponibles = response.data.filter(
                     usuario => !usuariosSeleccionados.some(seleccionado => seleccionado.id === usuario.id)
                 );
                 setResultadosBusqueda(usuariosDisponibles);
             } catch (error) {
+                console.error("Error buscando usuarios:", error);
                 setResultadosBusqueda([]);
             } finally {
                 setCargandoBusqueda(false);
             }
         }, 300),
-        [usuariosSeleccionados, auth.user?.id]
+        [usuariosSeleccionados]
     );
 
     const manejarCambioBusqueda = (e) => {
@@ -141,27 +150,28 @@ export default function Create({ auth, generos, licencias }) {
         setTimeout(() => setMostrarResultados(false), 150);
     }
 
-     const realizarBusquedaCancion = useCallback(
+      const realizarBusquedaCancion = useCallback(
         debounce(async (termino) => {
-             setCargandoBusquedaCancion(true);
+              setCargandoBusquedaCancion(true);
             setMostrarResultadosCancion(true);
             try {
                 const terminoLimpio = termino.trim();
                  if (!terminoLimpio) {
-                     setResultadosBusquedaCancion([]);
-                     setCargandoBusquedaCancion(false);
-                     return;
+                      setResultadosBusquedaCancion([]);
+                      setCargandoBusquedaCancion(false);
+                      return;
                  }
                 const response = await axios.get(route('canciones.buscar-originales', { q: terminoLimpio }));
                 setResultadosBusquedaCancion(response.data);
             } catch (error) {
+                console.error("Error buscando canciones originales:", error);
                 setResultadosBusquedaCancion([]);
             } finally {
                 setCargandoBusquedaCancion(false);
             }
         }, 300),
         []
-     );
+      );
 
     const manejarCambioBusquedaCancion = (e) => {
         const termino = e.target.value;
@@ -169,27 +179,31 @@ export default function Create({ auth, generos, licencias }) {
         realizarBusquedaCancion(termino);
     };
 
-     const manejarFocoBusquedaCancion = () => {
+      const manejarFocoBusquedaCancion = () => {
         setMostrarResultadosCancion(true);
-    }
+      }
 
     const manejarPerdidaFocoCancion = () => {
         setTimeout(() => setMostrarResultadosCancion(false), 150);
     }
 
-     const seleccionarCancionOriginal = (cancion) => {
-        setOriginalSongSelected(cancion);
-        setData('cancion_original_id', cancion.id);
-        setTerminoBusquedaCancion('');
-        setResultadosBusquedaCancion([]);
-        setMostrarResultadosCancion(false);
-     };
+      const seleccionarCancionOriginal = (cancion) => {
+          if (cancion.licencia_id !== 2) {
+              console.warn("La canción seleccionada no tiene la licencia CC BY 4.0 requerida para ser remezclada.");
+              return;
+          }
+          setOriginalSongSelected(cancion);
+          setData('cancion_original_id', cancion.id);
+          setTerminoBusquedaCancion('');
+          setResultadosBusquedaCancion([]);
+          setMostrarResultadosCancion(false);
+      };
 
-     const quitarCancionOriginal = () => {
+      const quitarCancionOriginal = () => {
         setOriginalSongSelected(null);
         setData('cancion_original_id', null);
         setTerminoBusquedaCancion('');
-     };
+      };
 
 
     const enviarFormulario = (e) => {
@@ -198,38 +212,44 @@ export default function Create({ auth, generos, licencias }) {
         post(route('canciones.store'), {
             preserveState: true,
             onSuccess: () => {
-                reset();
+                reset('titulo', 'publico', 'foto', 'archivo', 'genero', 'userIds', 'remix', 'cancion_original_id');
+                setTermGenero('');
+                setResultadosGenero([]);
+                setMostrarGenero(false);
+                setTerminoBusqueda('');
+                setResultadosBusqueda([]);
+                setMostrarResultados(false);
+                 setTerminoBusquedaCancion('');
+                 setResultadosBusquedaCancion([]);
+                 setMostrarResultadosCancion(false);
+                 setOriginalSongSelected(null);
+
                  if (auth.user) {
                      const usuarioCreador = { id: auth.user.id, name: auth.user.name, email: auth.user.email };
                      setUsuariosSeleccionados([usuarioCreador]);
                      setData('userIds', [usuarioCreador.id]);
                  } else {
                      setUsuariosSeleccionados([]);
-                      setData('userIds', []);
+                     setData('userIds', []);
                  }
-                setTerminoBusqueda('');
-                setResultadosBusqueda([]);
-                setMostrarResultados(false);
-                setTerminoBusquedaCancion('');
-                setResultadosBusquedaCancion([]);
-                setMostrarResultadosCancion(false);
-                setOriginalSongSelected(null);
-                 if (licencias && licencias.length > 0) {
-                    const defaultLicense = licencias[0];
-                    setData('licencia_id', defaultLicense.id.toString());
-                    setSelectedLicenseDetails(defaultLicense);
-                } else {
-                     setData('licencia_id', '');
-                     setSelectedLicenseDetails(null);
-                }
 
-                const inputFoto = document.getElementById('foto');
-                if (inputFoto) inputFoto.value = null;
-                const inputArchivo = document.getElementById('archivo');
-                if (inputArchivo) inputArchivo.value = null;
+                 if (licencias && licencias.length > 0) {
+                     const defaultLicense = licencias[0];
+                     setData('licencia_id', defaultLicense.id.toString());
+                     setSelectedLicenseDetails(defaultLicense);
+                 } else {
+                      setData('licencia_id', '');
+                      setSelectedLicenseDetails(null);
+                 }
+
+                 const inputFoto = document.getElementById('foto');
+                 if (inputFoto) inputFoto.value = '';
+                 const inputArchivo = document.getElementById('archivo');
+                 if (inputArchivo) inputArchivo.value = '';
 
             },
             onError: (errores) => {
+                 console.error("Error al enviar formulario:", errores);
             },
         });
     };
@@ -264,309 +284,313 @@ export default function Create({ auth, generos, licencias }) {
                                      <div className="sm:col-span-2">
                                          <label className="flex items-center">
                                              <Checkbox
-                                                 name="remix"
-                                                 checked={data.remix}
-                                                 onChange={(e) => setData('remix', e.target.checked)}
-                                             />
-                                             <span className="ml-2 text-sm text-gray-300">¿Esta canción es un remix o se basa en otra obra?</span>
-                                         </label>
-                                          <InputError message={errors.remix} className="mt-1 text-xs" />
-                                     </div>
+                                                  name="remix"
+                                                  checked={data.remix}
+                                                  onChange={(e) => {
+                                                      setData({ ...data, remix: e.target.checked, cancion_original_id: null });
+                                                      setOriginalSongSelected(null);
+                                                  }}
+                                              />
+                                              <span className="ml-2 text-sm text-gray-300">¿Esta canción es un remix o se basa en otra obra?</span>
+                                          </label>
+                                           <InputError message={errors.remix} className="mt-1 text-xs" />
+                                      </div>
 
 
-                                    {!data.remix ? (
-                                    <div>
-                                        <InputLabel htmlFor="licencia_id" value="Licencia" className="text-gray-300" />
-                                        <select
-                                            id="licencia_id"
-                                            name="licencia_id"
-                                            value={data.licencia_id}
-                                            onChange={(e) => setData('licencia_id', e.target.value)}
-                                            className={`mt-1 block w-full rounded-md border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-700 text-gray-200 sm:text-sm ${errors.licencia_id ? 'border-red-500' : ''}`}
-                                        >
-                                             {licencias.map((licencia) => (
-                                                <option key={licencia.id} value={licencia.id}>
-                                                    {licencia.nombre}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <InputError message={errors.licencia_id} className="mt-1 text-xs" />
-                                         {selectedLicenseDetails && (
-                                            <div className="mt-2 text-sm text-gray-400">
-                                                {selectedLicenseDetails.descripcion && (
-                                                    <p>{selectedLicenseDetails.descripcion}</p>
-                                                )}
-                                                {selectedLicenseDetails.url && (
-                                                    <p className="mt-1">
-                                                        Más info: <a href={selectedLicenseDetails.url} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">{selectedLicenseDetails.url}</a>
-                                                    </p>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                    ) : (
-                                        <div>
-                                            <h3 className="text-lg font-medium leading-6 text-gray-100 mb-4">
-                                                Seleccionar Obra Original (CC BY 4.0)
-                                            </h3>
-                                             {!originalSongSelected ? (
-                                                <div className="relative">
-                                                    <InputLabel htmlFor="original-cancion-search" value="Buscar Obra Original por Título (CC BY 4.0)" className="text-gray-300" />
-                                                    <TextInput
-                                                        id="original-cancion-search"
-                                                        type="search"
-                                                        value={terminoBusquedaCancion}
-                                                        onChange={manejarCambioBusquedaCancion}
-                                                        onFocus={manejarFocoBusquedaCancion}
-                                                        onBlur={manejarPerdidaFocoCancion}
-                                                        className={`mt-1 block w-full sm:text-sm pr-10 ${errors.cancion_original_id ? 'border-red-500' : ''}`}
-                                                        placeholder="Escribe para buscar obras CC BY 4.0..."
-                                                        autoComplete="off"
-                                                    />
-                                                    {cargandoBusquedaCancion && (
-                                                        <div className="absolute inset-y-0 right-0 top-6 pr-3 flex items-center pointer-events-none">
-                                                            <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                            </svg>
-                                                        </div>
+                                     {!data.remix ? (
+                                      <div>
+                                           <InputLabel htmlFor="licencia_id" value="Licencia" className="text-gray-300" />
+                                           <select
+                                               id="licencia_id"
+                                               name="licencia_id"
+                                               value={data.licencia_id}
+                                               onChange={(e) => setData('licencia_id', e.target.value)}
+                                               className={`mt-1 block w-full rounded-md border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-700 text-gray-200 sm:text-sm ${errors.licencia_id ? 'border-red-500' : ''}`}
+                                           >
+                                                {licencias.map((licencia) => (
+                                                    <option key={licencia.id} value={licencia.id}>
+                                                        {licencia.nombre}
+                                                    </option>
+                                                ))}
+                                           </select>
+                                           <InputError message={errors.licencia_id} className="mt-1 text-xs" />
+                                            {selectedLicenseDetails && (
+                                                <div className="mt-2 text-sm text-gray-400">
+                                                    {selectedLicenseDetails.descripcion && (
+                                                        <p>{selectedLicenseDetails.descripcion}</p>
                                                     )}
-
-                                                    {mostrarResultadosCancion && (
-                                                        <ul className="mt-2 border border-gray-600 rounded-md bg-gray-700 shadow-lg max-h-60 overflow-auto z-10 absolute w-full">
-                                                            {!cargandoBusquedaCancion && resultadosBusquedaCancion.length === 0 ? (
-                                                                <li className="px-4 py-2 text-sm text-gray-400">
-                                                                    {terminoBusquedaCancion ? 'No se encontraron obras CC BY 4.0.' : 'Empieza a escribir para buscar obras CC BY 4.0.'}
-                                                                </li>
-                                                            ) : (
-                                                                resultadosBusquedaCancion.map(cancion => (
-                                                                    <li key={cancion.id} className="px-4 py-2 hover:bg-gray-600 flex justify-between items-center cursor-pointer"
-                                                                        onMouseDown={() => seleccionarCancionOriginal(cancion)}
-                                                                    >
-                                                                        {/* Mostrar foto y título en los resultados de búsqueda */}
-                                                                        <div className="flex items-center">
-                                                                            {cancion.foto_url && (
-                                                                                <img src={cancion.foto_url} alt={`Foto de ${cancion.titulo}`} className="w-8 h-8 object-cover rounded mr-3" />
-                                                                            )}
-                                                                            <div>
-                                                                                <span className="font-medium text-sm text-gray-100">{cancion.titulo}</span>
-                                                                                {/* Aquí iría la lógica para mostrar artistas si estuvieran disponibles */}
-                                                                            </div>
-                                                                        </div>
-                                                                    </li>
-                                                                ))
-                                                            )}
-                                                             {cargandoBusquedaCancion && (
-                                                               <li className="px-4 py-2 text-sm text-gray-400">Buscando obras...</li>
-                                                             )}
-                                                        </ul>
+                                                    {selectedLicenseDetails.url && (
+                                                        <p className="mt-1">
+                                                            Más info: <a href={selectedLicenseDetails.url} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">{selectedLicenseDetails.url}</a>
+                                                        </p>
                                                     )}
-                                                    <InputError message={errors.cancion_original_id} className="mt-1 text-xs" />
                                                 </div>
-                                             ) : (
-                                                <div className="mt-4 bg-gray-700 p-3 rounded border border-gray-600">
-                                                    <h4 className="text-sm font-medium text-gray-300 mb-2">Obra Original Seleccionada:</h4>
-                                                    <div className="flex justify-between items-center">
-                                                        <div>
-                                                            <span className="font-medium text-sm text-gray-100">{originalSongSelected.titulo}</span>
-                                                            {/* Aquí iría la lógica para mostrar artistas de la canción seleccionada */}
-                                                            <span className="text-xs text-gray-400 ml-2">(CC BY 4.0)</span>
-                                                        </div>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => quitarCancionOriginal()}
-                                                            className="ml-4 text-xs bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded"
-                                                            title="Quitar obra original"
-                                                        >
-                                                            Quitar
-                                                        </button>
-                                                    </div>
-                                                     <InputError message={errors.cancion_original_id} className="mt-1 text-xs" />
-                                                </div>
-                                             )}
+                                            )}
                                         </div>
-                                    )}
+                                        ) : (
+                                            <div>
+                                                <h3 className="text-lg font-medium leading-6 text-gray-100 mb-4">
+                                                    Seleccionar Obra Original (CC BY 4.0)
+                                                </h3>
+                                                 {!originalSongSelected ? (
+                                                    <div className="relative">
+                                                        <InputLabel htmlFor="original-cancion-search" value="Buscar Obra Original por Título (CC BY 4.0)" className="text-gray-300" />
+                                                        <TextInput
+                                                            id="original-cancion-search"
+                                                            type="search"
+                                                            value={terminoBusquedaCancion}
+                                                            onChange={manejarCambioBusquedaCancion}
+                                                            onFocus={manejarFocoBusquedaCancion}
+                                                            onBlur={manejarPerdidaFocoCancion}
+                                                            className={`mt-1 block w-full sm:text-sm pr-10 ${errors.cancion_original_id ? 'border-red-500' : ''}`}
+                                                            placeholder="Escribe para buscar obras CC BY 4.0..."
+                                                            autoComplete="off"
+                                                        />
+                                                         {cargandoBusquedaCancion && (
+                                                             <div className="absolute inset-y-0 right-0 top-6 pr-3 flex items-center pointer-events-none">
+                                                                 <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                 </svg>
+                                                             </div>
+                                                         )}
 
-                                    <div>
-                                        <InputLabel htmlFor="publico" value="Visibilidad *" className="text-gray-300 mb-1" />
-                                        <select
-                                            id="publico"
-                                            name="publico"
-                                            value={data.publico}
-                                            onChange={(e) => setData('publico', e.target.value === 'true')}
-                                            required
-                                            className={`mt-1 block w-full rounded-md border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-700 text-gray-200 sm:text-sm ${errors.publico ? 'border-red-500' : ''}`}>
-                                            <option value="false">Privado (Solo colaboradores)</option>
-                                            <option value="true">Público (Visible para todos)</option>
-                                        </select>
-                                        <InputError message={errors.publico} className="mt-1 text-sm" />
-                                    </div>
+                                                         {mostrarResultadosCancion && (
+                                                             <ul className="mt-2 border border-gray-600 rounded-md bg-gray-700 shadow-lg max-h-60 overflow-auto z-10 absolute w-full">
+                                                                 {!cargandoBusquedaCancion && resultadosBusquedaCancion.length === 0 && terminoBusquedaCancion.trim() ? (
+                                                                      <li className="px-4 py-2 text-sm text-gray-400">No se encontraron obras CC BY 4.0.</li>
+                                                                 ) : !cargandoBusquedaCancion && resultadosBusquedaCancion.length === 0 && !terminoBusquedaCancion.trim() ? (
+                                                                      <li className="px-4 py-2 text-sm text-gray-400">Empieza a escribir para buscar obras CC BY 4.0.</li>
+                                                                 ) : (
+                                                                     resultadosBusquedaCancion.map(cancion => (
+                                                                          cancion.licencia_id === 2 && (
+                                                                          <li key={cancion.id} className="px-4 py-2 hover:bg-gray-600 flex justify-between items-center cursor-pointer"
+                                                                              onMouseDown={() => seleccionarCancionOriginal(cancion)}
+                                                                          >
+                                                                              <div className="flex items-center">
+                                                                                    {cancion.foto_url && (
+                                                                                        <img src={cancion.foto_url} alt={`Foto de ${cancion.titulo}`} className="w-8 h-8 object-cover rounded mr-3" />
+                                                                                    )}
+                                                                                    <div>
+                                                                                         <span className="font-medium text-sm text-gray-100">{cancion.titulo}</span>
+                                                                                     </div>
+                                                                                 </div>
+                                                                                 <span className="text-xs text-gray-400 ml-2">(CC BY 4.0)</span>
+                                                                             </li>
+                                                                          )
+                                                                      ))
+                                                                  )}
+                                                                  {cargandoBusquedaCancion && (
+                                                                      <li className="px-4 py-2 text-sm text-gray-400">Buscando obras...</li>
+                                                                  )}
+                                                              </ul>
+                                                          )}
+                                                          <InputError message={errors.cancion_original_id} className="mt-1 text-xs" />
+                                                      </div>
+                                                  ) : (
+                                                      <div className="mt-4 bg-gray-700 p-3 rounded border border-gray-600">
+                                                          <h4 className="text-sm font-medium text-gray-300 mb-2">Obra Original Seleccionada:</h4>
+                                                          <div className="flex justify-between items-center">
+                                                              <div>
+                                                                   <span className="font-medium text-sm text-gray-100">{originalSongSelected.titulo}</span>
+                                                                   <span className="text-xs text-gray-400 ml-2">(CC BY 4.0)</span>
+                                                               </div>
+                                                               <button
+                                                                   type="button"
+                                                                   onClick={() => quitarCancionOriginal()}
+                                                                   className="ml-4 text-xs bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded"
+                                                                   title="Quitar obra original"
+                                                               >
+                                                                   Quitar
+                                                               </button>
+                                                           </div>
+                                                            <InputError message={errors.cancion_original_id} className="mt-1 text-xs" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                        <div>
+                                            <InputLabel htmlFor="publico" value="Visibilidad *" className="text-gray-300 mb-1" />
+                                            <select
+                                                id="publico"
+                                                name="publico"
+                                                value={data.publico}
+                                                onChange={(e) => setData('publico', e.target.value === 'true')}
+                                                required
+                                                className={`mt-1 block w-full rounded-md border-gray-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-700 text-gray-200 sm:text-sm ${errors.publico ? 'border-red-500' : ''}`}>
+                                                <option value="false">Privado (Solo colaboradores)</option>
+                                                <option value="true">Público (Visible para todos)</option>
+                                            </select>
+                                            <InputError message={errors.publico} className="mt-1 text-sm" />
+                                        </div>
 
 
-                                    <div>
-                                        <InputLabel htmlFor="foto" value="Foto (JPG, PNG)" className="text-gray-300" />
-                                        <input
-                                            id="foto"
-                                            type="file"
-                                            accept=".jpg,.jpeg,.png"
-                                            onChange={(e) => setData('foto', e.target.files[0])}
-                                            className={`mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-900 file:text-indigo-300 hover:file:bg-indigo-800 border border-gray-600 rounded-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${errors.foto ? 'border-red-500' : ''}`} />
-                                        {data.foto && <span className="text-xs text-gray-400 mt-1 block">{data.foto.name}</span>}
-                                        <InputError message={errors.foto} className="mt-1 text-xs" />
+                                        <div>
+                                            <InputLabel htmlFor="foto" value="Foto (JPG, PNG)" className="text-gray-300" />
+                                            <input
+                                                id="foto"
+                                                type="file"
+                                                accept=".jpg,.jpeg,.png"
+                                                onChange={(e) => setData('foto', e.target.files[0])}
+                                                className={`mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-900 file:text-indigo-300 hover:file:bg-indigo-800 border border-gray-600 rounded-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${errors.foto ? 'border-red-500' : ''}`} />
+                                            {data.foto && <span className="text-xs text-gray-400 mt-1 block">{data.foto.name}</span>}
+                                            <InputError message={errors.foto} className="mt-1 text-xs" />
+                                        </div>
+                                        <div>
+                                            <InputLabel htmlFor="archivo" value="Archivo de Audio (MP3, WAV) *" className="text-gray-300" />
+                                            <input
+                                                id="archivo"
+                                                type="file"
+                                                accept=".mp3,.wav"
+                                                onChange={(e) => setData('archivo', e.target.files[0])}
+                                                required
+                                                className={`mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-900 file:text-indigo-300 hover:file:bg-indigo-800 border border-gray-600 rounded-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${errors.archivo ? 'border-red-500' : ''}`} />
+                                            {data.archivo && <span className="text-xs text-gray-400 mt-1 block">{data.archivo.name}</span>}
+                                            <InputError message={errors.archivo} className="mt-1 text-xs" />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <InputLabel htmlFor="archivo" value="Archivo de Audio (MP3, WAV) *" className="text-gray-300" />
-                                        <input
-                                            id="archivo"
-                                            type="file"
-                                            accept=".mp3,.wav"
-                                            onChange={(e) => setData('archivo', e.target.files[0])}
-                                            required
-                                            className={`mt-1 block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-900 file:text-indigo-300 hover:file:bg-indigo-800 border border-gray-600 rounded-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${errors.archivo ? 'border-red-500' : ''}`} />
-                                        {data.archivo && <span className="text-xs text-gray-400 mt-1 block">{data.archivo.name}</span>}
-                                        <InputError message={errors.archivo} className="mt-1 text-xs" />
-                                    </div>
-                                </div>
-                                <div className="relative pt-4">
-                                    <InputLabel htmlFor="busca-genero" value="Géneros" className="text-gray-300" />
-                                    <TextInput
-                                        id="busca-genero"
-                                        type="search"
-                                        value={termGenero}
-                                        onChange={manejarTermGenero}
-                                        onFocus={() => setMostrarGenero(true)}
-                                        onBlur={() => setTimeout(() => setMostrarGenero(false), 150)}
-                                        placeholder="Busca o desplázate..."
-                                        className="mt-1 block w-full sm:text-sm pr-10"
-                                    />
-                                    {mostrarGenero && (
-                                        <ul className="absolute z-10 mt-1 w-full bg-gray-700 border border-gray-600 rounded-md max-h-32 overflow-y-auto">
-                                            {generos.filter(g => g.toLowerCase().includes(termGenero.trim().toLowerCase()) && !data.genero.includes(g)).map((g, i) => (
-                                                <li
-                                                    key={i}
-                                                    className="px-4 py-2 hover:bg-gray-600 cursor-pointer text-gray-100 text-sm"
-                                                    onMouseDown={() => agregarGenero(g)}
-                                                >
-                                                    {g}
-                                                </li>
-                                            ))}
-                                            {generos.filter(g => g.toLowerCase().includes(termGenero.trim().toLowerCase()) && !data.genero.includes(g)).length === 0 ? (
-                                                 termGenero.trim() ?
-                                                (<li className="px-4 py-2 text-gray-400 text-sm">No hay géneros coincidentes</li>) :
-                                                (<li className="px-4 py-2 text-gray-400 text-sm">No hay géneros disponibles</li>)
-                                            ) : null}
-                                        </ul>
-                                    )}
-                                    <div className="mt-2 flex flex-wrap gap-2">
-                                        {data.genero.map((g, i) => (
-                                            <span key={i} className="bg-indigo-600 text-white text-xs px-2 py-1 rounded inline-flex items-center">
-                                                {g}
-                                                <button type="button" onClick={() => quitarGenero(g)} className="ml-1 focus:outline-none">
-                                                    ×
-                                                </button>
-                                            </span>
-                                        ))}
-                                    </div>
-                                    <InputError message={errors.genero} className="mt-1 text-xs text-red-500" />
-                                </div>
-                                <div className="border-t border-gray-700 pt-6 mt-6">
-                                    <h3 className="text-lg font-medium leading-6 text-gray-100 mb-4">
-                                        Asociar Colaboradores
-                                    </h3>
-                                    <div className="relative">
-                                        <InputLabel htmlFor="user-search" value="Buscar Usuario por Nombre o Email" className="text-gray-300" />
+                                    <div className="relative pt-4">
+                                        <InputLabel htmlFor="busca-genero" value="Géneros" className="text-gray-300" />
                                         <TextInput
-                                            id="user-search"
+                                            id="busca-genero"
                                             type="search"
-                                            value={terminoBusqueda}
-                                            onChange={manejarCambioBusqueda}
-                                            onFocus={manejarFocoBusqueda}
-                                            onBlur={manejarPerdidaFocoBusqueda}
+                                            value={termGenero}
+                                            onChange={manejarTermGenero}
+                                            onFocus={() => setMostrarGenero(true)}
+                                            onBlur={() => setTimeout(() => setMostrarGenero(false), 150)}
+                                            placeholder="Busca o desplázate..."
                                             className="mt-1 block w-full sm:text-sm pr-10"
-                                            placeholder="Escribe para buscar..."
                                             autoComplete="off"
                                         />
-                                        {cargandoBusqueda && (
-                                            <div className="absolute inset-y-0 right-0 top-6 pr-3 flex items-center pointer-events-none">
-                                                <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                </svg>
-                                            </div>
-                                        )}
-
-                                        {mostrarResultados && (
-                                            <ul className="mt-2 border border-gray-600 rounded-md bg-gray-700 shadow-lg max-h-60 overflow-auto z-10 absolute w-full">
-                                                {!cargandoBusqueda && resultadosBusqueda.length === 0 ? (
-                                                    <li className="px-4 py-2 text-sm text-gray-400">
-                                                        {terminoBusqueda ? 'No se encontraron usuarios.' : 'No hay usuarios disponibles.'}
+                                        {mostrarGenero && (
+                                            <ul className="absolute z-10 mt-1 w-full bg-gray-700 border border-gray-600 rounded-md max-h-32 overflow-y-auto">
+                                                {generos.filter(g => g.toLowerCase().includes(termGenero.trim().toLowerCase()) && !data.genero.includes(g)).map((g, i) => (
+                                                    <li
+                                                        key={i}
+                                                        className="px-4 py-2 hover:bg-gray-600 cursor-pointer text-gray-100 text-sm"
+                                                        onMouseDown={() => agregarGenero(g)}
+                                                    >
+                                                        {g}
                                                     </li>
-                                                ) : (
-                                                    resultadosBusqueda.map(usuario => (
-                                                        <li key={usuario.id} className="px-4 py-2 hover:bg-gray-600 flex justify-between items-center cursor-pointer"
-                                                            onMouseDown={() => agregarUsuario(usuario)}
-                                                        >
+                                                ))}
+                                                {generos.filter(g => g.toLowerCase().includes(termGenero.trim().toLowerCase()) && !data.genero.includes(g)).length === 0 ? (
+                                                     termGenero.trim() ?
+                                                     (<li className="px-4 py-2 text-gray-400 text-sm">No hay géneros coincidentes</li>) :
+                                                     (<li className="px-4 py-2 text-gray-400 text-sm">No hay géneros disponibles</li>)
+                                                ) : null}
+                                            </ul>
+                                        )}
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                            {data.genero.map((g, i) => (
+                                                <span key={i} className="bg-indigo-600 text-white text-xs px-2 py-1 rounded inline-flex items-center">
+                                                    {g}
+                                                    <button type="button" onClick={() => quitarGenero(g)} className="ml-1 focus:outline-none">
+                                                        ×
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                        <InputError message={errors.genero} className="mt-1 text-xs text-red-500" />
+                                    </div>
+                                    <div className="border-t border-gray-700 pt-6 mt-6">
+                                        <h3 className="text-lg font-medium leading-6 text-gray-100 mb-4">
+                                            Asociar Colaboradores
+                                        </h3>
+                                        <div className="relative">
+                                            <InputLabel htmlFor="user-search" value="Buscar Usuario por Nombre o Email" className="text-gray-300" />
+                                            <TextInput
+                                                id="user-search"
+                                                type="search"
+                                                value={terminoBusqueda}
+                                                onChange={manejarCambioBusqueda}
+                                                onFocus={manejarFocoBusqueda}
+                                                onBlur={manejarPerdidaFocoBusqueda}
+                                                className="mt-1 block w-full sm:text-sm pr-10"
+                                                placeholder="Escribe para buscar..."
+                                                autoComplete="off"
+                                            />
+                                            {cargandoBusqueda && (
+                                                <div className="absolute inset-y-0 right-0 top-6 pr-3 flex items-center pointer-events-none">
+                                                    <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                </div>
+                                            )}
+
+                                            {mostrarResultados && (
+                                                <ul className="mt-2 border border-gray-600 rounded-md bg-gray-700 shadow-lg max-h-60 overflow-auto z-10 absolute w-full">
+                                                    {!cargandoBusqueda && resultadosBusqueda.length === 0 && terminoBusqueda.trim() ? (
+                                                         <li className="px-4 py-2 text-sm text-gray-400">No se encontraron usuarios.</li>
+                                                    ) : !cargandoBusqueda && resultadosBusqueda.length === 0 && !terminoBusqueda.trim() ? (
+                                                         <li className="px-4 py-2 text-sm text-gray-400">Empieza a escribir para buscar usuarios.</li>
+                                                    ) : (
+                                                        resultadosBusqueda.map(usuario => (
+                                                            <li key={usuario.id} className="px-4 py-2 hover:bg-gray-600 flex justify-between items-center cursor-pointer"
+                                                                onMouseDown={() => agregarUsuario(usuario)}
+                                                            >
+                                                                <div>
+                                                                    <span className="font-medium text-sm text-gray-100">{usuario.name}</span>
+                                                                    <span className="text-xs text-gray-400 ml-2">({usuario.email})</span>
+                                                                </div>
+                                                            </li>
+                                                        ))
+                                                    )}
+                                                     {cargandoBusqueda && (
+                                                         <li className="px-4 py-2 text-sm text-gray-400">Buscando...</li>
+                                                     )}
+                                                </ul>
+                                            )}
+                                        </div>
+                                        {usuariosSeleccionados.length > 0 && (
+                                            <div className="mt-4">
+                                                <h4 className="text-sm font-medium text-gray-300 mb-2">Colaboradores seleccionados:</h4>
+                                                <ul className="space-y-2">
+                                                    {usuariosSeleccionados.map(usuario => (
+                                                        <li key={usuario.id} className="flex justify-between items-center bg-gray-700 p-2 rounded border border-gray-600">
                                                             <div>
                                                                 <span className="font-medium text-sm text-gray-100">{usuario.name}</span>
                                                                 <span className="text-xs text-gray-400 ml-2">({usuario.email})</span>
+                                                                {auth.user?.id === usuario.id && (
+                                                                    <span className="ml-2 text-xs text-blue-400 font-semibold">(Tú - Creador)</span>
+                                                                )}
                                                             </div>
+                                                            {auth.user?.id !== usuario.id && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => quitarUsuario(usuario.id)}
+                                                                    className="ml-4 text-xs bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded"
+                                                                    title="Quitar colaborador"
+                                                                >
+                                                                    Quitar
+                                                                </button>
+                                                            )}
                                                         </li>
-                                                    ))
-                                                )}
-                                                {cargandoBusqueda && (
-                                                    <li className="px-4 py-2 text-sm text-gray-400">Buscando...</li>
-                                                )}
-                                            </ul>
+                                                    ))}
+                                                </ul>
+                                                 <InputError message={errors.userIds && typeof errors.userIds === 'string' ? errors.userIds : ''} className="mt-1 text-xs" />
+                                                {Object.keys(errors).filter(key => key.startsWith('userIds.')).map(key => (
+                                                     <InputError key={key} message={errors[key]} className="mt-1 text-xs" />
+                                                ))}
+                                            </div>
                                         )}
                                     </div>
-                                    {usuariosSeleccionados.length > 0 && (
-                                        <div className="mt-4">
-                                            <h4 className="text-sm font-medium text-gray-300 mb-2">Colaboradores seleccionados:</h4>
-                                            <ul className="space-y-2">
-                                                {usuariosSeleccionados.map(usuario => (
-                                                    <li key={usuario.id} className="flex justify-between items-center bg-gray-700 p-2 rounded border border-gray-600">
-                                                        <div>
-                                                            <span className="font-medium text-sm text-gray-100">{usuario.name}</span>
-                                                            <span className="text-xs text-gray-400 ml-2">({usuario.email})</span>
-                                                            {auth.user?.id === usuario.id && (
-                                                                <span className="ml-2 text-xs text-blue-400 font-semibold">(Tú - Creador)</span>
-                                                            )}
-                                                        </div>
-                                                        {auth.user?.id !== usuario.id && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => quitarUsuario(usuario.id)}
-                                                                className="ml-4 text-xs bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded"
-                                                                title="Quitar colaborador"
-                                                            >
-                                                                Quitar
-                                                            </button>
-                                                        )}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                            <InputError message={errors.userIds && typeof errors.userIds === 'string' ? errors.userIds : ''} className="mt-1 text-xs" />
-                                            {Object.keys(errors).filter(key => key.startsWith('userIds.')).map(key => (
-                                                 <InputError key={key} message={errors[key]} className="mt-1 text-xs" />
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
 
-                                <div className="flex justify-end pt-5 mt-6 border-t border-gray-700">
-                                    <button
-                                        type="submit"
-                                        disabled={processing}
-                                        className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 focus:ring-offset-gray-800"
-                                    >
-                                        {processing ? 'Guardando...' : 'Crear Canción'}
-                                    </button>
-                                </div>
-                            </form>
+                                    <div className="flex justify-end pt-5 mt-6 border-t border-gray-700">
+                                        <button
+                                            type="submit"
+                                            disabled={processing}
+                                            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 focus:ring-offset-gray-800"
+                                        >
+                                            {processing ? 'Guardando...' : 'Crear Canción'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </AuthenticatedLayout>
-    );
-}
+            </AuthenticatedLayout>
+        );
+    }

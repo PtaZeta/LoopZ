@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class CancionController extends Controller
@@ -71,41 +73,38 @@ class CancionController extends Controller
 
     public function store(Request $request)
     {
+        // 1) Validación de datos
         $rules = [
-            'titulo' => 'required|string|max:255',
-            'genero' => 'nullable|array',
-            'genero.*' => 'exists:generos,nombre',
-            'publico' => 'required|boolean',
-            'archivo' => 'required|file|mimes:mp3,wav|max:10024',
-            'foto' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
-            'licencia_id' => 'required|integer|exists:licencias,id',
-            'userIds' => 'nullable|array',
-            'userIds.*' => 'integer|exists:users,id',
-            'remix' => 'required|boolean',
-            'cancion_original_id' => 'nullable|integer|exists:canciones,id',
+            'titulo'               => 'required|string|max:255',
+            'genero'               => 'nullable|array',
+            'genero.*'             => 'exists:generos,nombre',
+            'publico'              => 'required|boolean',
+            'archivo'              => 'required|file|mimes:mp3,wav|max:102400',
+            'foto'                 => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
+            'licencia_id'          => 'required|integer|exists:licencias,id',
+            'userIds'              => 'nullable|array',
+            'userIds.*'            => 'integer|exists:users,id',
+            'remix'                => 'required|boolean',
+            'cancion_original_id'  => 'nullable|integer|exists:canciones,id',
         ];
-
-
         $validated = $request->validate($rules);
 
-        $isRemix = $validated['remix'];
-        $originalSongId = $validated['cancion_original_id'];
-
-        if ($isRemix && !is_null($originalSongId)) {
-            $validOriginal = Cancion::query()
-                ->join('licencias', 'canciones.licencia_id', '=', 'licencias.id')
-                ->where('canciones.id', $originalSongId)
+        // 2) Validar licencia de original si es remix
+        if ($validated['remix'] && !is_null($validated['cancion_original_id'])) {
+            $existe = Cancion::join('licencias', 'canciones.licencia_id', '=', 'licencias.id')
+                ->where('canciones.id', $validated['cancion_original_id'])
                 ->where('licencias.id', 2)
                 ->exists();
 
-            if (!$validOriginal) {
-                return redirect()->back()->withErrors([
-                    'cancion_original_id' => 'La obra original seleccionada no existe o no tiene la licencia CC BY 4.0 requerida para ser remezclada.',
-                ])->withInput();
+            if (! $existe) {
+                return redirect()->back()
+                    ->withErrors(['cancion_original_id' =>
+                        'La obra original no existe o no tiene licencia CC BY 4.0.'])
+                    ->withInput();
             }
         }
 
-
+        // 3) Crear modelo Cancion y asignar campos básicos
         $cancion = new Cancion();
         $cancion->titulo = $validated['titulo'];
         $cancion->publico = $validated['publico'];
@@ -113,63 +112,86 @@ class CancionController extends Controller
         $cancion->remix = $validated['remix'];
         $cancion->cancion_original_id = $validated['cancion_original_id'] ?? null;
 
-
-        if ($request->hasFile('archivo')) {
+        // 4) Subir archivo de audio a S3 y calcular duración
+        if ($request->hasFile('archivo') && $request->file('archivo')->isValid()) {
             $archivoAudio = $request->file('archivo');
-            $extensionAudio = $archivoAudio->getClientOriginalExtension();
-            $nombreAudio = Str::uuid() . "_song.{$extensionAudio}";
+            $extension    = $archivoAudio->getClientOriginalExtension();
+            $nombre       = Str::uuid() . "_song.{$extension}";
 
+            // Duración con getID3
             try {
-                $getID3 = new getID3;
+                $getID3    = new getID3;
                 $infoAudio = $getID3->analyze($archivoAudio->getRealPath());
                 $cancion->duracion = isset($infoAudio['playtime_seconds'])
-                    ? round($infoAudio['playtime_seconds'])
+                    ? floor($infoAudio['playtime_seconds'])
                     : 0;
             } catch (\Exception $e) {
                 $cancion->duracion = 0;
             }
 
-            $pathAudio = $archivoAudio->storeAs('canciones', $nombreAudio, 'public');
-            $cancion->archivo_url = $pathAudio
-                ? Storage::disk('public')->url($pathAudio)
-                : null;
+            // Subida a S3
+            try {
+                $path = Storage::disk('s3')
+                    ->putFileAs('canciones', $archivoAudio, $nombre, 'public-read');
+                if (! $path) {
+                    throw new \Exception('putFileAs devolvió false');
+                }
+                $cancion->archivo_url = Storage::disk('s3')->url($path);
+            } catch (\Exception $e) {
+                Log::error('Error subiendo audio a S3', [
+                    'error'  => $e->getMessage(),
+                    'bucket' => config('filesystems.disks.s3.bucket'),
+                    'region' => config('filesystems.disks.s3.region'),
+                ]);
+                return redirect()->back()
+                    ->withErrors(['archivo' => 'No se pudo subir el audio al bucket S3.'])
+                    ->withInput();
+            }
+        } else {
+            return redirect()->back()
+                ->withErrors(['archivo' => 'Archivo de audio inválido o no presente.'])
+                ->withInput();
         }
 
-        if ($request->hasFile('foto')) {
+        // 5) Subir foto (opcional)
+        if ($request->hasFile('foto') && $request->file('foto')->isValid()) {
             $archivoFoto = $request->file('foto');
-            $extensionFoto = $archivoFoto->getClientOriginalExtension();
-            $nombreFoto = Str::uuid() . "_pic.{$extensionFoto}";
-            $pathFoto = $archivoFoto->storeAs('imagenes', $nombreFoto, 'public');
+            $extFoto     = $archivoFoto->getClientOriginalExtension();
+            $nombreFoto  = Str::uuid() . "_pic.{$extFoto}";
+            $pathFoto    = Storage::disk('s3')
+                ->putFileAs('imagenes', $archivoFoto, $nombreFoto, 'public-read');
             $cancion->foto_url = $pathFoto
-                ? Storage::disk('public')->url($pathFoto)
+                ? Storage::disk('s3')->url($pathFoto)
                 : null;
         }
 
+        // 6) Guardar la canción en BD
         $cancion->save();
 
+        // 7) Relación géneros
         if (!empty($validated['genero'])) {
-            $idsGeneros = Genero::whereIn('nombre', $validated['genero'])->pluck('id');
-            $cancion->generos()->attach($idsGeneros);
+            $ids = Genero::whereIn('nombre', $validated['genero'])->pluck('id');
+            $cancion->generos()->attach($ids);
         }
 
-        $idCreador = Auth::id();
-        $idsColaboradores = $validated['userIds'] ?? [];
-        $usuariosParaAsociar = [];
+        // 8) Relación usuarios (creador + colaboradores)
+        $idCreador       = Auth::id();
+        $colaboradores   = $validated['userIds'] ?? [];
+        $usuariosAsociar = [];
 
         if ($idCreador) {
-            $usuariosParaAsociar[$idCreador] = ['propietario' => true];
+            $usuariosAsociar[$idCreador] = ['propietario' => true];
         }
-
-        foreach (array_unique($idsColaboradores) as $colaboradorId) {
-            if ((int) $colaboradorId !== $idCreador) {
-                $usuariosParaAsociar[(int) $colaboradorId] = ['propietario' => false];
+        foreach (array_unique($colaboradores) as $uid) {
+            if ((int) $uid !== $idCreador) {
+                $usuariosAsociar[(int) $uid] = ['propietario' => false];
             }
         }
-
-        if (!empty($usuariosParaAsociar) && method_exists($cancion, 'usuarios')) {
-            $cancion->usuarios()->attach($usuariosParaAsociar);
+        if (!empty($usuariosAsociar) && method_exists($cancion, 'usuarios')) {
+            $cancion->usuarios()->attach($usuariosAsociar);
         }
 
+        // 9) Respuesta exitosa para Inertia
         return redirect()->route('canciones.index')
                          ->with('success', 'Canción creada exitosamente.');
     }
@@ -354,7 +376,7 @@ class CancionController extends Controller
         } catch (ModelNotFoundException $e) {
             return redirect()->route('canciones.index')->with('error', 'Canción no encontrada.');
         } catch (\Exception $e) {
-            \Log::error("Error updating cancion ID {$id}: " . $e->getMessage() . " Stack trace: " . $e->getTraceAsString());
+            Log::error("Error updating cancion ID {$id}: " . $e->getMessage() . " Stack trace: " . $e->getTraceAsString());
              return Redirect::route('canciones.edit', $id)->with('error', 'Ocurrió un error al actualizar la canción: ' . $e->getMessage())->withInput();
         }
     }
