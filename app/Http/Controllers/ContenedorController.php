@@ -188,7 +188,7 @@ class ContenedorController extends Controller
         }
 
         $mensaje = ucfirst($this->getNombreTipo($tipoContenedor)) . ' creado exitosamente.';
-        return redirect()->route($rutaRedireccion)->with('success', $mensaje);
+        return redirect()->route('biblioteca')->with('success', $mensaje);
     }
 
     public function show(Request $peticion, $id)

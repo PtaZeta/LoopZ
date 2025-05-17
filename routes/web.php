@@ -105,7 +105,7 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('loopzs', ContenedorController::class);
     Route::get('/loopzs/{contenedor}/canciones/search', [ContenedorController::class, 'buscarCanciones'])->name('loopzs.canciones.search');
-    Route::get('/cancion/{cancion}/loopz', [CancionController::class, 'cancionloopz'])->name('cancion.loopz');
+    Route::post('/cancion/{cancion}/loopz', [CancionController::class, 'cancionloopz'])->name('cancion.loopz');
     Route::get('/genero/{genero}', [GeneroController::class, 'show'])->name('genero.show');
 
     Route::get('/search', [SearchController::class, 'index'])->name('search.index');

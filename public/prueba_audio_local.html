@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de Audio Local</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 80vh;
+            background-color: #f0f0f0;
+            color: #333;
+        }
+        audio {
+            margin-top: 20px;
+            width: 80%;
+            max-width: 500px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Prueba de Seek en Audio Local</h1>
+
+    <p>A continuación verás el control de audio nativo del navegador.</p>
+    <p>Debería mostrar la duración total al cargar.</p>
+    <p>Intenta hacer clic o arrastrar en la barra de progreso.</p>
+
+    <audio controls>
+        <source src="http://localhost:8000/storage/canciones/d64a8f84-a6f1-411c-ae8e-38ddcd3d0594_song.mp3
+
+" type="audio/mpeg">
+        Tu navegador no soporta el elemento de audio HTML5.
+    </audio>
+
+</body>
+</html>
