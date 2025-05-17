@@ -102,7 +102,7 @@ const PlayerImagenItem = memo(({ url, titulo, className = "w-10 h-10", iconoFall
 });
 PlayerImagenItem.displayName = 'PlayerImagenItem';
 
-export default function AuthenticatedLayout({ children }) {
+export default function AuthenticatedLayout({ children, header }) {
     const { auth } = usePage().props;
     const usuario = auth.user;
     const [showingMobileMenu, setShowingMobileMenu] = useState(false);
@@ -164,7 +164,7 @@ export default function AuthenticatedLayout({ children }) {
     const handleVolumeChange = (e) => {
          const newVolume = parseFloat(e.target.value);
          if (setVolumen) {
-            setVolumen(newVolume);
+             setVolumen(newVolume);
          }
     };
 
@@ -202,19 +202,19 @@ export default function AuthenticatedLayout({ children }) {
     }, [cancionActual]);
 
     const handlePlayFromQueueClick = (index) => {
-         if (playCola) {
-            playCola(index);
-            setIsQueueVisible(false);
-         }
+          if (playCola) {
+             playCola(index);
+             setIsQueueVisible(false);
+          }
     };
 
     const handleSearchSubmit = (e) => {
         if (e.key === 'Enter' && searchQuery.trim() !== '') {
-            router.get(route('search.index', { query: searchQuery }));
+             router.get(route('search.index', { query: searchQuery }));
         }
     };
 
-    const hasQueue = queue && queue.length > 0 || cancionActual; // Added null/undefined check for queue
+    const hasQueue = queue && queue.length > 0 || cancionActual;
     const mainPaddingBottom = hasQueue ? 'pb-24 md:pb-28' : 'pb-5';
 
     return (
@@ -318,10 +318,15 @@ export default function AuthenticatedLayout({ children }) {
                 )}
             </header>
 
+            {header && (
+                <header className="bg-slate-800 shadow pt-16">
+                    <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                        {header}
+                    </div>
+                </header>
+            )}
 
-
-
-            <main className={`pt-16 ${mainPaddingBottom}`}>
+            <main className={`pt-0 ${mainPaddingBottom}`}>
                 {children}
             </main>
 
@@ -335,7 +340,6 @@ export default function AuthenticatedLayout({ children }) {
                             </button>
                         </div>
                     )}
-                    {/* Mobile Progress Bar */}
                     <div className="w-full px-2 pt-1 md:hidden">
                         <input
                             type="range"
@@ -362,14 +366,13 @@ export default function AuthenticatedLayout({ children }) {
                         <div className="flex flex-col items-center md:flex-grow">
                             <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4">
                                 <button onClick={toggleAleatorio} title={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"} aria-label={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"} className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${aleatorio ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'}`}><ShuffleIcon className="h-5 w-5" /></button>
-                                <button onClick={anteriorCancion} disabled={queue.length <= 1 || cargando} aria-label="Canción anterior" className="text-gray-400 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"><PreviousIcon className="h-5 w-5" /></button>
+                                <button onClick={anteriorCancion} disabled={(!cancionActual && queue.length === 0) || cargando} aria-label="Canción anterior" className="text-gray-400 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"><PreviousIcon className="h-5 w-5" /></button>
                                 <button onClick={togglePlayPause} disabled={(!cancionActual && queue.length === 0) || cargando} aria-label={Reproduciendo ? "Pausar" : "Reproducir"} className="bg-blue-600 hover:bg-blue-500 rounded-full text-white transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-900">
                                     {cargando ? <LoadingIcon className="h-5 w-5 sm:h-6 sm:w-6 animate-spin" /> : (Reproduciendo ? <PauseIcon className="h-5 w-5 sm:h-6 sm:w-6" /> : <PlayIcon className="h-5 w-5 sm:h-6 sm-w-6" />)}
                                 </button>
-                                <button onClick={siguienteCancion} disabled={queue.length <= 1 || cargando} aria-label="Siguiente canción" className="text-gray-400 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"><NextIcon className="h-5 w-5" /></button>
+                                <button onClick={siguienteCancion} disabled={(!cancionActual && queue.length === 0) || cargando} aria-label="Siguiente canción" className="text-gray-400 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"><NextIcon className="h-5 w-5" /></button>
                                 <button onClick={toggleLoop} title={looping ? "Desactivar repetición" : "Activar repetición"} aria-label={looping ? "Desactivar repetición" : "Activar repetición"} className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${looping ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'}`}><LoopIcon className="h-5 w-5" /></button>
                             </div>
-                            {/* Desktop Progress Bar */}
                             <div className="w-full max-w-xl hidden md:flex items-center space-x-2 mt-1">
                                 <span className="text-xs text-gray-500 font-mono w-10 text-right">{formatTime(tiempoActual)}</span>
                                 <input

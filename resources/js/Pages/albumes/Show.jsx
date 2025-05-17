@@ -114,7 +114,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
     const [estaBuscando, setEstaBuscando] = useState(false);
     const [anadiendoCancionId, setAnadiendoCancionId] = useState(null);
     const [eliminandoPivotId, setEliminandoPivotId] = useState(null);
-    const [likeProcessing, setLikeProcessing] = useState(false);
+    const [likeProcessing, setLikeProcessing] = useState(null);
     const minQueryLength = 2;
 
     const urlImagenContenedor = obtenerUrlImagen(contenedor);
@@ -168,14 +168,14 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
     }, [contenedor?.id, buscarCancionesApi, consultaBusqueda]);
 
     useEffect(() => {
-        const contenedorActualizado = pagina.props.contenedor;
-        if (contenedorActualizado && contenedorActualizado.id === (contenedorInicial?.id || contenedor?.id)) {
-            if (JSON.stringify(contenedorActualizado) !== JSON.stringify(contenedor)) {
-                 if (!Array.isArray(contenedorActualizado.canciones)) { contenedorActualizado.canciones = []; }
-                 contenedorActualizado.canciones.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
-                 setContenedor(contenedorActualizado);
+        const currentContenedorProps = pagina.props.contenedor;
+        if (currentContenedorProps && currentContenedorProps.id === (contenedorInicial?.id || contenedor?.id)) {
+            if (JSON.stringify(currentContenedorProps) !== JSON.stringify(contenedor)) {
+                 if (!Array.isArray(currentContenedorProps.canciones)) { currentContenedorProps.canciones = []; }
+                 currentContenedorProps.canciones.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
+                 setContenedor(currentContenedorProps);
             }
-            const likedStatusProps = contenedorActualizado?.is_liked_by_user || false;
+            const likedStatusProps = currentContenedorProps?.is_liked_by_user || false;
             if (likedStatusProps !== isLiked) { setIsLiked(likedStatusProps); }
         } else if (contenedorInicial && !contenedor) {
              if (!Array.isArray(contenedorInicial.canciones)) { contenedorInicial.canciones = []; }
@@ -183,7 +183,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
              setContenedor(contenedorInicial);
              setIsLiked(contenedorInicial?.is_liked_by_user || false);
         }
-    }, [pagina.props.contenedor, contenedorInicial, contenedor, isLiked]);
+    }, [pagina.props.contenedor]);
 
     const resultadosFiltrados = useMemo(() => {
         const idsEnContenedor = new Set(contenedor?.canciones?.map(c => c.id) || []);
@@ -195,15 +195,24 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         const nombreRutaRemove = `${rutaBase}.canciones.remove`;
         setEliminandoPivotId(pivotId);
         router.delete(route(nombreRutaRemove, { contenedor: contenedor.id, pivotId: pivotId }), {
-            preserveScroll: true, preserveState: false,
+            preserveScroll: true,
+            preserveState: true,
             onSuccess: (page) => {
-                if (page.props.contenedor) {
-                     if (page.props.contenedor.canciones && Array.isArray(page.props.contenedor.canciones)) {
-                         page.props.contenedor.canciones.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
-                     }
-                    setContenedor(page.props.contenedor);
-                    setIsLiked(page.props.contenedor?.is_liked_by_user || false);
+                if (page.props.contenedor?.canciones && Array.isArray(page.props.contenedor.canciones)) {
+                    page.props.contenedor.canciones.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
+                    setContenedor(prevContenedor => ({
+                        ...prevContenedor,
+                        canciones: page.props.contenedor.canciones,
+                        canciones_count: page.props.contenedor.canciones.length
+                    }));
+                } else {
+                    setContenedor(prevContenedor => ({
+                        ...prevContenedor,
+                         canciones: [],
+                         canciones_count: 0
+                    }));
                 }
+                setIsLiked(page.props.contenedor?.is_liked_by_user || false);
             },
             onError: (errores) => {
                 console.error("Error al eliminar canción:", errores);
@@ -211,21 +220,31 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             onFinish: () => { setEliminandoPivotId(null); },
         });
     };
+
     const manejarAnadirCancion = (idCancion) => {
         if (anadiendoCancionId === idCancion || !contenedor?.id) return;
         setAnadiendoCancionId(idCancion);
         const nombreRutaAdd = `${rutaBase}.canciones.add`;
         router.post(route(nombreRutaAdd, contenedor.id), { cancion_id: idCancion, }, {
-            preserveScroll: true, preserveState: false,
+            preserveScroll: true,
+            preserveState: true,
             onSuccess: (page) => {
-                if (page.props.contenedor) {
-                    if (page.props.contenedor.canciones && Array.isArray(page.props.contenedor.canciones)) {
-                        page.props.contenedor.canciones.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
-                    }
-                    setContenedor(page.props.contenedor);
-                    setIsLiked(page.props.contenedor?.is_liked_by_user || false);
+                if (page.props.contenedor?.canciones && Array.isArray(page.props.contenedor.canciones)) {
+                     page.props.contenedor.canciones.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
+                    setContenedor(prevContenedor => ({
+                        ...prevContenedor,
+                        canciones: page.props.contenedor.canciones,
+                         canciones_count: page.props.contenedor.canciones.length
+                    }));
+                } else {
+                     setContenedor(prevContenedor => ({
+                        ...prevContenedor,
+                         canciones: prevContenedor?.canciones || [],
+                         canciones_count: prevContenedor?.canciones?.length || 0
+                    }));
                 }
-                 startTransition(() => { setResultadosBusqueda(prev => prev.filter(cancion => cancion.id !== idCancion)); });
+                setIsLiked(page.props.contenedor?.is_liked_by_user || false);
+                startTransition(() => { setResultadosBusqueda(prev => prev.filter(cancion => cancion.id !== idCancion)); });
             },
             onFinish: () => setAnadiendoCancionId(null),
             onError: (errores) => {
@@ -233,21 +252,127 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             },
         });
     };
-    const toggleLoopz = () => {
-        if (!contenedor?.id || likeProcessing) return;
-        setLikeProcessing(true);
-        router.post(route('contenedores.toggle-loopz', { contenedor: contenedor.id }), {}, {
-            preserveScroll: true, preserveState: true,
+
+    const manejarCancionLoopzToggle = (songId) => {
+        if (!songId || likeProcessing === songId) return;
+
+        setLikeProcessing(songId);
+
+        // Optimistic update for the main container's songs array
+         setContenedor(prevContenedor => {
+             if (!prevContenedor || !prevContenedor.canciones) return prevContenedor;
+             const newCanciones = [...prevContenedor.canciones];
+             const songIndex = newCanciones.findIndex(c => c.id === songId);
+
+             if (songIndex !== -1) {
+                 const currentStatus = newCanciones[songIndex].is_in_user_loopz;
+                 newCanciones[songIndex] = {
+                     ...newCanciones[songIndex],
+                     is_in_user_loopz: !currentStatus
+                 };
+                 console.log(`Optimistic update (Container list): Toggling song ${songId} LoopZ status from ${currentStatus} to ${!currentStatus}`);
+             }
+             return {
+                 ...prevContenedor,
+                 canciones: newCanciones
+             };
+         });
+
+         // Optimistic update for the search results array
+         setResultadosBusqueda(prevResultados => {
+             const newResultados = [...prevResultados];
+             const songIndex = newResultados.findIndex(c => c.id === songId);
+
+             if (songIndex !== -1) {
+                 const currentStatus = newResultados[songIndex].is_in_user_loopz;
+                  newResultados[songIndex] = {
+                     ...newResultados[songIndex],
+                     is_in_user_loopz: !currentStatus
+                 };
+                  console.log(`Optimistic update (Search results): Toggling song ${songId} LoopZ status from ${currentStatus} to ${!currentStatus}`);
+             } else {
+                  console.warn(`Song ${songId} not found in search results state for optimistic update.`);
+             }
+
+             return newResultados;
+         });
+
+
+        router.post(route('cancion.loopz', { cancion: songId }), {}, {
+            preserveScroll: true,
+            preserveState: true,
             onSuccess: (page) => {
-                setIsLiked(prev => !prev);
+                 if (page.props.contenedor?.canciones && Array.isArray(page.props.contenedor.canciones)) {
+                     page.props.contenedor.canciones.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
+                     setContenedor(page.props.contenedor);
+                 }
+                 setIsLiked(page.props.contenedor?.is_liked_by_user || false);
+
+                 // Also reconcile search results from props if they are included in the response
+                 // This assumes the backend includes potentially updated search results in the page props
+                 // after a LoopZ toggle. If not, the optimistic update is all we have until a new search.
+                 if (page.props.resultadosBusqueda && Array.isArray(page.props.resultadosBusqueda)) {
+                     page.props.resultadosBusqueda.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
+                     // We might need a more complex merge here if the search wasn't for the initial empty query
+                     // For simplicity, if the backend sends updated search results, we'll use them.
+                      setResultadosBusqueda(page.props.resultadosBusqueda);
+                      console.log("Reconciled search results state with new props.");
+                 }
+
+
             },
             onError: (errors) => {
-                 console.error("Error en la operación 'LoopZ':", errors);
-                 setIsLiked(prev => !prev);
+                console.error(`Error toggling LoopZ for song ${songId}:`, errors);
+                // Revert optimistic update on error for both lists
+                 setContenedor(prevContenedor => {
+                     if (!prevContenedor || !prevContenedor.canciones) return prevContenedor;
+                     const newCanciones = [...prevContenedor.canciones];
+                     const songIndex = newCanciones.findIndex(c => c.id === songId);
+                      if (songIndex !== -1) {
+                         const currentStatus = newCanciones[songIndex].is_in_user_loopz;
+                         newCanciones[songIndex] = { ...newCanciones[songIndex], is_in_user_loopz: !currentStatus }; // Toggle back
+                      }
+                     return { ...prevContenedor, canciones: newCanciones };
+                 });
+
+                 setResultadosBusqueda(prevResultados => {
+                     const newResultados = [...prevResultados];
+                     const songIndex = newResultados.findIndex(c => c.id === songId);
+                     if (songIndex !== -1) {
+                         const currentStatus = newResultados[songIndex].is_in_user_loopz;
+                         newResultados[songIndex] = { ...newResultados[songIndex], is_in_user_loopz: !currentStatus }; // Toggle back
+                     }
+                     return newResultados;
+                 });
             },
-            onFinish: () => setLikeProcessing(false),
+            onFinish: () => {
+                setLikeProcessing(null);
+            },
         });
     };
+
+
+    const toggleLoopz = () => {
+        if (!contenedor?.id || likeProcessing === 'container') return;
+        setLikeProcessing('container');
+        router.post(route('contenedores.toggle-loopz', { contenedor: contenedor.id }), {}, {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: (page) => {
+                setIsLiked(page.props.contenedor?.is_liked_by_user || false);
+                 if (page.props.contenedor && JSON.stringify(page.props.contenedor) !== JSON.stringify(contenedor)) {
+                     if (!Array.isArray(page.props.contenedor.canciones)) { page.props.contenedor.canciones = []; }
+                     page.props.contenedor.canciones.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
+                     setContenedor(page.props.contenedor);
+                 }
+            },
+            onError: (errors) => {
+                   console.error("Error en la operación 'LoopZ':", errors);
+            },
+            onFinish: () => setLikeProcessing(null),
+        });
+    };
+
     const formatearDuracion = (segundos) => {
         if (isNaN(segundos) || segundos < 0) return 'N/A';
         const minutes = Math.floor(segundos / 60);
@@ -258,16 +383,16 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
     const artistas = useMemo(() => {
         return contenedor?.usuarios?.length > 0
             ? contenedor.usuarios.map((u, index) => (
-                <React.Fragment key={u.id}>
-                    <Link
-                        href={route('profile.show', u.id)}
-                        className="text-blue-400 hover:underline"
-                        title={`Ver perfil de ${u.name}`}
-                    >
-                        {u.name}
-                    </Link>
-                    {index < contenedor.usuarios.length - 1 && ', '}
-                </React.Fragment>
+                  <React.Fragment key={u.id}>
+                      <Link
+                          href={route('profile.show', u.id)}
+                          className="text-blue-400 hover:underline"
+                          title={`Ver perfil de ${u.name}`}
+                      >
+                          {u.name}
+                      </Link>
+                      {index < contenedor.usuarios.length - 1 && ', '}
+                  </React.Fragment>
               ))
             : 'Artista Desconocido';
     }, [contenedor?.usuarios]);
@@ -280,7 +405,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             pause();
         } else {
             if (isCurrentSource && !Reproduciendo && cancionActual) {
-                 play();
+                play();
             } else if (contenedor?.canciones && contenedor.canciones.length > 0) {
                 cargarColaYIniciar(contenedor.canciones, { id: contenedor.id, iniciar: 0 });
             }
@@ -308,67 +433,67 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
 
                     <div className="md:flex md:items-end md:space-x-8 p-6 md:p-10 bg-transparent">
                          <div className="flex-shrink-0 w-48 h-48 lg:w-64 lg:h-64 mb-6 md:mb-0 mx-auto md:mx-0 shadow-2xl rounded-lg overflow-hidden border-4 border-purple-800/50">
-                            {urlImagenContenedor ? (
-                                <img src={urlImagenContenedor} alt={`Cover de ${contenedor?.nombre}`} className="w-full h-full object-cover" />
-                            ) : (
-                                <div className="w-full h-full bg-slate-800 flex items-center justify-center text-purple-500">
-                                    <MusicalNoteIcon className="h-24 w-24" />
-                                </div>
-                            )}
-                        </div>
+                             {urlImagenContenedor ? (
+                                 <img src={urlImagenContenedor} alt={`Cover de ${contenedor?.nombre}`} className="w-full h-full object-cover" />
+                             ) : (
+                                 <div className="w-full h-full bg-slate-800 flex items-center justify-center text-purple-500">
+                                     <MusicalNoteIcon className="h-24 w-24" />
+                                 </div>
+                             )}
+                         </div>
                          <div className="flex-grow text-center md:text-left">
-                            <p className="text-sm font-medium uppercase tracking-wider text-purple-400 mb-1">{tipoNombreMayuscula}</p>
-                            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold mb-4 text-white break-words shadow-sm">
-                                {contenedor?.nombre}
-                            </h1>
-                            {contenedor?.descripcion && (
-                                <p className="text-gray-300 mb-4 text-sm md:text-base leading-relaxed">{contenedor.descripcion}</p>
-                            )}
-                            <div className="flex flex-wrap justify-center md:justify-start items-center space-x-3 text-sm text-gray-300 mb-8">
-                                {artistas !== 'Artista Desconocido' && <span className="font-semibold text-blue-400">{artistas}</span>}
-                                <span className="hidden sm:inline">• {contenedor?.canciones_count ?? contenedor?.canciones?.length ?? 0} canciones</span>
-                                <span className="hidden md:inline">
-                                    • {formatearDuracion(contenedor?.canciones?.reduce((sum, s) => sum + (s.duracion || 0), 0))}
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-center md:justify-start space-x-4">
-                                <button
-                                    onClick={handleMainPlayPause}
-                                    className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full font-semibold text-white shadow-lg hover:scale-105 transform transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-wait"
-                                    title={showPauseButton ? `Pausar ${tipoNombreMayuscula}` : `Reproducir ${tipoNombreMayuscula}`}
-                                    disabled={!contenedor?.canciones || contenedor.canciones.length === 0 || (isPlayerLoading && !Reproduciendo)}
-                                >
-                                    {isPlayerLoading && !Reproduciendo && isCurrentSource ? <LoadingIcon className="h-7 w-7 animate-spin"/> : (showPauseButton ? <PauseIcon className="h-7 w-7" /> : <PlayIcon className="h-7 w-7" />)}
-                                </button>
-                                <button
-                                    onClick={toggleAleatorio}
-                                    className={`inline-flex items-center justify-center p-3 border border-slate-600 rounded-full font-semibold text-xs uppercase tracking-widest shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 transition ease-in-out duration-150 ${aleatorio ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-gray-300 hover:bg-slate-700'}`}
-                                    title={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"}
-                                    disabled={!contenedor?.canciones || contenedor.canciones.length === 0}
-                                >
-                                    <ShuffleIcon className="h-6 w-6" />
-                                </button>
-                                <button
-                                    onClick={toggleLoopz}
-                                    disabled={likeProcessing || !contenedor?.id}
-                                    className={`p-2 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${likeProcessing ? 'text-gray-500 cursor-wait' : 'text-gray-400 hover:text-purple-400'}`}
-                                    title={isLiked ? `Quitar ${tipoNombreMayuscula} de LoopZ` : `Añadir ${tipoNombreMayuscula} a LoopZ`}
-                                >
-                                    {likeProcessing ? <ArrowPathIcon className="h-7 w-7 animate-spin text-purple-400"/> : (isLiked ? <HeartIconSolid className="h-7 w-7 text-purple-500" /> : <HeartIconOutline className="h-7 w-7" />)}
-                                </button>
-                                <button
-                                    onClick={() => window.history.back()}
-                                    className="inline-flex items-center px-4 py-2 border border-slate-600 rounded-full font-semibold text-xs text-gray-300 uppercase tracking-widest shadow-sm hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-25 transition ease-in-out duration-150"
-                                >
-                                    <ArrowUturnLeftIcon className="h-4 w-4 mr-1" />Volver
-                                </button>
-                            </div>
-                        </div>
+                             <p className="text-sm font-medium uppercase tracking-wider text-purple-400 mb-1">{tipoNombreMayuscula}</p>
+                             <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold mb-4 text-white break-words shadow-sm">
+                                 {contenedor?.nombre}
+                             </h1>
+                             {contenedor?.descripcion && (
+                                 <p className="text-gray-300 mb-4 text-sm md:text-base leading-relaxed">{contenedor.descripcion}</p>
+                             )}
+                             <div className="flex flex-wrap justify-center md:justify-start items-center space-x-3 text-sm text-gray-300 mb-8">
+                                 {artistas !== 'Artista Desconocido' && <span className="font-semibold text-blue-400">{artistas}</span>}
+                                 <span className="hidden sm:inline">• {contenedor?.canciones_count ?? contenedor?.canciones?.length ?? 0} canciones</span>
+                                 <span className="hidden md:inline">
+                                     • {formatearDuracion(contenedor?.canciones?.reduce((sum, s) => sum + (s.duracion || 0), 0))}
+                                 </span>
+                             </div>
+                             <div className="flex items-center justify-center md:justify-start space-x-4">
+                                 <button
+                                     onClick={handleMainPlayPause}
+                                     className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full font-semibold text-white shadow-lg hover:scale-105 transform transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-wait"
+                                     title={showPauseButton ? `Pausar ${tipoNombreMayuscula}` : `Reproducir ${tipoNombreMayuscula}`}
+                                     disabled={!contenedor?.canciones || contenedor.canciones.length === 0 || (isPlayerLoading && !Reproduciendo && isCurrentSource)}
+                                 >
+                                     {isPlayerLoading && !Reproduciendo && isCurrentSource ? <LoadingIcon className="h-7 w-7 animate-spin"/> : (showPauseButton ? <PauseIcon className="h-7 w-7" /> : <PlayIcon className="h-7 w-7" />)}
+                                 </button>
+                                 <button
+                                     onClick={toggleAleatorio}
+                                     className={`inline-flex items-center justify-center p-3 border border-slate-600 rounded-full font-semibold text-xs uppercase tracking-widest shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 transition ease-in-out duration-150 ${aleatorio ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-gray-300 hover:bg-slate-700'}`}
+                                     title={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"}
+                                     disabled={!contenedor?.canciones || contenedor.canciones.length === 0}
+                                 >
+                                     <ShuffleIcon className="h-6 w-6" />
+                                 </button>
+                                 <button
+                                     onClick={toggleLoopz}
+                                     disabled={likeProcessing === 'container' || !contenedor?.id}
+                                     className={`p-2 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${(likeProcessing === 'container') ? 'text-gray-500 cursor-wait' : 'text-gray-400 hover:text-purple-400'}`}
+                                     title={isLiked ? `Quitar ${tipoNombreMayuscula} de LoopZ` : `Añadir ${tipoNombreMayuscula} a LoopZ`}
+                                 >
+                                     {(likeProcessing === 'container') ? <LoadingIcon className="h-7 w-7 animate-spin text-purple-400"/> : (isLiked ? <HeartIconSolid className="h-7 w-7 text-purple-500" /> : <HeartIconOutline className="h-7 w-7" />)}
+                                 </button>
+                                 <button
+                                     onClick={() => window.history.back()}
+                                     className="inline-flex items-center px-4 py-2 border border-slate-600 rounded-full font-semibold text-xs text-gray-300 uppercase tracking-widest shadow-sm hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-25 transition ease-in-out duration-150"
+                                 >
+                                     <ArrowUturnLeftIcon className="h-4 w-4 mr-1" />Volver
+                                 </button>
+                             </div>
+                         </div>
                     </div>
 
                     <div className="mt-10 p-6 md:p-8 bg-slate-800/80 backdrop-blur-sm shadow-inner rounded-lg border border-slate-700">
                         <h3 className="text-xl font-semibold mb-4 text-gray-100">
-                             Canciones en est{tipoContenedor === 'playlist' ? 'a' : 'e'} {tipoNombreMayuscula} ({contenedor?.canciones?.length || 0})
+                              Canciones en est{tipoContenedor === 'playlist' ? 'a' : 'e'} {tipoNombreMayuscula} ({contenedor?.canciones?.length || 0})
                         </h3>
                         {contenedor?.canciones && contenedor.canciones.length > 0 ? (
                             <ul className="space-y-2">
@@ -378,34 +503,36 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                              onClick={() => handleSongPlay(index)}
                                              className="flex-shrink-0 text-gray-400 hover:text-blue-400 p-1 disabled:opacity-50 disabled:cursor-wait"
                                              title={`Reproducir ${cancion.titulo}`}
-                                             disabled={isPlayerLoading && cancionActual?.id !== cancion.id}
+                                             disabled={isPlayerLoading && cancionActual?.id === cancion.id}
                                          >
-                                            { isPlayerLoading && cancionActual?.id === cancion.id ? <LoadingIcon className="h-5 w-5 animate-spin text-blue-500"/> :
-                                             (Reproduciendo && cancionActual?.id === cancion.id) ? <PauseIcon className="h-5 w-5 text-blue-500"/> :
-                                             <PlayIcon className="h-5 w-5"/>
-                                            }
-                                        </button>
-                                        <ImagenItem url={obtenerUrlImagen(cancion)} titulo={cancion.titulo} className="w-10 h-10" iconoFallback={<MusicalNoteIcon className="h-5 w-5"/>} />
-                                        <span className="text-gray-200 flex-grow truncate" title={cancion.titulo}>{cancion.titulo}</span>
-                                        <span className="text-gray-400 text-xs pr-2 hidden sm:inline">{formatearDuracion(cancion.duracion)}</span>
-                                        <Link
-                                            href={route('cancion.loopz', { cancion: cancion.id })}
-                                            className="p-1 text-gray-400 hover:text-purple-400 focus:outline-none flex-shrink-0"
-                                            title={cancion.is_in_user_loopz ? "Gestionar en LoopZ" : "Añadir a LoopZ"}
-                                            preserveScroll preserveState={false}
-                                        >
-                                            {cancion.is_in_user_loopz ? ( <HeartIconSolid className="h-5 w-5 text-purple-500" /> ) : ( <HeartIconOutline className="h-5 w-5" /> )}
-                                        </Link>
-                                        {contenedor.can?.edit && (
-                                            <button
-                                                 onClick={() => { if (confirm(`¿Quitar "${cancion.titulo}" de este ${tipoNombreMayuscula}?`)) { manejarEliminarCancion(cancion.pivot?.id) } }}
-                                                 disabled={!cancion.pivot?.id || eliminandoPivotId === cancion.pivot?.id}
-                                                 className="ml-2 p-1.5 text-red-500 hover:text-red-400 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md transition-colors duration-150 disabled:opacity-50 disabled:cursor-wait flex-shrink-0"
-                                                 title={!cancion.pivot?.id ? "Error ID" : `Quitar de ${tipoNombreMayuscula}`}
+                                             { isPlayerLoading && cancionActual?.id === cancion.id ? <LoadingIcon className="h-5 w-5 animate-spin text-blue-500"/> :
+                                              (Reproduciendo && cancionActual?.id === cancion.id) ? <PauseIcon className="h-5 w-5 text-blue-500"/> :
+                                              <PlayIcon className="h-5 w-5"/>
+                                             }
+                                         </button>
+                                         <ImagenItem url={obtenerUrlImagen(cancion)} titulo={cancion.titulo} className="w-10 h-10" iconoFallback={<MusicalNoteIcon className="h-5 w-5"/>} />
+                                         <span className="text-gray-200 flex-grow truncate" title={cancion.titulo}>{cancion.titulo}</span>
+                                         <span className="text-gray-400 text-xs pr-2 hidden sm:inline">{formatearDuracion(cancion.duracion)}</span>
+                                         <button
+                                             onClick={() => manejarCancionLoopzToggle(cancion.id)}
+                                             disabled={likeProcessing === cancion.id}
+                                             className={`p-1 text-gray-400 hover:text-purple-400 focus:outline-none flex-shrink-0 ${likeProcessing === cancion.id ? 'cursor-wait' : ''}`}
+                                             title={cancion.is_in_user_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ"}
                                              >
-                                                 {eliminandoPivotId === cancion.pivot?.id ? <ArrowPathIcon className="w-4 h-4 animate-spin"/> : <TrashIcon className="w-4 h-4"/>}
-                                             </button>
-                                        )}
+                                             {likeProcessing === cancion.id ? <LoadingIcon className="h-5 w-5 animate-spin text-purple-400"/> :
+                                                 (cancion.is_in_user_loopz ? ( <HeartIconSolid className="h-5 w-5 text-purple-500" /> ) : ( <HeartIconOutline className="h-5 w-5" /> ))
+                                             }
+                                         </button>
+                                         {contenedor.can?.edit && (
+                                             <button
+                                                  onClick={() => { if (confirm(`¿Quitar "${cancion.titulo}" de est${tipoContenedor === 'playlist' ? 'a' : 'e'} ${tipoNombreMayuscula}?`)) { manejarEliminarCancion(cancion.pivot?.id) } }}
+                                                  disabled={!cancion.pivot?.id || eliminandoPivotId === cancion.pivot?.id}
+                                                  className="ml-2 p-1.5 text-red-500 hover:text-red-400 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md transition-colors duration-150 disabled:opacity-50 disabled:cursor-wait flex-shrink-0"
+                                                  title={!cancion.pivot?.id ? "Error ID" : `Quitar de ${tipoNombreMayuscula}`}
+                                               >
+                                                  {eliminandoPivotId === cancion.pivot?.id ? <LoadingIcon className="w-4 h-4 animate-spin"/> : <TrashIcon className="w-4 h-4"/>}
+                                               </button>
+                                         )}
                                     </li>
                                 ))}
                             </ul>
@@ -424,15 +551,18 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                     value={consultaBusqueda}
                                     onChange={manejarCambioInputBusqueda}
                                     className="w-full px-4 py-2 border border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-slate-700 text-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-slate-800"
-                                    disabled={!contenedor?.id}
+                                    disabled={!contenedor?.id || estaBuscando}
                                 />
                             </div>
                             {estaBuscando && <p className="text-gray-400 italic text-center">Buscando...</p>}
+                            {!estaBuscando && consultaBusqueda && consultaBusqueda.length >= minQueryLength && resultadosFiltrados.length === 0 && ( <p className="text-gray-400 italic text-center pt-4">No se encontraron canciones que coincidan fuera de est{tipoContenedor === 'playlist' ? 'a' : 'e'} {tipoNombreMayuscula}.</p> )}
+                            {!estaBuscando && consultaBusqueda && consultaBusqueda.length < minQueryLength && ( <p className="text-gray-400 italic text-center pt-4">Escribe al menos {minQueryLength} caracteres para buscar.</p> )}
+                            {!estaBuscando && !consultaBusqueda && resultadosFiltrados.length === 0 && contenedor?.canciones?.length > 0 && ( <p className="text-gray-400 italic text-center pt-4">Todas las canciones disponibles ya están en est{tipoContenedor === 'playlist' ? 'a' : 'e'} {tipoNombreMayuscula}.</p> )}
+                            {!estaBuscando && !consultaBusqueda && resultadosFiltrados.length === 0 && (!contenedor?.canciones || contenedor.canciones.length === 0) && ( <p className="text-gray-400 italic text-center pt-4">No hay canciones disponibles para añadir.</p> )}
+
                             {!estaBuscando && resultadosFiltrados.length > 0 && (
                                 <div className="max-h-60 overflow-y-auto border border-slate-600 rounded-md p-2 space-y-2 bg-slate-700/50">
-                                    <h4 className="text-sm font-semibold text-gray-300 mb-2">
-                                         {consultaBusqueda.length >= minQueryLength ? 'Resultados:' : 'Canciones Disponibles:'}
-                                    </h4>
+                                    <h4 className="text-sm font-semibold text-gray-300 mb-2">Resultados de la búsqueda:</h4>
                                     <ul>
                                         {resultadosFiltrados.map((c) => (
                                             <li key={c.id} className="flex items-center justify-between p-2 hover:bg-blue-900/30 rounded space-x-3 group">
@@ -441,32 +571,29 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                                      <span className="text-gray-200 truncate" title={c.titulo}>{c.titulo}</span>
                                                  </div>
                                                  <div className="flex items-center space-x-2 flex-shrink-0">
-                                                     <Link
-                                                         href={route('cancion.loopz', { cancion: c.id })}
-                                                         className="p-1 text-gray-400 hover:text-purple-400 focus:outline-none"
-                                                         title={c.is_in_user_loopz ? "Gestionar en LoopZ" : "Añadir a LoopZ"}
-                                                         preserveScroll preserveState={false}
-                                                     >
-                                                         {c.is_in_user_loopz ? <HeartIconSolid className="h-5 w-5 text-purple-500" /> : <HeartIconOutline className="h-5 w-5" />}
-                                                     </Link>
-                                                    <button
-                                                         onClick={() => manejarAnadirCancion(c.id)}
-                                                         disabled={anadiendoCancionId === c.id}
-                                                         className={`ml-2 px-3 py-1 text-xs font-semibold rounded-md transition ease-in-out duration-150 flex-shrink-0 ${anadiendoCancionId === c.id ? 'bg-indigo-700 text-white cursor-wait opacity-75' : 'bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800'}`}
-                                                     >
-                                                         {anadiendoCancionId === c.id ? '...' : 'Añadir'}
+                                                     <button
+                                                          onClick={() => manejarCancionLoopzToggle(c.id)}
+                                                          disabled={likeProcessing === c.id}
+                                                          className={`p-1 text-gray-400 hover:text-purple-400 focus:outline-none ${likeProcessing === c.id ? 'cursor-wait' : ''}`}
+                                                          title={c.is_in_user_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ"}
+                                                           >
+                                                          {likeProcessing === c.id ? <LoadingIcon className="h-5 w-5 animate-spin text-purple-400"/> :
+                                                              (c.is_in_user_loopz ? ( <HeartIconSolid className="h-5 w-5 text-purple-500" /> ) : ( <HeartIconOutline className="h-5 w-5" /> ))
+                                                          }
                                                      </button>
+                                                     <button
+                                                          onClick={() => manejarAnadirCancion(c.id)}
+                                                          disabled={anadiendoCancionId === c.id}
+                                                          className={`ml-2 px-3 py-1 text-xs font-semibold rounded-md transition ease-in-out duration-150 flex-shrink-0 ${anadiendoCancionId === c.id ? 'bg-indigo-700 text-white cursor-wait opacity-75' : 'bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800'}`}
+                                                       >
+                                                          {anadiendoCancionId === c.id ? '...' : 'Añadir'}
+                                                      </button>
                                                  </div>
                                              </li>
-                                        ))}
+                                         ))}
                                     </ul>
                                 </div>
                             )}
-                            {!estaBuscando && consultaBusqueda.length >= minQueryLength && resultadosBusqueda.length > 0 && resultadosFiltrados.length === 0 && ( <p className="text-gray-400 italic text-center pt-4">Todas las canciones encontradas ya están en est{tipoContenedor === 'playlist' ? 'a' : 'e'} {tipoNombreMayuscula}.</p> )}
-                            {!estaBuscando && consultaBusqueda.length >= minQueryLength && resultadosBusqueda.length === 0 && ( <p className="text-gray-400 italic text-center pt-4">No se encontraron canciones que coincidan.</p> )}
-                            {!estaBuscando && consultaBusqueda.length > 0 && consultaBusqueda.length < minQueryLength && ( <p className="text-gray-400 italic text-center pt-4">Escribe al menos {minQueryLength} caracteres para buscar.</p> )}
-                             {!estaBuscando && consultaBusqueda.length === 0 && resultadosFiltrados.length === 0 && contenedor?.canciones?.length > 0 && ( <p className="text-gray-400 italic text-center pt-4">No hay más canciones disponibles para añadir o no se encontraron coincidencias.</p> )}
-                             {!estaBuscando && consultaBusqueda.length === 0 && resultadosFiltrados.length === 0 && (!contenedor?.canciones || contenedor.canciones.length === 0) && ( <p className="text-gray-400 italic text-center pt-4">No hay canciones disponibles para añadir.</p> )}
                         </div>
                     )}
                 </div>
