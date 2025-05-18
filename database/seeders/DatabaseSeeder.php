@@ -20,10 +20,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
-        /*$this->call([
+        $this->call([
             SpotifyGenresSeeder::class,
             LicenciaSeeder::class,
-        ]);*/
+        ]);
         DB::table('cancion_contenedor')->truncate();
         DB::table('cancion_genero')->truncate();
         DB::table('loopzs_canciones')->truncate();
@@ -67,6 +67,7 @@ class DatabaseSeeder extends Seeder
             $cancion->generos()->attach(
                 $generos->random(rand(1, min(3, $generos->count())))->pluck('id')->toArray()
             );
+            $cancion->usuarios()->attach($users->random()->id, ['propietario' => true]);
             $canciones->push($cancion);
         }
 
