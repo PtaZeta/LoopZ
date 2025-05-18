@@ -118,6 +118,29 @@ export default function AuthenticatedLayout({ children, header }) {
         playCola, limpiarErrores, queue
     } = playerContextValue || {};
 
+    const [isControlsBlocked, setIsControlsBlocked] = useState(false);
+
+    useEffect(() => {
+        let blockTimer = null;
+        if (cargando) {
+            setIsControlsBlocked(true);
+            blockTimer = setTimeout(() => {
+                setIsControlsBlocked(false);
+            }, 500); // Bloquear durante 0.5 segundos
+        } else {
+             // Si cargando se vuelve false antes del timer, desbloquear inmediatamente
+             setIsControlsBlocked(false);
+             if (blockTimer) {
+                 clearTimeout(blockTimer);
+             }
+        }
+
+        return () => {
+            if (blockTimer) {
+                clearTimeout(blockTimer);
+            }
+        };
+    }, [cargando]);
 
     const queueButtonRef = useRef(null);
     const queueDropdownRef = useRef(null);
@@ -156,21 +179,21 @@ export default function AuthenticatedLayout({ children, header }) {
 
     const commitSeek = () => {
         if (seek) {
-             seek(seekValue);
+            seek(seekValue);
         }
         isSeekingRef.current = false;
     };
 
     const handleVolumeChange = (e) => {
-           const newVolume = parseFloat(e.target.value);
-           if (setVolumen) {
-               setVolumen(newVolume);
-           }
+        const newVolume = parseFloat(e.target.value);
+        if (setVolumen) {
+            setVolumen(newVolume);
+        }
     };
 
     const togglePlayPause = () => {
         if (!playerContextValue) {
-             return;
+            return;
         }
 
         if (!cancionActual && queue.length > 0) {
@@ -202,15 +225,15 @@ export default function AuthenticatedLayout({ children, header }) {
     }, [cancionActual]);
 
     const handlePlayFromQueueClick = (index) => {
-           if (playCola) {
-               playCola(index);
-               setIsQueueVisible(false);
-           }
+        if (playCola) {
+            playCola(index);
+            setIsQueueVisible(false);
+        }
     };
 
     const handleSearchSubmit = (e) => {
         if (e.key === 'Enter' && searchQuery.trim() !== '') {
-             router.get(route('search.index', { query: searchQuery }));
+            router.get(route('search.index', { query: searchQuery }));
         }
     };
 
@@ -349,7 +372,7 @@ export default function AuthenticatedLayout({ children, header }) {
                             onChange={handleSeekChange}
                             onMouseUp={commitSeek}
                             onTouchEnd={commitSeek}
-                            disabled={!cancionActual || !duration} // Removed || cargando
+                            disabled={!cancionActual || !duration || isControlsBlocked}
                             aria-label="Progreso de la canción"
                             className="w-full h-1 rounded-lg appearance-none cursor-pointer range-progress-gradient disabled:opacity-50 disabled:cursor-not-allowed"
                             style={progressBarStyle}
@@ -365,13 +388,13 @@ export default function AuthenticatedLayout({ children, header }) {
                         </div>
                         <div className="flex flex-col items-center md:flex-grow">
                             <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4">
-                                <button onClick={toggleAleatorio} title={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"} aria-label={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"} className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${aleatorio ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'}`}><ShuffleIcon className="h-5 w-5" /></button>
-                                <button onClick={anteriorCancion} disabled={!cancionActual && queue.length === 0} aria-label="Canción anterior" className="text-gray-400 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"><PreviousIcon className="h-5 w-5" /></button>
-                                <button onClick={togglePlayPause} disabled={!cancionActual && queue.length === 0} aria-label={Reproduciendo ? "Pausar" : "Reproducir"} className="bg-blue-600 hover:bg-blue-500 rounded-full text-white transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-900">
+                                <button onClick={toggleAleatorio} title={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"} aria-label={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"} className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${aleatorio ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'}`} disabled={isControlsBlocked}><ShuffleIcon className="h-5 w-5" /></button>
+                                <button onClick={anteriorCancion} disabled={!cancionActual && queue.length === 0 || isControlsBlocked} aria-label="Canción anterior" className="text-gray-400 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"><PreviousIcon className="h-5 w-5" /></button>
+                                <button onClick={togglePlayPause} disabled={!cancionActual && queue.length === 0 || isControlsBlocked} aria-label={Reproduciendo ? "Pausar" : "Reproducir"} className="bg-blue-600 hover:bg-blue-500 rounded-full text-white transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-900">
                                     {cargando ? <LoadingIcon className="h-5 w-5 sm:h-6 sm:w-6 animate-spin" /> : (Reproduciendo ? <PauseIcon className="h-5 w-5 sm:h-6 sm:w-6" /> : <PlayIcon className="h-5 w-5 sm:h-6 sm-w-6" />)}
                                 </button>
-                                <button onClick={siguienteCancion} disabled={!cancionActual && queue.length === 0} aria-label="Siguiente canción" className="text-gray-400 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"><NextIcon className="h-5 w-5" /></button>
-                                <button onClick={toggleLoop} title={looping ? "Desactivar repetición" : "Activar repetición"} aria-label={looping ? "Desactivar repetición" : "Activar repetición"} className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${looping ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'}`}><LoopIcon className="h-5 w-5" /></button>
+                                <button onClick={siguienteCancion} disabled={!cancionActual && queue.length === 0 || isControlsBlocked} aria-label="Siguiente canción" className="text-gray-400 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"><NextIcon className="h-5 w-5" /></button>
+                                <button onClick={toggleLoop} title={looping ? "Desactivar repetición" : "Activar repetición"} aria-label={looping ? "Desactivar repetición" : "Activar repetición"} className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${looping ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'}`} disabled={isControlsBlocked}><LoopIcon className="h-5 w-5" /></button>
                             </div>
                             <div className="w-full max-w-xl hidden md:flex items-center space-x-2 mt-1">
                                 <span className="text-xs text-gray-500 font-mono w-10 text-right">{formatTime(tiempoActual)}</span>
@@ -383,7 +406,7 @@ export default function AuthenticatedLayout({ children, header }) {
                                     onChange={handleSeekChange}
                                     onMouseUp={commitSeek}
                                     onTouchEnd={commitSeek}
-                                    disabled={!cancionActual || !duration} // Removed || cargando
+                                    disabled={!cancionActual || !duration || isControlsBlocked}
                                     aria-label="Progreso de la canción"
                                     className="w-full h-1.5 rounded-lg appearance-none cursor-pointer range-progress-gradient disabled:opacity-50 disabled:cursor-not-allowed"
                                     style={progressBarStyle}
@@ -393,10 +416,10 @@ export default function AuthenticatedLayout({ children, header }) {
                         </div>
                         <div className="flex items-center justify-end space-x-2 flex-1 md:flex-initial md:w-1/4 lg:w-1/3">
                             <div className="hidden lg:flex items-center space-x-2">
-                                <button className="text-gray-400 hover:text-blue-400 transition-colors p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900" aria-label="Volumen"><CurrentVolumeIcon className="h-5 w-5" /></button>
-                                <input type="range" min="0" max="1" step="0.01" value={volumen} onChange={handleVolumeChange} aria-label="Control de volumen" className="w-20 h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer range-sm accent-blue-500 hover:accent-blue-400" />
+                                <button className="text-gray-400 hover:text-blue-400 transition-colors p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900" aria-label="Volumen" disabled={isControlsBlocked}><CurrentVolumeIcon className="h-5 w-5" /></button>
+                                <input type="range" min="0" max="1" step="0.01" value={volumen} onChange={handleVolumeChange} aria-label="Control de volumen" className="w-20 h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer range-sm accent-blue-500 hover:accent-blue-400 disabled:opacity-50 disabled:cursor-not-allowed" disabled={isControlsBlocked}/>
                             </div>
-                            <button ref={queueButtonRef} onClick={() => setIsQueueVisible(!isQueueVisible)} title="Mostrar cola de reproducción" aria-label="Mostrar cola de reproducción" className="text-gray-400 hover:text-blue-400 transition-colors p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900"><QueueListIcon className="h-5 w-5" /></button>
+                            <button ref={queueButtonRef} onClick={() => setIsQueueVisible(!isQueueVisible)} title="Mostrar cola de reproducción" aria-label="Mostrar cola de reproducción" className="text-gray-400 hover:text-blue-400 transition-colors p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900" disabled={isControlsBlocked}><QueueListIcon className="h-5 w-5" /></button>
                             {isQueueVisible && (
                                 <div ref={queueDropdownRef} className="absolute bottom-full right-0 mb-2 w-64 sm:w-80 max-h-80 overflow-y-auto bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 p-2">
                                     <h4 className="text-sm font-semibold text-gray-300 px-2 pb-2 border-b border-slate-600 mb-2">Cola de Reproducción</h4>
