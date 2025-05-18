@@ -14,6 +14,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class ContenedorController extends Controller
 {
@@ -142,37 +143,42 @@ class ContenedorController extends Controller
         return Inertia::render($nombreVista, ['tipo' => $infoRecurso['tipo']]);
     }
 
-    public function store(StoreContenedorRequest $peticion)
+        public function store(StoreContenedorRequest $peticion)
     {
         $infoRecurso = $this->getTipoVista($peticion);
         $tipoContenedor = $infoRecurso['tipo'];
-        $rutaRedireccion = $infoRecurso['ruta'] . '.index';
 
         $datosValidados = $peticion->validated();
         $datosValidados['tipo'] = $tipoContenedor;
 
-        if ($peticion->hasFile('imagen')) {
-            $ruta = $peticion->file('imagen')->store('contenedor_images', 'public');
-            $datosValidados['imagen'] = $ruta;
-        } else {
-            unset($datosValidados['imagen']);
-        }
+        $campoImagen = 'imagen';
 
-        $peticion->validate([
-            'userIds' => 'nullable|array',
-            'userIds.*' => 'integer|exists:users,id',
-        ]);
+        if ($peticion->hasFile($campoImagen) && $peticion->file($campoImagen)->isValid()) {
+            $archivoImagen = $peticion->file($campoImagen);
+
+            $datosValidados[$campoImagen] = Storage::disk('s3')->url(
+                Storage::disk('s3')->putFileAs(
+                    'contenedor_imagenes',
+                    $archivoImagen,
+                    Str::uuid() . "_img.{$archivoImagen->getClientOriginalExtension()}",
+                )
+            );
+
+        } else {
+             if (isset($datosValidados[$campoImagen])) {
+                 unset($datosValidados[$campoImagen]);
+             }
+        }
 
         $contenedor = Contenedor::create($datosValidados);
 
         if (method_exists($contenedor, 'usuarios')) {
-            $idsUsuariosEntrada = $peticion->input('userIds', []);
             $idCreador = Auth::id();
             $usuariosASincronizar = [];
 
-            foreach ($idsUsuariosEntrada as $idUsuario) {
+            foreach ($peticion->input('userIds', []) as $idUsuario) {
                 if ($idUsuario != $idCreador) {
-                    $usuariosASincronizar[$idUsuario] = ['propietario' => false];
+                    $usuariosASincronizar[(int) $idUsuario] = ['propietario' => false];
                 }
             }
             if ($idCreador) {
@@ -181,15 +187,12 @@ class ContenedorController extends Controller
 
             if (!empty($usuariosASincronizar)) {
                 $contenedor->usuarios()->attach($usuariosASincronizar);
-                Log::info('Usuarios adjuntados al contenedor (' . $tipoContenedor . ') ' . $contenedor->id . ': ' . json_encode($usuariosASincronizar));
             }
-        } else {
-             Log::warning('El método usuarios() no existe en el modelo Contenedor para el ID ' . $contenedor->id);
         }
 
-        $mensaje = ucfirst($this->getNombreTipo($tipoContenedor)) . ' creado exitosamente.';
-        return redirect()->route('biblioteca')->with('success', $mensaje);
+        return redirect()->route('biblioteca');
     }
+
 
     public function show(Request $peticion, $id)
     {
@@ -276,6 +279,7 @@ class ContenedorController extends Controller
         $rutaRedireccion = $rutaBase . '.show';
 
         $contenedor = Contenedor::findOrFail($id);
+        // Asegúrate de que validarTipoContenedor está definido en esta clase
         $this->validarTipoContenedor($contenedor, $tipoEsperado);
         $this->authorize('update', $contenedor);
 
@@ -287,7 +291,7 @@ class ContenedorController extends Controller
             $esPropietario = $propietario && $propietario->id === Auth::id();
         }
 
-        $idsUsuariosValidados = [];
+        // La validación de userIds solo si es propietario
         if ($esPropietario) {
              $idsUsuariosValidados = $peticion->validate([
                  'userIds' => 'nullable|array',
@@ -297,28 +301,58 @@ class ContenedorController extends Controller
              unset($datosValidados['userIds']);
         }
 
-        $eliminarImagen = $peticion->boolean('eliminar_imagen');
-        $carpetaDestino = 'contenedor_images';
-        $rutaImagenAntigua = $contenedor->imagen;
+        $campoImagenRequest = 'imagen_nueva'; // Nombre del campo de la nueva imagen subida
+        $campoImagenModelo = 'imagen'; // Nombre del campo en el modelo/BD
+        $directorioS3 = 'contenedor_imagenes'; // Carpeta en tu bucket S3
 
-        if ($peticion->hasFile('imagen_nueva')) {
-            $nuevoArchivoImagen = $peticion->file('imagen_nueva');
-            if ($rutaImagenAntigua && Storage::disk('public')->exists($rutaImagenAntigua)) {
-                Storage::disk('public')->delete($rutaImagenAntigua);
+        $rutaImagenAntigua = $contenedor->$campoImagenModelo; // Obtener la URL antigua de S3
+
+        // Lógica para manejar la nueva imagen o eliminación
+        if ($peticion->hasFile($campoImagenRequest) && $peticion->file($campoImagenRequest)->isValid()) {
+            // Si hay una nueva imagen válida, eliminar la antigua si existe en S3
+            if ($rutaImagenAntigua) { // Si hay una URL antigua guardada
+                 // Extraer la ruta relativa del bucket S3 desde la URL
+                 // Esto asume que la URL es del formato [URL_BASE_S3]/[directorio]/[nombre_archivo]
+                 // Puede que necesites ajustar esta lógica si tu URL es diferente
+                 $pathAntigua = str_replace(Storage::disk('s3')->url(''), '', $rutaImagenAntigua);
+
+                 // --- VERIFICACIÓN AÑADIDA ---
+                 // Asegurarse de que la ruta extraída no esté vacía antes de intentar eliminar
+                 if (!empty($pathAntigua) && Storage::disk('s3')->exists($pathAntigua)) {
+                     Storage::disk('s3')->delete($pathAntigua);
+                 }
+                 // --- FIN VERIFICACIÓN AÑADIDA ---
             }
-            $nuevaRutaImagen = $nuevoArchivoImagen->store($carpetaDestino, 'public');
-            $datosValidados['imagen'] = $nuevaRutaImagen;
-        } elseif ($eliminarImagen) {
-            if ($rutaImagenAntigua && Storage::disk('public')->exists($rutaImagenAntigua)) {
-                Storage::disk('public')->delete($rutaImagenAntigua);
+
+            // Subir la nueva imagen a S3
+            $nuevoArchivoImagen = $peticion->file($campoImagenRequest);
+            $datosValidados[$campoImagenModelo] = Storage::disk('s3')->url(
+                Storage::disk('s3')->putFileAs(
+                    $directorioS3,
+                    $nuevoArchivoImagen,
+                    Str::uuid() . "_img.{$nuevoArchivoImagen->getClientOriginalExtension()}",
+                    'public-read'
+                )
+            );
+
+        } elseif ($peticion->boolean('eliminar_imagen')) {
+            if ($rutaImagenAntigua) {
+                 $pathAntigua = str_replace(Storage::disk('s3')->url(''), '', $rutaImagenAntigua);
+
+                 if (!empty($pathAntigua) && Storage::disk('s3')->exists($pathAntigua)) {
+                     Storage::disk('s3')->delete($pathAntigua);
+                 }
             }
-            $datosValidados['imagen'] = null;
+            $datosValidados[$campoImagenModelo] = null; // Establecer el campo en la BD a null
+
         } else {
-             unset($datosValidados['imagen']);
+            // Si no se subió nueva imagen ni se pidió eliminar, no modificar el campo 'imagen'
+             unset($datosValidados[$campoImagenModelo]);
         }
 
         $contenedor->update($datosValidados);
 
+        // Lógica para sincronizar usuarios (solo si es propietario)
         if ($esPropietario && method_exists($contenedor, 'usuarios')) {
             $idsUsuarios = $idsUsuariosValidados['userIds'] ?? [];
             $usuariosASincronizar = [];
@@ -335,11 +369,10 @@ class ContenedorController extends Controller
             }
 
             $contenedor->usuarios()->sync($usuariosASincronizar);
-            Log::info('Usuarios sincronizados para el contenedor (' . $tipoEsperado . ') ' . $contenedor->id . ': ' . json_encode($usuariosASincronizar));
         }
 
-        $mensaje = ucfirst($this->getNombreTipo($tipoEsperado)) . ' actualizado exitosamente.';
-        return Redirect::route($rutaRedireccion, $contenedor->id)->with('success', $mensaje);
+        // Asegúrate de que getNombreTipo está definido en esta clase
+        return Redirect::route($rutaRedireccion, $contenedor->id)->with('success', ucfirst($this->getNombreTipo($tipoEsperado)) . ' actualizado exitosamente.');
     }
 
     public function destroy(Request $peticion, $id)
