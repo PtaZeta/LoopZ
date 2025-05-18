@@ -387,7 +387,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                       <Link
                           href={route('profile.show', u.id)}
                           className="text-blue-400 hover:underline"
-                          title={`Ver perfil de ${u.name}`}
+                          title={`Ver Fragmentperfil de ${u.name}`}
                       >
                           {u.name}
                       </Link>

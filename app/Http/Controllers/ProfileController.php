@@ -14,6 +14,28 @@ use Inertia\Response;
 use App\Models\User;
 use App\Models\Cancion;
 use App\Models\Contenedor;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use getID3; // Asumiendo que tienes getID3 configurado
+
+// Helper para intentar obtener la clave de S3 desde una URL.
+// ¡Nota: Esta es una implementación básica y puede necesitar ajustarse
+// a la estructura exacta de tus URLs de S3 y no es robusta para todos los casos!
+// La práctica estándar es almacenar la ruta (key) en la base de datos, no la URL completa.
+function obtenerClaveS3DesdeUrl($url, $nombreBucket) {
+    $urlParseada = parse_url($url);
+    if ($urlParseada && isset($urlParseada['host']) && isset($urlParseada['path'])) {
+        // Verifica si el host contiene el nombre del bucket
+        if (strpos($urlParseada['host'], $nombreBucket) !== false) {
+            // La ruta S3 es la parte 'path' sin el '/' inicial
+            return ltrim($urlParseada['path'], '/');
+        }
+    }
+    // Si no parece una URL de S3 esperada o falla el parseo, retorna el valor original
+    // asumiendo que podría ser ya una clave/ruta
+    return $url;
+}
+
 
 class ProfileController extends Controller
 {
@@ -59,8 +81,8 @@ class ProfileController extends Controller
             ->limit(10)
             ->get();
 
-        $isOwner = auth()->check() && auth()->user()->id === $usuario->id;
 
+        $esCreador = auth()->check() && auth()->user()->id === $usuario->id;
         return Inertia::render('Profile/Show', [
             'usuario' => $usuario->only(['id', 'name', 'email', 'foto_perfil', 'banner_perfil']),
             'cancionesUsuario' => $consultaCanciones,
@@ -68,7 +90,7 @@ class ProfileController extends Controller
             'albumesUsuario' => $consultaAlbumes,
             'epsUsuario' => $consultaEps,
             'singlesUsuario' => $consultaSingles,
-            'is_owner' => $isOwner,
+            'es_creador' => $esCreador,
         ]);
     }
 
@@ -97,19 +119,47 @@ class ProfileController extends Controller
         $usuario->fill($datosValidados);
 
         if ($request->hasFile('foto_perfil')) {
-            if ($usuario->foto_perfil && Storage::disk('public')->exists($usuario->foto_perfil)) {
-                Storage::disk('public')->delete($usuario->foto_perfil);
+            $nombreBucket = config('filesystems.disks.s3.bucket');
+            $claveS3Antigua = $usuario->foto_perfil ? obtenerClaveS3DesdeUrl($usuario->foto_perfil, $nombreBucket) : null;
+
+            if ($claveS3Antigua && Storage::disk('s3')->exists($claveS3Antigua)) {
+                Storage::disk('s3')->delete($claveS3Antigua);
             }
-            $rutaFoto = $request->file('foto_perfil')->store('foto_perfil', 'public');
-            $usuario->foto_perfil = $rutaFoto;
+
+            $archivoFoto = $request->file('foto_perfil');
+            $nombreFoto = Str::uuid() . '_perfil.' . $archivoFoto->getClientOriginalExtension();
+            $rutaFoto = Storage::disk('s3')->putFileAs('perfiles/fotos', $archivoFoto, $nombreFoto, 'public-read');
+
+            if ($rutaFoto) {
+                 $usuario->foto_perfil = Storage::disk('s3')->url($rutaFoto); // Guarda la URL completa
+            } else {
+                // Manejar error de subida si putFileAs devuelve false
+                return redirect()->back()
+                    ->withErrors(['foto_perfil' => 'No se pudo subir la foto de perfil al bucket S3.'])
+                    ->withInput();
+            }
         }
 
         if ($request->hasFile('banner_perfil')) {
-            if ($usuario->banner_perfil && Storage::disk('public')->exists($usuario->banner_perfil)) {
-                Storage::disk('public')->delete($usuario->banner_perfil);
+            $nombreBucket = config('filesystems.disks.s3.bucket');
+            $claveS3Antigua = $usuario->banner_perfil ? obtenerClaveS3DesdeUrl($usuario->banner_perfil, $nombreBucket) : null;
+
+            if ($claveS3Antigua && Storage::disk('s3')->exists($claveS3Antigua)) {
+                Storage::disk('s3')->delete($claveS3Antigua);
             }
-            $rutaBanner = $request->file('banner_perfil')->store('banner_perfil', 'public');
-            $usuario->banner_perfil = $rutaBanner;
+
+            $archivoBanner = $request->file('banner_perfil');
+            $nombreBanner = Str::uuid() . '_banner.' . $archivoBanner->getClientOriginalExtension();
+            $rutaBanner = Storage::disk('s3')->putFileAs('perfiles/banners', $archivoBanner, $nombreBanner, 'public-read');
+
+             if ($rutaBanner) {
+                $usuario->banner_perfil = Storage::disk('s3')->url($rutaBanner); // Guarda la URL completa
+            } else {
+                 // Manejar error de subida
+                return redirect()->back()
+                    ->withErrors(['banner_perfil' => 'No se pudo subir el banner de perfil al bucket S3.'])
+                    ->withInput();
+            }
         }
 
         if ($usuario->isDirty('email') && $usuario instanceof MustVerifyEmail) {
@@ -132,16 +182,22 @@ class ProfileController extends Controller
         $rutaFotoPerfil = $usuario->foto_perfil;
         $rutaBanner = $usuario->banner_perfil;
 
+        $nombreBucket = config('filesystems.disks.s3.bucket');
+        $claveFotoPerfil = $rutaFotoPerfil ? obtenerClaveS3DesdeUrl($rutaFotoPerfil, $nombreBucket) : null;
+        $claveBanner = $rutaBanner ? obtenerClaveS3DesdeUrl($rutaBanner, $nombreBucket) : null;
+
+
         Auth::logout();
 
         $usuario->delete();
 
-        if ($rutaFotoPerfil && Storage::disk('public')->exists($rutaFotoPerfil)) {
-            Storage::disk('public')->delete($rutaFotoPerfil);
+        if ($claveFotoPerfil && Storage::disk('s3')->exists($claveFotoPerfil)) {
+             Storage::disk('s3')->delete($claveFotoPerfil);
         }
-        if ($rutaBanner && Storage::disk('public')->exists($rutaBanner)) {
-            Storage::disk('public')->delete($rutaBanner);
+        if ($claveBanner && Storage::disk('s3')->exists($claveBanner)) {
+             Storage::disk('s3')->delete($claveBanner);
         }
+
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -174,4 +230,5 @@ class ProfileController extends Controller
 
         return response()->json($usuarios);
     }
+
 }
