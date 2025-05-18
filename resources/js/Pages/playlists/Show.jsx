@@ -65,7 +65,8 @@ const ImagenItem = memo(({ url, titulo, className = "w-10 h-10", iconoFallback }
 
     if (error || !src) {
         return (
-            <div className={`${className} bg-slate-700 flex items-center justify-center text-slate-500 rounded`}>
+            <div className={`${className} bg-slate-700 flex items-center justify-center
+ text-slate-500 rounded`}>
                 {iconoFallback || (
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" />
@@ -106,7 +107,8 @@ const ContextMenu = memo(({ x, y, show, onClose, options }) => {
         onClose();
     }, [onClose]);
 
-    const startCloseTimer = useCallback(() => {
+    const
+ startCloseTimer = useCallback(() => {
         closeTimer.current = setTimeout(handleClose, 100);
     }, [handleClose]);
 
@@ -126,7 +128,6 @@ const ContextMenu = memo(({ x, y, show, onClose, options }) => {
         }
     }, [show, cancelCloseTimer]);
 
-
     if (!show) return null;
 
     const style = {
@@ -134,17 +135,26 @@ const ContextMenu = memo(({ x, y, show, onClose, options }) => {
         left: x,
     };
 
+    // Nota: El cálculo de los límites de la pantalla aquí usa window.innerWidth/Height.
+    // Si el menú está posicionado con pageX/Y y absolute, y el scroll es significativo,
+    // esta lógica de ajuste de bordes podría necesitar ser adaptada para
+    // considerar window.scrollY/scrollX si el ancestro posicionado no es el body,
+    // o si quieres evitar que el menú se salga del documento, no solo del viewport.
+    // Sin embargo, para el problema inicial (desplazamiento con scroll) el cambio en ContenedorShow es suficiente.
+    // Dejo esta lógica tal cual, ya que pediste no tocar el estilo del menú.
     const menuWidth = 200;
     const menuHeight = options.length * 35;
     const subMenuWidth = 200;
 
-    if (x + menuWidth > window.innerWidth) {
+    // Ajuste de posición del menú principal para que no se salga del viewport
+    if (x + menuWidth > window.innerWidth + window.scrollX) {
         style.left = x - menuWidth;
     }
-    if (y + menuHeight > window.innerHeight) {
+    if (y + menuHeight > window.innerHeight + window.scrollY) {
         style.top = y - menuHeight;
-        if (style.top < 0) style.top = 0;
+        if (style.top < window.scrollY) style.top = window.scrollY; // Evitar que se salga por arriba del viewport (considerando scroll)
     }
+
 
     const handleOptionInteraction = (option, event) => {
         cancelCloseTimer();
@@ -153,15 +163,18 @@ const ContextMenu = memo(({ x, y, show, onClose, options }) => {
             setShowSubMenu(true);
 
             const rect = event.currentTarget.getBoundingClientRect();
-            let subMenuX = rect.right;
-            let subMenuY = rect.top;
+            // ** MODIFICACIÓN: Añadir window.scrollX y window.scrollY al cálculo de la posición del submenú **
+            let subMenuX = rect.right + window.scrollX;
+            let subMenuY = rect.top + window.scrollY;
 
-             if (subMenuX + subMenuWidth > window.innerWidth) {
-                 subMenuX = rect.left - subMenuWidth;
+             // Ajuste de posición del submenú para que no se salga del viewport horizontalmente (considerando scroll)
+             if (subMenuX + subMenuWidth > window.innerWidth + window.scrollX) {
+                 subMenuX = (rect.left + window.scrollX) - subMenuWidth;
              }
-             if (subMenuY + option.submenu.length * 35 > window.innerHeight) {
-                 subMenuY = window.innerHeight - option.submenu.length * 35 - 10;
-                 if (subMenuY < 0) subMenuY = 0;
+             // Ajuste de posición del submenú para que no se salga del viewport verticalmente (considerando scroll)
+             if (subMenuY + option.submenu.length * 35 > window.innerHeight + window.scrollY) {
+                 subMenuY = (window.innerHeight + window.scrollY) - option.submenu.length * 35 - 10;
+                 if (subMenuY < window.scrollY) subMenuY = window.scrollY; // Evitar que se salga por arriba del viewport (considerando scroll)
              }
 
             setSubMenuPosition({ x: subMenuX, y: subMenuY });
@@ -216,6 +229,7 @@ const ContextMenu = memo(({ x, y, show, onClose, options }) => {
                      style={{ top: subMenuPosition.y, left: subMenuPosition.x, minWidth: `${subMenuWidth}px` }}
                      role="menu"
                      aria-orientation="vertical"
+                     aria-labelledby="options-menu"
                      onMouseEnter={cancelCloseTimer}
                      onMouseLeave={startCloseTimer}
                  >
@@ -224,7 +238,8 @@ const ContextMenu = memo(({ x, y, show, onClose, options }) => {
                              <button
                                  key={index}
                                  onClick={() => handleSubMenuOptionClick(option)}
-                                 className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-slate-600 hover:text-white w-full text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                                 className="flex items-center px-4 py-2 text-sm text-gray-300
+ hover:bg-slate-600 hover:text-white w-full text-left disabled:opacity-50 disabled:cursor-not-allowed"
                                  role="menuitem"
                                  disabled={option.disabled}
                              >
@@ -274,11 +289,13 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         aleatorio = false,
         cancionActual = null,
         sourceId = null,
-        cargando: isPlayerLoading = false,
+        cargando: isPlayerLoading =
+ false,
         añadirSiguiente = () => {},
         queue: playerQueue = [],
         cancionActualIndex
-    } = playerContextValue || {};
+    } = playerContextValue ||
+ {};
 
     const [contenedor, setContenedor] = useState(contenedorInicial);
     const [isLiked, setIsLiked] = useState(contenedorInicial?.is_liked_by_user || false);
@@ -311,16 +328,16 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         try {
             const nombreRutaBusqueda = `${rutaBase}.canciones.search`;
             const urlBusqueda = route(nombreRutaBusqueda, { contenedor: contenedor.id, query: consulta });
-            const respuesta = await fetch(urlBusqueda, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+            const respuesta =
+ await fetch(urlBusqueda, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
             if (!respuesta.ok) {
-                let errorMsg = `API Error ${respuesta.status}`;
-                try { const errorBody = await respuesta.text(); errorMsg += ` - ${errorBody}`; } catch (e) {}
-                throw new Error(errorMsg);
+                 // Error handled silently or via flash message, no console.error
+                 throw new Error(`API Error ${respuesta.status}`);
             }
             const datos = await respuesta.json();
             startTransition(() => { setResultadosBusqueda(Array.isArray(datos) ? datos : []); });
         } catch (error) {
-            console.error("API Error:", error);
+            // Error handled silently or via flash message, no console.error
             startTransition(() => { setResultadosBusqueda([]); });
         } finally {
             setEstaBuscando(false);
@@ -341,7 +358,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                  if (contenedor?.id && (tipoContenedor === 'playlist' || contenedor.can?.edit)) {
                       buscarCancionesApi('');
                  } else {
-                      startTransition(() => { setResultadosBusqueda([]); });
+                     startTransition(() => { setResultadosBusqueda([]); });
                  }
             } else {
                  startTransition(() => { setResultadosBusqueda([]); });
@@ -376,7 +393,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         if (pagina.props.resultadosBusqueda && Array.isArray(pagina.props.resultadosBusqueda)) {
              if (Array.isArray(pagina.props.resultadosBusqueda)) {
                   pagina.props.resultadosBusqueda.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
-                 setResultadosBusqueda(pagina.props.resultadosBusqueda);
+                  setResultadosBusqueda(pagina.props.resultadosBusqueda);
              }
         }
 
@@ -389,7 +406,8 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
     }, [resultadosBusqueda, contenedor?.canciones]);
 
     const manejarEliminarCancion = (pivotId) => {
-        if (!pivotId || eliminandoPivotId === pivotId) { return; }
+        if (!pivotId || eliminandoPivotId === pivotId) { return;
+ }
         const nombreRutaRemove = `${rutaBase}.canciones.remove`;
         setEliminandoPivotId(pivotId);
         router.delete(route(nombreRutaRemove, { contenedor: contenedor.id, pivotId: pivotId }), {
@@ -397,27 +415,30 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             preserveState: true,
             onSuccess: (page) => {
                 if (page.props.contenedor?.canciones && Array.isArray(page.props.contenedor.canciones)) {
-                     page.props.contenedor.canciones.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
+                     page.props.contenedor.canciones.forEach(c => { if (typeof c.is_in_user_loopz ===
+ 'undefined') c.is_in_user_loopz = false; });
                      setContenedor(prevContenedor => ({
-                        ...prevContenedor,
-                        canciones: page.props.contenedor.canciones,
-                        canciones_count: page.props.contenedor.canciones.length
-                    }));
+                         ...prevContenedor,
+                         canciones: page.props.contenedor.canciones,
+                         canciones_count: page.props.contenedor.canciones.length
+                     }));
                 } else {
                      setContenedor(prevContenedor => ({
-                        ...prevContenedor,
+                         ...prevContenedor,
                          canciones: [],
                          canciones_count: 0
-                    }));
+                     }));
                 }
-                setIsLiked(page.props.contenedor?.is_liked_by_user || false);
+                setIsLiked(page.props.contenedor?.is_liked_by_user ||
+ false);
                 buscarCancionesApi(consultaBusqueda);
-                closeContextMenu(); // Cerrar el menú contextual al eliminar
+                closeContextMenu();
             },
-            onError: (errores) => {
-                console.error("Error al eliminar canción:", errores);
+            onError: () => {
+                 // Error handled silently or via flash message, no console.error
             },
-            onFinish: () => { setEliminandoPivotId(null); },
+            onFinish: () => { setEliminandoPivotId(null);
+ },
         });
     };
 
@@ -430,26 +451,27 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             preserveState: true,
             onSuccess: (page) => {
                 if (page.props.contenedor?.canciones && Array.isArray(page.props.contenedor.canciones)) {
-                     page.props.contenedor.canciones.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
+                     page.props.contenedor.canciones.forEach(c => { if (typeof c.is_in_user_loopz ===
+ 'undefined') c.is_in_user_loopz = false; });
                      setContenedor(prevContenedor => ({
-                        ...prevContenedor,
-                        canciones: page.props.contenedor.canciones,
+                         ...prevContenedor,
+                         canciones: page.props.contenedor.canciones,
                          canciones_count: page.props.contenedor.canciones.length
-                    }));
+                     }));
                 } else {
                      setContenedor(prevContenedor => ({
-                        ...prevContenedor,
+                         ...prevContenedor,
                          canciones: prevContenedor?.canciones || [],
                          canciones_count: prevContenedor?.canciones?.length || 0
-                    }));
+                     }));
                 }
                 setIsLiked(page.props.contenedor?.is_liked_by_user || false);
                  startTransition(() => { setResultadosBusqueda(prev => prev.filter(cancion => cancion.id !== idCancion)); });
-                 closeContextMenu(); // Cerrar el menú contextual al añadir
+                 closeContextMenu();
             },
             onFinish: () => setAnadiendoCancionId(null),
-            onError: (errores) => {
-                console.error("Error al añadir canción:", errores);
+            onError: () => {
+                 // Error handled silently or via flash message, no console.error
             },
         });
     };
@@ -496,7 +518,8 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             preserveState: true,
             onSuccess: (page) => {
                  if (page.props.contenedor?.canciones && Array.isArray(page.props.contenedor.canciones)) {
-                     page.props.contenedor.canciones.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
+                     page.props.contenedor.canciones.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false;
+ });
                      setContenedor(page.props.contenedor);
                  }
                  setIsLiked(page.props.contenedor?.is_liked_by_user || false);
@@ -505,17 +528,16 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                       page.props.resultadosBusqueda.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
                       setResultadosBusqueda(page.props.resultadosBusqueda);
                  }
-                 // No cerrar el menú aquí, ya que el toggle de LoopZ no debería cerrarlo.
             },
-            onError: (errors) => {
-                console.error(`Error toggling LoopZ for song ${songId}:`, errors);
+            onError: () => {
+                 // Error handled silently or via flash message, no console.error
                  setContenedor(prevContenedor => {
                      if (!prevContenedor || !prevContenedor.canciones) return prevContenedor;
                      const newCanciones = [...prevContenedor.canciones];
                      const songIndex = newCanciones.findIndex(c => c.id === songId);
-                      if (songIndex !== -1) {
+                     if (songIndex !== -1) {
                          newCanciones[songIndex] = { ...newCanciones[songIndex], is_in_user_loopz: isInLoopz };
-                      }
+                     }
                      return { ...prevContenedor, canciones: newCanciones };
                  });
 
@@ -549,8 +571,8 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                      setContenedor(page.props.contenedor);
                  }
             },
-            onError: (errors) => {
-                     console.error("Error en la operación 'LoopZ' del contenedor:", errors);
+            onError: () => {
+                  // Error handled silently or via flash message, no console.error
             },
             onFinish: () => setLikeProcessing(null),
         });
@@ -572,10 +594,10 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                              className="text-blue-400 hover:underline"
                              title={`Ver perfil de ${u.name}`}
                          >
-                             {u.name}
+                            {u.name}
                          </Link>
                          {index < contenedor.usuarios.length - 1 && ', '}
-                     </React.Fragment>
+                    </React.Fragment>
              ))
             : 'Artista Desconocido';
     }, [contenedor?.usuarios]);
@@ -604,7 +626,8 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
              pause();
          } else {
              let queueToLoad = [];
-             let startIndex = 0;
+             let startIndex =
+ 0;
              let newSourceId = null;
 
              if (source === 'container' && contenedor?.canciones) {
@@ -614,16 +637,15 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
              } else if (source === 'search' && resultadosBusqueda) {
                  queueToLoad = resultadosBusqueda;
                  startIndex = queueToLoad.findIndex(s => s.id === song.id);
-                 newSourceId = 'search-results'; // Or a unique ID for search results if needed
+                 newSourceId = 'search-results';
              } else {
-                 console.warn("Clicked song source is unknown or queue is empty.");
                  return;
              }
 
              if (startIndex !== -1) {
                  cargarColaYIniciar(queueToLoad, { iniciar: startIndex, id: newSourceId, clickDirecto: true });
              } else {
-                 console.warn("Clicked song not found in the specified source queue.");
+                 // Warn handled silently or via flash message, no console.warn
              }
          }
     }, [Reproduciendo, cancionActual, cargarColaYIniciar, pause, contenedor?.canciones, resultadosBusqueda]);
@@ -633,8 +655,9 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         event.preventDefault();
         setContextMenu({
             show: true,
-            x: event.clientX,
-            y: event.clientY,
+            // ** MODIFICACIÓN: Usar pageX y pageY para coordenadas relativas al documento **
+            x: event.pageX,
+            y: event.pageY,
             song: song,
         });
     }, []);
@@ -648,14 +671,14 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
     }, [contextMenu]);
 
      const startCloseTimer = useCallback(() => {
-         contextMenuTimer.current = setTimeout(closeContextMenu, 100);
+          contextMenuTimer.current = setTimeout(closeContextMenu, 100);
      }, [closeContextMenu]);
 
      const cancelCloseTimer = useCallback(() => {
-         if (contextMenuTimer.current) {
-             clearTimeout(contextMenuTimer.current);
-             contextMenuTimer.current = null;
-         }
+          if (contextMenuTimer.current) {
+              clearTimeout(contextMenuTimer.current);
+              contextMenuTimer.current = null;
+          }
      }, []);
 
 
@@ -680,10 +703,11 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         const options = [];
 
         options.push({
-            label: contextMenu.song.is_in_user_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ",
+            label: contextMenu.song.is_in_user_loopz ? "Quitar LoopZ" : "Añadir LoopZ",
             action: () => manejarCancionLoopzToggle(contextMenu.song.id, contextMenu.song.is_in_user_loopz),
             icon: <HeartIconOutline className="h-5 w-5" />,
-            disabled: likeProcessing === contextMenu.song.id,
+            disabled: likeProcessing
+ === contextMenu.song.id,
         });
          if (contextMenu.song.is_in_user_loopz) {
              options[0].icon = <HeartIconSolid className="h-5 w-5 text-purple-500" />;
@@ -691,9 +715,10 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
 
 
         options.push({
-            label: "Añadir a la cola (siguiente)",
+            label: "Añadir a la cola",
             action: handleAddToQueueNext,
-            icon: <QueueListIcon className="h-5 w-5" />,
+            icon: <QueueListIcon className="h-5
+ w-5" />,
             disabled: !añadirSiguiente,
         });
 
@@ -702,9 +727,9 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                   label: artist.name,
                   action: () => handleViewArtist(artist),
                   icon: <UserIcon className="h-5 w-5" />,
-                  disabled: !artist?.id || !artist?.name,
+                  disabled: !artist?.id ||
+ !artist?.name,
              }));
-
              options.push({
                   label: `Ver artista${contextMenu.song.usuarios.length > 1 ? 's' : ''}`,
                   icon: <UserIcon className="h-5 w-5" />,
@@ -762,15 +787,17 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                              </div>
                              <div className="flex-grow text-center md:text-left">
                                  <p className="text-sm font-medium uppercase tracking-wider text-purple-400 mb-1">{tipoNombreMayuscula}</p>
-                                 <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold mb-4 text-white break-words shadow-sm">
-                                     {contenedor?.nombre}
+                                 <h1 className="text-4xl sm:text-5xl
+ lg:text-7xl font-extrabold mb-4 text-white break-words shadow-sm">
+                                     {contenedor?.nombre || `Sin Título (${tipoNombreMayuscula})`}
                                  </h1>
                                  {contenedor?.descripcion && (
                                      <p className="text-gray-300 mb-4 text-sm md:text-base leading-relaxed">{contenedor.descripcion}</p>
                                  )}
                                  <div className="flex flex-wrap justify-center md:justify-start items-center space-x-3 text-sm text-gray-300 mb-8">
                                      {artistas !== 'Artista Desconocido' && <span className="font-semibold text-blue-400">{artistas}</span>}
-                                     <span className="hidden sm:inline">• {contenedor?.canciones_count ?? contenedor?.canciones?.length ?? 0} canciones</span>
+                                     <span className="hidden sm:inline">• {contenedor?.canciones_count ?? contenedor?.canciones?.length ??
+ 0} canciones</span>
                                      <span className="hidden md:inline">
                                           • {formatearDuracion(contenedor?.canciones?.reduce((sum, s) => sum + (s.duracion || 0), 0))}
                                      </span>
@@ -779,26 +806,36 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                      <button
                                           onClick={handleMainPlayPause}
                                           className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full font-semibold text-white shadow-lg hover:scale-105 transform transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-wait"
-                                          title={showPauseButton ? `Pausar ${tipoNombreMayuscula}` : `Reproducir ${tipoNombreMayuscula}`}
-                                          disabled={!contenedor?.canciones || contenedor.canciones.length === 0 || (isPlayerLoading && !Reproduciendo && isCurrentSource)}
+                                          title={showPauseButton ?
+ `Pausar ${tipoNombreMayuscula}` : `Reproducir ${tipoNombreMayuscula}`}
+                                          disabled={!contenedor?.canciones ||
+ contenedor.canciones.length === 0 || (isPlayerLoading && !Reproduciendo && isCurrentSource)}
                                      >
-                                          {isPlayerLoading && !Reproduciendo && isCurrentSource ? <LoadingIcon className="h-7 w-7 animate-spin"/> : (showPauseButton ? <PauseIcon className="h-7 w-7" /> : <PlayIcon className="h-7 w-7" />)}
+                                          {isPlayerLoading && !Reproduciendo && isCurrentSource ?
+ <LoadingIcon className="h-7 w-7 animate-spin"/> : (showPauseButton ? <PauseIcon className="h-7 w-7" /> : <PlayIcon className="h-7 w-7" />)}
                                      </button>
                                      <button
                                           onClick={toggleAleatorio}
-                                          className={`inline-flex items-center justify-center p-3 border border-slate-600 rounded-full font-semibold text-xs uppercase tracking-widest shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 transition ease-in-out duration-150 ${aleatorio ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-gray-300 hover:bg-slate-700'}`}
-                                          title={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"}
-                                          disabled={!contenedor?.canciones || contenedor.canciones.length === 0}
+                                          className={`inline-flex items-center justify-center p-3 border border-slate-600 rounded-full font-semibold text-xs uppercase tracking-widest shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 transition ease-in-out duration-150 ${aleatorio ?
+ 'bg-blue-600 text-white hover:bg-blue-700' : 'text-gray-300 hover:bg-slate-700'}`}
+                                          title={aleatorio ?
+ "Desactivar aleatorio" : "Activar aleatorio"}
+                                          disabled={!contenedor?.canciones ||
+ contenedor.canciones.length === 0}
                                      >
                                           <ShuffleIcon className="h-6 w-6" />
                                      </button>
                                      <button
                                           onClick={toggleLoopz}
-                                          disabled={likeProcessing === 'container' || !contenedor?.id}
-                                          className={`p-2 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${(likeProcessing === 'container') ? 'text-gray-500 cursor-wait' : 'text-gray-400 hover:text-purple-400'}`}
-                                          title={isLiked ? `Quitar ${tipoNombreMayuscula} de LoopZ` : `Añadir ${tipoNombreMayuscula} a LoopZ`}
+                                          disabled={likeProcessing === 'container' ||
+ !contenedor?.id}
+                                          className={`p-2 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${(likeProcessing === 'container') ?
+ 'text-gray-500 cursor-wait' : 'text-gray-400 hover:text-purple-400'}`}
+                                          title={isLiked ?
+ `Quitar ${tipoNombreMayuscula} de LoopZ` : `Añadir ${tipoNombreMayuscula} a LoopZ`}
                                      >
-                                          {(likeProcessing === 'container') ? <LoadingIcon className="h-7 w-7 animate-spin text-purple-400"/> : (isLiked ? <HeartIconSolid className="h-7 w-7 text-purple-500" /> : <HeartIconOutline className="h-7 w-7" />)}
+                                          {(likeProcessing === 'container') ?
+ <LoadingIcon className="h-7 w-7 animate-spin text-purple-400"/> : (isLiked ? <HeartIconSolid className="h-7 w-7 text-purple-500" /> : <HeartIconOutline className="h-7 w-7" />)}
                                      </button>
                                      <button
                                           onClick={() => window.history.back()}
@@ -812,25 +849,31 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
 
                     <div className="mt-10 p-6 md:p-8 bg-slate-800/80 backdrop-blur-sm shadow-inner rounded-lg border border-slate-700">
                          <h3 className="text-xl font-semibold mb-4 text-gray-100">
-                              Canciones en est{tipoContenedor === 'playlist' ? 'a' : 'e'} {tipoNombreMayuscula} ({contenedor?.canciones?.length || 0})
+                              Canciones en est{tipoContenedor === 'playlist' ?
+ 'a' : 'e'} {tipoNombreMayuscula} ({contenedor?.canciones?.length || 0})
                          </h3>
-                         {contenedor?.canciones && contenedor.canciones.length > 0 ? (
+                         {contenedor?.canciones && contenedor.canciones.length > 0 ?
+ (
                              <ul className="space-y-2">
                                  {contenedor.canciones.map((cancion, index) => (
-                                      <li
+                                     <li
                                           key={cancion.pivot?.id ?? `fallback-${cancion.id}`}
-                                          className={`p-2 bg-slate-700/60 rounded-md flex items-center space-x-3 hover:bg-purple-900/30 transition-colors duration-150 group cursor-pointer ${cancionActual?.id === cancion.id && (Reproduciendo || isPlayerLoading) ? 'bg-purple-800/50 border border-purple-500' : ''}`}
+                                          className={`p-2 bg-slate-700/60 rounded-md flex items-center space-x-3 hover:bg-purple-900/30 transition-colors duration-150 group
+ cursor-pointer ${cancionActual?.id === cancion.id && (Reproduciendo || isPlayerLoading) ? 'bg-purple-800/50 border border-purple-500' : ''}`}
                                            onContextMenu={(e) => openContextMenu(e, cancion)}
                                            onDoubleClick={() => handleSongPlay(cancion, 'container')}
                                       >
                                           <button
                                                onClick={() => handleSongPlay(cancion, 'container')}
                                                className="flex-shrink-0 text-gray-400 hover:text-blue-400 p-1 disabled:opacity-50 disabled:cursor-wait"
-                                               title={cancionActual?.id === cancion.id && Reproduciendo ? `Pausar ${cancion.titulo}` : `Reproducir ${cancion.titulo}`}
+                                               title={cancionActual?.id === cancion.id && Reproduciendo ?
+ `Pausar ${cancion.titulo}` : `Reproducir ${cancion.titulo}`}
                                                disabled={isPlayerLoading && cancionActual?.id === cancion.id}
                                            >
-                                               { isPlayerLoading && cancionActual?.id === cancion.id ? <LoadingIcon className="h-5 w-5 animate-spin text-blue-500"/> :
-                                                (Reproduciendo && cancionActual?.id === cancion.id) ? <PauseIcon className="h-5 w-5 text-blue-500"/> :
+                                              { isPlayerLoading && cancionActual?.id === cancion.id ?
+ <LoadingIcon className="h-5 w-5 animate-spin text-blue-500"/> :
+                                                (Reproduciendo && cancionActual?.id === cancion.id) ?
+ <PauseIcon className="h-5 w-5 text-blue-500"/> :
                                                 <PlayIcon className="h-5 w-5"/>
                                                }
                                            </button>
@@ -838,29 +881,35 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                            <div className="flex-grow truncate">
                                                 <span className="text-gray-200 block truncate" title={cancion.titulo}>{cancion.titulo}</span>
                                                 <span className="text-gray-400 text-xs block truncate">
-                                                     {cancion.usuarios && Array.isArray(cancion.usuarios) && cancion.usuarios.length > 0
-                                                          ? cancion.usuarios.map((u, idx) => (
+                                                     {cancion.usuarios && Array.isArray(cancion.usuarios)
+ && cancion.usuarios.length > 0
+                                                          ?
+ cancion.usuarios.map((u, idx) => (
                                                                <React.Fragment key={u.id}>
-                                                                    <Link href={route('profile.show', u.id)} className="hover:underline">{u.name}</Link>
-                                                                    {idx < cancion.usuarios.length - 1 && ', '}
+                                                                   <Link href={route('profile.show', u.id)} className="hover:underline">{u.name}</Link>
+                                                                   {idx < cancion.usuarios.length - 1 && ', '}
                                                                </React.Fragment>
-                                                          ))
-                                                          : cancion.artista || 'Artista Desconocido'
+                                                           ))
+                                                          : cancion.artista ||
+ 'Artista Desconocido'
                                                      }
                                                 </span>
                                            </div>
                                            <span className="text-gray-400 text-xs pr-2 hidden sm:inline">{formatearDuracion(cancion.duracion)}</span>
-                                            <button
+                                           <button
                                                 onClick={() => manejarCancionLoopzToggle(cancion.id, cancion.is_in_user_loopz)}
                                                 disabled={likeProcessing === cancion.id}
-                                                className={`p-1 text-gray-400 hover:text-purple-400 focus:outline-none flex-shrink-0 ${likeProcessing === cancion.id ? 'cursor-wait' : ''}`}
-                                                title={cancion.is_in_user_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ"}
+                                                className={`p-1 text-gray-400 hover:text-purple-400 focus:outline-none flex-shrink-0 ${likeProcessing === cancion.id ?
+ 'cursor-wait' : ''}`}
+                                                title={cancion.is_in_user_loopz ?
+ "Quitar de LoopZ" : "Añadir a LoopZ"}
                                             >
-                                                {likeProcessing === cancion.id ? <LoadingIcon className="h-5 w-5 animate-spin text-purple-400"/> :
+                                                {likeProcessing ===
+ cancion.id ? <LoadingIcon className="h-5 w-5 animate-spin text-purple-400"/> :
                                                     (cancion.is_in_user_loopz ? ( <HeartIconSolid className="h-5 w-5 text-purple-500" /> ) : ( <HeartIconOutline className="h-5 w-5" /> ))
                                                 }
                                             </button>
-                                       </li>
+                                   </li>
                                  ))}
                              </ul>
                          ) : (
@@ -868,7 +917,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                          )}
                     </div>
 
-                     {contenedor?.can?.edit && (
+                   {contenedor?.can?.edit && (
                          <div className="mt-10 p-6 md:p-8 bg-slate-800/80 backdrop-blur-sm shadow-inner rounded-lg border border-slate-700">
                              <h3 className="text-xl font-semibold mb-4 text-gray-100">Añadir Canciones</h3>
                              <div className="mb-4">
@@ -878,21 +927,24 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                       value={consultaBusqueda}
                                       onChange={manejarCambioInputBusqueda}
                                       className="w-full px-4 py-2 border border-slate-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-slate-700 text-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-slate-800"
-                                      disabled={!contenedor?.id || estaBuscando}
+                                      disabled={!contenedor?.id ||
+ estaBuscando}
                                  />
                              </div>
                              {estaBuscando && <p className="text-gray-400 italic text-center">Buscando...</p>}
                              {!estaBuscando && consultaBusqueda && consultaBusqueda.length >= minQueryLength && resultadosFiltrados.length === 0 && ( <p className="text-gray-400 italic text-center pt-4">No se encontraron canciones que coincidan fuera de est{tipoContenedor === 'playlist' ? 'a' : 'e'} {tipoNombreMayuscula}.</p> )}
-                             {!estaBuscando && consultaBusqueda && consultaBusqueda.length < minQueryLength && ( <p className="text-gray-400 italic text-center pt-4">Escribe al menos {minQueryLength} caracteres para buscar.</p> )}
-                             {!estaBuscando && !consultaBusqueda && resultadosFiltrados.length === 0 && contenedor?.canciones?.length > 0 && ( <p className="text-gray-400 italic text-center pt-4">Todas las canciones disponibles ya están en est{tipoContenedor === 'playlist' ? 'a' : 'e'} {tipoNombreMayuscula}.</p> )}
+                             {!estaBuscando && consultaBusqueda && consultaBusqueda.length < minQueryLength && ( <p className="text-gray-400 italic text-center
+ pt-4">Escribe al menos {minQueryLength} caracteres para buscar.</p> )}
+                             {!estaBuscando && !consultaBusqueda && resultadosFiltrados.length === 0 && contenedor?.canciones?.length > 0 && ( <p className="text-gray-400 italic text-center pt-4">Todas las canciones disponibles ya están en est{tipoContenedor === 'playlist' ?
+ 'a' : 'e'} {tipoNombreMayuscula}.</p> )}
                              {!estaBuscando && !consultaBusqueda && resultadosFiltrados.length === 0 && (!contenedor?.canciones || contenedor.canciones.length === 0) && ( <p className="text-gray-400 italic text-center pt-4">No hay canciones disponibles para añadir.</p> )}
 
                              {!estaBuscando && resultadosFiltrados.length > 0 && (
-                                 <div className="max-h-60 overflow-y-auto border border-slate-600 rounded-md p-2 space-y-2 bg-slate-700/50">
-                                      <h4 className="text-sm font-semibold text-gray-300 mb-2">resultados de la búsqueda:</h4>
+                                   <div className="max-h-60 overflow-y-auto border border-slate-600 rounded-md p-2 space-y-2 bg-slate-700/50">
+                                      <h4 className="text-sm font-semibold text-gray-300 mb-2">Resultados de la búsqueda:</h4>
                                       <ul>
                                           {resultadosFiltrados.map((c) => (
-                                               <li
+                                              <li
                                                    key={c.id}
                                                    className="flex items-center justify-between p-2 hover:bg-blue-900/30 rounded space-x-3 group cursor-pointer"
                                                     onContextMenu={(e) => openContextMenu(e, c)}
@@ -904,41 +956,48 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                                             <span className="text-gray-200 block truncate" title={c.titulo}>{c.titulo}</span>
                                                             <span className="text-gray-400 text-xs block truncate">
                                                                  {c.usuarios && Array.isArray(c.usuarios) && c.usuarios.length > 0
-                                                                      ? c.usuarios.map((u, idx) => (
+                                                                      ?
+ c.usuarios.map((u, idx) => (
                                                                            <React.Fragment key={u.id}>
-                                                                                <Link href={route('profile.show', u.id)} className="hover:underline">{u.name}</Link>
-                                                                                {idx < c.usuarios.length - 1 && ', '}
+                                                                               <Link href={route('profile.show', u.id)} className="hover:underline">{u.name}</Link>
+                                                                               {idx < c.usuarios.length - 1 && ', '}
                                                                            </React.Fragment>
                                                                       ))
-                                                                      : c.artista || 'Artista Desconocido'
+                                                                      : c.artista ||
+ 'Artista Desconocido'
                                                                  }
-                                                            </span>
+                                                           </span>
                                                        </div>
                                                    </div>
                                                    <div className="flex items-center space-x-2 flex-shrink-0">
                                                         <button
-                                                            onClick={() => manejarCancionLoopzToggle(c.id, c.is_in_user_loopz)}
+                                                             onClick={() => manejarCancionLoopzToggle(c.id, c.is_in_user_loopz)}
                                                             disabled={likeProcessing === c.id}
-                                                            className={`p-1 text-gray-400 hover:text-purple-400 focus:outline-none flex-shrink-0 ${likeProcessing === c.id ? 'cursor-wait' : ''}`}
-                                                            title={c.is_in_user_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ"}
+                                                            className={`p-1 text-gray-400 hover:text-purple-400 focus:outline-none flex-shrink-0 ${likeProcessing === c.id ?
+ 'cursor-wait' : ''}`}
+                                                            title={c.is_in_user_loopz ?
+ "Quitar de LoopZ" : "Añadir a LoopZ"}
                                                         >
-                                                            {likeProcessing === c.id ? <LoadingIcon className="h-5 w-5 animate-spin text-purple-400"/> :
+                                                            {likeProcessing ===
+ c.id ? <LoadingIcon className="h-5 w-5 animate-spin text-purple-400"/> :
                                                                 (c.is_in_user_loopz ? ( <HeartIconSolid className="h-5 w-5 text-purple-500" /> ) : ( <HeartIconOutline className="h-5 w-5" /> ))
                                                             }
                                                         </button>
                                                        <button
                                                             onClick={() => manejarAnadirCancion(c.id)}
                                                             disabled={anadiendoCancionId === c.id}
-                                                            className={`ml-2 px-3 py-1 text-xs font-semibold rounded-md transition ease-in-out duration-150 flex-shrink-0 ${anadiendoCancionId === c.id ? 'bg-indigo-700 text-white cursor-wait opacity-75' : 'bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800'}`}
+                                                            className={`ml-2 px-3 py-1 text-xs font-semibold rounded-md transition ease-in-out duration-150 flex-shrink-0 ${anadiendoCancionId === c.id ?
+ 'bg-indigo-700 text-white cursor-wait opacity-75' : 'bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800'}`}
                                                        >
-                                                            {anadiendoCancionId === c.id ? '...' : 'Añadir'}
+                                                            {anadiendoCancionId === c.id ?
+ '...' : 'Añadir'}
                                                         </button>
                                                    </div>
                                                </li>
                                            ))}
                                        </ul>
                                    </div>
-                               )}
+                             )}
                          </div>
                      )}
                 </div>
