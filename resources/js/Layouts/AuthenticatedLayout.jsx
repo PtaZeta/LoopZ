@@ -162,10 +162,10 @@ export default function AuthenticatedLayout({ children, header }) {
     };
 
     const handleVolumeChange = (e) => {
-         const newVolume = parseFloat(e.target.value);
-         if (setVolumen) {
-             setVolumen(newVolume);
-         }
+           const newVolume = parseFloat(e.target.value);
+           if (setVolumen) {
+               setVolumen(newVolume);
+           }
     };
 
     const togglePlayPause = () => {
@@ -202,10 +202,10 @@ export default function AuthenticatedLayout({ children, header }) {
     }, [cancionActual]);
 
     const handlePlayFromQueueClick = (index) => {
-          if (playCola) {
-             playCola(index);
-             setIsQueueVisible(false);
-          }
+           if (playCola) {
+               playCola(index);
+               setIsQueueVisible(false);
+           }
     };
 
     const handleSearchSubmit = (e) => {
@@ -349,7 +349,7 @@ export default function AuthenticatedLayout({ children, header }) {
                             onChange={handleSeekChange}
                             onMouseUp={commitSeek}
                             onTouchEnd={commitSeek}
-                            disabled={!cancionActual || !duration || cargando}
+                            disabled={!cancionActual || !duration} // Removed || cargando
                             aria-label="Progreso de la canción"
                             className="w-full h-1 rounded-lg appearance-none cursor-pointer range-progress-gradient disabled:opacity-50 disabled:cursor-not-allowed"
                             style={progressBarStyle}
@@ -366,11 +366,11 @@ export default function AuthenticatedLayout({ children, header }) {
                         <div className="flex flex-col items-center md:flex-grow">
                             <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4">
                                 <button onClick={toggleAleatorio} title={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"} aria-label={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"} className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${aleatorio ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'}`}><ShuffleIcon className="h-5 w-5" /></button>
-                                <button onClick={anteriorCancion} disabled={(!cancionActual && queue.length === 0) || cargando} aria-label="Canción anterior" className="text-gray-400 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"><PreviousIcon className="h-5 w-5" /></button>
-                                <button onClick={togglePlayPause} disabled={(!cancionActual && queue.length === 0) || cargando} aria-label={Reproduciendo ? "Pausar" : "Reproducir"} className="bg-blue-600 hover:bg-blue-500 rounded-full text-white transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-900">
+                                <button onClick={anteriorCancion} disabled={!cancionActual && queue.length === 0} aria-label="Canción anterior" className="text-gray-400 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"><PreviousIcon className="h-5 w-5" /></button>
+                                <button onClick={togglePlayPause} disabled={!cancionActual && queue.length === 0} aria-label={Reproduciendo ? "Pausar" : "Reproducir"} className="bg-blue-600 hover:bg-blue-500 rounded-full text-white transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-900">
                                     {cargando ? <LoadingIcon className="h-5 w-5 sm:h-6 sm:w-6 animate-spin" /> : (Reproduciendo ? <PauseIcon className="h-5 w-5 sm:h-6 sm:w-6" /> : <PlayIcon className="h-5 w-5 sm:h-6 sm-w-6" />)}
                                 </button>
-                                <button onClick={siguienteCancion} disabled={(!cancionActual && queue.length === 0) || cargando} aria-label="Siguiente canción" className="text-gray-400 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"><NextIcon className="h-5 w-5" /></button>
+                                <button onClick={siguienteCancion} disabled={!cancionActual && queue.length === 0} aria-label="Siguiente canción" className="text-gray-400 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"><NextIcon className="h-5 w-5" /></button>
                                 <button onClick={toggleLoop} title={looping ? "Desactivar repetición" : "Activar repetición"} aria-label={looping ? "Desactivar repetición" : "Activar repetición"} className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${looping ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'}`}><LoopIcon className="h-5 w-5" /></button>
                             </div>
                             <div className="w-full max-w-xl hidden md:flex items-center space-x-2 mt-1">
@@ -383,7 +383,7 @@ export default function AuthenticatedLayout({ children, header }) {
                                     onChange={handleSeekChange}
                                     onMouseUp={commitSeek}
                                     onTouchEnd={commitSeek}
-                                    disabled={!cancionActual || !duration || cargando}
+                                    disabled={!cancionActual || !duration} // Removed || cargando
                                     aria-label="Progreso de la canción"
                                     className="w-full h-1.5 rounded-lg appearance-none cursor-pointer range-progress-gradient disabled:opacity-50 disabled:cursor-not-allowed"
                                     style={progressBarStyle}

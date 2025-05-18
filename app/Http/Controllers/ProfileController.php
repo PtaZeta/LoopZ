@@ -131,9 +131,8 @@ class ProfileController extends Controller
             $rutaFoto = Storage::disk('s3')->putFileAs('perfiles/fotos', $archivoFoto, $nombreFoto, 'public-read');
 
             if ($rutaFoto) {
-                 $usuario->foto_perfil = Storage::disk('s3')->url($rutaFoto); // Guarda la URL completa
+                 $usuario->foto_perfil = Storage::disk('s3')->url($rutaFoto);
             } else {
-                // Manejar error de subida si putFileAs devuelve false
                 return redirect()->back()
                     ->withErrors(['foto_perfil' => 'No se pudo subir la foto de perfil al bucket S3.'])
                     ->withInput();
@@ -153,9 +152,8 @@ class ProfileController extends Controller
             $rutaBanner = Storage::disk('s3')->putFileAs('perfiles/banners', $archivoBanner, $nombreBanner, 'public-read');
 
              if ($rutaBanner) {
-                $usuario->banner_perfil = Storage::disk('s3')->url($rutaBanner); // Guarda la URL completa
+                $usuario->banner_perfil = Storage::disk('s3')->url($rutaBanner);
             } else {
-                 // Manejar error de subida
                 return redirect()->back()
                     ->withErrors(['banner_perfil' => 'No se pudo subir el banner de perfil al bucket S3.'])
                     ->withInput();

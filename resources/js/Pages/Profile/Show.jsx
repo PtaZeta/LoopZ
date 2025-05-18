@@ -1,6 +1,6 @@
 import React, { useState, useContext, useRef, useEffect, useCallback } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, usePage, Link } from '@inertiajs/react';
+import { Head, usePage, Link, router } from '@inertiajs/react';
 import { PlayerContext } from '@/contexts/PlayerContext';
 import {
     PlayIcon as PlayIconSolid,
@@ -11,6 +11,9 @@ import {
     MusicalNoteIcon as MusicalNoteIconSolid,
 } from '@heroicons/react/24/solid';
 import { ArrowPathIcon as LoadingIcon } from '@heroicons/react/20/solid';
+import { HeartIcon as HeartIconOutline } from '@heroicons/react/24/outline';
+import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
+
 
 const isFullUrl = (url) => {
     try {
@@ -23,7 +26,7 @@ const isFullUrl = (url) => {
 
 const ProfileImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, tipo = 'perfil', nombre = '', esStorage = false }) => {
     const [errorCarga, setErrorCarga] = useState(false);
-    const cacheBuster = ''; // Consider adding a timestamp or version number for cache busting
+    const cacheBuster = '';
     const urlImagenCompleta = src ? (isFullUrl(src) ? src : (esStorage ? `/storage/${src}${cacheBuster}` : `${src}${cacheBuster}`)) : null;
 
     const handleImageError = useCallback(() => {
@@ -52,10 +55,10 @@ const ProfileImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, 
     }, [tipo]);
 
     const PlaceholderContenido = useCallback(() => {
-         if (tipo === 'perfil' && !src && nombre) {
-            return <span className="text-white text-4xl font-semibold pointer-events-none">{obtenerIniciales(nombre)}</span>;
-         }
-        return <PlaceholderIcono />;
+           if (tipo === 'perfil' && !src && nombre) {
+             return <span className="text-white text-4xl font-semibold pointer-events-none">{obtenerIniciales(nombre)}</span>;
+           }
+         return <PlaceholderIcono />;
     }, [tipo, src, nombre, obtenerIniciales, PlaceholderIcono]);
 
 
@@ -89,7 +92,7 @@ const CardImagenConPlaceholder = React.memo(({ src, alt, claseImagen, clasePlace
     const handleImageError = useCallback(() => { setErrorCarga(true); }, []);
 
     const PlaceholderContenido = useCallback(() => (
-           <MusicalNoteIconSolid className="w-1/2 h-1/2 text-gray-500" />
+             <MusicalNoteIconSolid className="w-1/2 h-1/2 text-gray-500" />
     ), []);
 
     const claveUnicaParaElemento = urlImagenCompleta
@@ -159,9 +162,9 @@ const CardListaUsuarios = React.memo(({ tipo, usuarios: usuariosProp, usuarioLog
           }
       });
 
-       if (displayOrder.length === 0 && usuarios.length > 0) {
-            displayOrder = [...usuarios];
-       }
+        if (displayOrder.length === 0 && usuarios.length > 0) {
+             displayOrder = [...usuarios];
+        }
 
 
     const usuariosMostrados = displayOrder.slice(0, MAX_SHOWN);
@@ -236,14 +239,14 @@ const ItemCard = React.memo(({ item, tipoPredeterminado, usuarioLogueadoId }) =>
     );
 
     const textSectionLinked = (
-         <div className="w-full px-3 sm:px-4 pb-4 flex flex-col items-center">
-            <Link href={rutaExiste ? route(nombreRuta, item.id) : '#'} className="block w-full group">
-                <span className="text-sm font-semibold text-gray-100 group-hover:text-white group-hover:underline line-clamp-2" title={item.nombre}>
-                    {item.nombre}
-                </span>
-            </Link>
-            <CardListaUsuarios tipo={tipoItem} usuarios={item.usuarios || (item.artista ? [{ name: item.artista, id: `art-${item.id}` }] : [])} usuarioLogueadoId={usuarioLogueadoId} />
-        </div>
+          <div className="w-full px-3 sm:px-4 pb-4 flex flex-col items-center">
+              <Link href={rutaExiste ? route(nombreRuta, item.id) : '#'} className="block w-full group">
+                  <span className="text-sm font-semibold text-gray-100 group-hover:text-white group-hover:underline line-clamp-2" title={item.nombre}>
+                      {item.nombre}
+                  </span>
+              </Link>
+              <CardListaUsuarios tipo={tipoItem} usuarios={item.usuarios || (item.artista ? [{ name: item.artista, id: `art-${item.id}` }] : [])} usuarioLogueadoId={usuarioLogueadoId} />
+          </div>
     );
 
     return (
@@ -342,7 +345,10 @@ const CancionListItem = React.memo(({
     onPlayPauseClick,
     isCurrentTrack,
     isPlayingCurrentTrack,
-    isLoadingTrack
+    isLoadingTrack,
+    isLiked,
+    onToggleLoopz,
+    isLikeProcessing
 }) => {
     const routeExists = useCallback((name) => {
         if (typeof route === 'function' && typeof route().has === 'function') return route().has(name);
@@ -354,14 +360,20 @@ const CancionListItem = React.memo(({
 
     const handlePlayButtonClick = (e) => {
         e.stopPropagation();
-        onPlayPauseClick();
+        onPlayPauseClick(item, index);
+    };
+
+    const handleLoopzButtonClick = (e) => {
+        e.stopPropagation();
+        onToggleLoopz(item.id, isLiked);
     };
 
     return (
         <li
-            className="flex items-center space-x-3 p-2 hover:bg-gray-700/60 transition duration-150 ease-in-out group rounded-md cursor-default"
+            className={`flex items-center space-x-3 p-2 transition duration-150 ease-in-out group rounded-md cursor-default ${isCurrentTrack ? 'bg-indigo-900/30' : 'hover:bg-gray-700/60'}`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
+            onDoubleClick={handlePlayButtonClick}
         >
             <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
                 {isLoadingTrack ? (
@@ -413,6 +425,25 @@ const CancionListItem = React.memo(({
                     </p>
                 )}
             </div>
+
+            <div className="flex-shrink-0">
+                 <button
+                     onClick={handleLoopzButtonClick}
+                     disabled={isLikeProcessing}
+                     className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-800 ${isLikeProcessing ? 'text-gray-500 cursor-wait' : 'text-gray-400 hover:text-purple-400'}`}
+                     title={isLiked ? "Quitar de LoopZ" : "Añadir a LoopZ"}
+                 >
+                     {isLikeProcessing ? (
+                         <LoadingIcon className="h-5 w-5 animate-spin text-purple-400"/>
+                     ) : (
+                         isLiked ? (
+                             <HeartIconSolid className="h-5 w-5 text-purple-500" />
+                         ) : (
+                             <HeartIconOutline className="h-5 w-5" />
+                         )
+                     )}
+                 </button>
+            </div>
         </li>
     );
 });
@@ -426,7 +457,9 @@ const ProfileCancionesList = ({
     Reproduciendo,
     isPlayerLoading,
     currentSourceId,
-    mainSourceId
+    mainSourceId,
+    onToggleLoopz,
+    likeProcessingSongId
 }) => {
     if (!items || items.length === 0) {
         return <p className="text-sm text-gray-400 italic px-4 sm:px-6">Aún no has agregado {tipoItem}s a tu perfil.</p>;
@@ -437,6 +470,7 @@ const ProfileCancionesList = ({
             {items.map((item, index) => {
                 const isThisCurrentTrack = item.id === currentTrackId && currentSourceId === mainSourceId;
                 const isLoadingThisTrack = isPlayerLoading && isThisCurrentTrack && !Reproduciendo;
+                const isLikeProcessing = likeProcessingSongId === item.id;
 
                 return (
                     <CancionListItem
@@ -445,10 +479,13 @@ const ProfileCancionesList = ({
                         index={index}
                         tipoItem={tipoItem}
                         nombreRuta={nombreRuta}
-                        onPlayPauseClick={() => onPlayPauseSong(item, index)}
+                        onPlayPauseClick={onPlayPauseSong}
                         isCurrentTrack={isThisCurrentTrack}
                         isPlayingCurrentTrack={isThisCurrentTrack && Reproduciendo}
                         isLoadingTrack={isLoadingThisTrack}
+                        isLiked={item.is_in_user_loopz}
+                        onToggleLoopz={onToggleLoopz}
+                        isLikeProcessing={isLikeProcessing}
                     />
                 );
             })}
@@ -459,10 +496,16 @@ const ProfileCancionesList = ({
 
 export default function Index() {
     const { props, url } = usePage();
-    const { auth, cancionesUsuario = [], playlistsUsuario = [], albumesUsuario = [], epsUsuario = [], singlesUsuario = [] } = props;
-
-    const usuario = auth.user;
-    const usuarioLogueadoId = auth.user.id;
+    const {
+        usuario,
+        cancionesUsuario: cancionesUsuarioProp = [],
+        playlistsUsuario = [],
+        albumesUsuario = [],
+        epsUsuario = [],
+        singlesUsuario = [],
+        auth
+    } = props;
+    const usuarioLogueadoId = auth?.user?.id ?? null;
     const playerContextValue = useContext(PlayerContext);
     const {
         cargarColaYIniciar = () => {},
@@ -479,6 +522,14 @@ export default function Index() {
     const userSongsSourceId = `user-${usuario.id}-all-canciones`;
     const isCurrentSourcePlayingUserSongs = sourceId === userSongsSourceId && Reproduciendo;
     const isPlayerLoadingThisSource = isPlayerLoading && sourceId === userSongsSourceId;
+
+    const [cancionesUsuario, setCancionesUsuario] = useState(cancionesUsuarioProp);
+    const [likeProcessingSongId, setLikeProcessingSongId] = useState(null);
+
+    useEffect(() => {
+        setCancionesUsuario(cancionesUsuarioProp);
+    }, [cancionesUsuarioProp]);
+
 
     const handlePlayPauseUserSongs = useCallback(() => {
         if (!cancionesUsuario || cancionesUsuario.length === 0) return;
@@ -527,6 +578,35 @@ export default function Index() {
         }
     }, [cancionesUsuario, cancionActual, sourceId, userSongsSourceId, Reproduciendo, pause, play, cargarColaYIniciar, usuario.name]);
 
+    const handleToggleLoopzSong = useCallback((songId, isInLoopz) => {
+        if (!songId || likeProcessingSongId === songId) return;
+
+        setLikeProcessingSongId(songId);
+
+        setCancionesUsuario(prevCanciones =>
+            prevCanciones.map(song =>
+                song.id === songId ? { ...song, is_in_user_loopz: !isInLoopz } : song
+            )
+        );
+
+        router.post(route('cancion.loopz', { cancion: songId }), {}, {
+            preserveScroll: true,
+            onSuccess: (page) => {
+            },
+            onError: (errors) => {
+                console.error(`Error toggling LoopZ for song ${songId}:`, errors);
+                setCancionesUsuario(prevCanciones =>
+                    prevCanciones.map(song =>
+                        song.id === songId ? { ...song, is_in_user_loopz: isInLoopz } : song
+                    )
+                );
+            },
+            onFinish: () => {
+                setLikeProcessingSongId(null);
+            },
+        });
+    }, [likeProcessingSongId]);
+
 
 return (
     <AuthenticatedLayout user={auth.user}>
@@ -570,24 +650,24 @@ return (
                             {cancionesUsuario && cancionesUsuario.length > 0 && (
                                 <div className="flex items-center space-x-4">
                                     <button
-                                        onClick={handlePlayPauseUserSongs}
-                                        disabled={isPlayerLoadingThisSource || !cancionesUsuario || cancionesUsuario.length === 0}
-                                        aria-label={isCurrentSourcePlayingUserSongs ? 'Pausar canciones del usuario' : (sourceId === userSongsSourceId && cancionActual ? 'Continuar reproducción de canciones del usuario' : 'Reproducir todas las canciones del usuario')}
-                                        className="flex items-center justify-center p-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-full shadow-md hover:from-purple-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed"
+                                         onClick={handlePlayPauseUserSongs}
+                                         disabled={isPlayerLoadingThisSource || !cancionesUsuario || cancionesUsuario.length === 0}
+                                         aria-label={isCurrentSourcePlayingUserSongs ? 'Pausar canciones del usuario' : (sourceId === userSongsSourceId && cancionActual ? 'Continuar reproducción de canciones del usuario' : 'Reproducir todas las canciones del usuario')}
+                                         className="flex items-center justify-center p-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-full shadow-md hover:from-purple-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed"
                                     >
-                                        {isPlayerLoadingThisSource ? <LoadingIcon className="w-6 h-6 animate-spin" /> : isCurrentSourcePlayingUserSongs ? <PauseIconSolid className="w-6 h-6" /> : <PlayIconSolid className="w-6 h-6" />}
+                                         {isPlayerLoadingThisSource ? <LoadingIcon className="w-6 h-6 animate-spin" /> : isCurrentSourcePlayingUserSongs ? <PauseIconSolid className="w-6 h-6" /> : <PlayIconSolid className="w-6 h-6" />}
                                     </button>
                                     <button
-                                        onClick={handleToggleShuffleUserSongs}
-                                        disabled={!cancionesUsuario || cancionesUsuario.length === 0}
-                                        aria-label={aleatorio ? "Desactivar modo aleatorio para canciones del usuario" : "Activar modo aleatorio para canciones del usuario"}
-                                        className={`flex items-center justify-center p-3 border rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed ${
-                                            aleatorio
-                                                ? 'bg-indigo-500 text-white border-indigo-500 hover:bg-indigo-600 focus:ring-indigo-500'
-                                                : 'bg-transparent text-gray-300 border-gray-600 hover:bg-gray-700 hover:text-white focus:ring-gray-500'
-                                        }`}
+                                         onClick={handleToggleShuffleUserSongs}
+                                         disabled={!cancionesUsuario || cancionesUsuario.length === 0}
+                                         aria-label={aleatorio ? "Desactivar modo aleatorio para canciones del usuario" : "Activar modo aleatorio para canciones del usuario"}
+                                         className={`flex items-center justify-center p-3 border rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed ${
+                                             aleatorio
+                                                 ? 'bg-indigo-500 text-white border-indigo-500 hover:bg-indigo-600 focus:ring-indigo-500'
+                                                 : 'bg-transparent text-gray-300 border-gray-600 hover:bg-gray-700 hover:text-white focus:ring-gray-500'
+                                         }`}
                                     >
-                                        <ShuffleIcon className="w-6 h-6" />
+                                         <ShuffleIcon className="w-6 h-6" />
                                     </button>
                                 </div>
                             )}
@@ -608,6 +688,8 @@ return (
                             isPlayerLoading={isPlayerLoading}
                             currentSourceId={sourceId}
                             mainSourceId={userSongsSourceId}
+                            onToggleLoopz={handleToggleLoopzSong}
+                            likeProcessingSongId={likeProcessingSongId}
                         />
                     </div>
                     <div>
