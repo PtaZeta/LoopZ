@@ -73,23 +73,21 @@ class CancionController extends Controller
 
     public function store(Request $request)
     {
-        // 1) Validación de datos
         $rules = [
-            'titulo'               => 'required|string|max:255',
-            'genero'               => 'nullable|array',
-            'genero.*'             => 'exists:generos,nombre',
-            'publico'              => 'required|boolean',
-            'archivo'              => 'required|file|mimes:mp3,wav|max:102400',
-            'foto'                 => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
-            'licencia_id'          => 'required|integer|exists:licencias,id',
-            'userIds'              => 'nullable|array',
-            'userIds.*'            => 'integer|exists:users,id',
-            'remix'                => 'required|boolean',
+            'titulo' => 'required|string|max:255',
+            'genero' => 'nullable|array',
+            'genero.*' => 'exists:generos,nombre',
+            'publico' => 'required|boolean',
+            'archivo' => 'required|file|mimes:mp3,wav|max:102400',
+            'foto' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
+            'licencia_id' => 'required|integer|exists:licencias,id',
+            'userIds' => 'nullable|array',
+            'userIds.*' => 'integer|exists:users,id',
+            'remix' => 'required|boolean',
             'cancion_original_id'  => 'nullable|integer|exists:canciones,id',
         ];
         $validated = $request->validate($rules);
 
-        // 2) Validar licencia de original si es remix
         if ($validated['remix'] && !is_null($validated['cancion_original_id'])) {
             $existe = Cancion::join('licencias', 'canciones.licencia_id', '=', 'licencias.id')
                 ->where('canciones.id', $validated['cancion_original_id'])
@@ -104,7 +102,6 @@ class CancionController extends Controller
             }
         }
 
-        // 3) Crear modelo Cancion y asignar campos básicos
         $cancion = new Cancion();
         $cancion->titulo = $validated['titulo'];
         $cancion->publico = $validated['publico'];
@@ -112,15 +109,13 @@ class CancionController extends Controller
         $cancion->remix = $validated['remix'];
         $cancion->cancion_original_id = $validated['cancion_original_id'] ?? null;
 
-        // 4) Subir archivo de audio a S3 y calcular duración
         if ($request->hasFile('archivo') && $request->file('archivo')->isValid()) {
             $archivoAudio = $request->file('archivo');
-            $extension    = $archivoAudio->getClientOriginalExtension();
-            $nombre       = Str::uuid() . "_song.{$extension}";
+            $extension = $archivoAudio->getClientOriginalExtension();
+            $nombre = Str::uuid() . "_song.{$extension}";
 
-            // Duración con getID3
             try {
-                $getID3    = new getID3;
+                $getID3 = new getID3;
                 $infoAudio = $getID3->analyze($archivoAudio->getRealPath());
                 $cancion->duracion = isset($infoAudio['playtime_seconds'])
                     ? floor($infoAudio['playtime_seconds'])
@@ -129,7 +124,6 @@ class CancionController extends Controller
                 $cancion->duracion = 0;
             }
 
-            // Subida a S3
             try {
                 $path = Storage::disk('s3')
                     ->putFileAs('canciones', $archivoAudio, $nombre, 'public-read');
@@ -153,7 +147,6 @@ class CancionController extends Controller
                 ->withInput();
         }
 
-        // 5) Subir foto (opcional)
         if ($request->hasFile('foto') && $request->file('foto')->isValid()) {
             $archivoFoto = $request->file('foto');
             $extFoto     = $archivoFoto->getClientOriginalExtension();
@@ -165,16 +158,13 @@ class CancionController extends Controller
                 : null;
         }
 
-        // 6) Guardar la canción en BD
         $cancion->save();
 
-        // 7) Relación géneros
         if (!empty($validated['genero'])) {
             $ids = Genero::whereIn('nombre', $validated['genero'])->pluck('id');
             $cancion->generos()->attach($ids);
         }
 
-        // 8) Relación usuarios (creador + colaboradores)
         $idCreador       = Auth::id();
         $colaboradores   = $validated['userIds'] ?? [];
         $usuariosAsociar = [];
@@ -191,7 +181,6 @@ class CancionController extends Controller
             $cancion->usuarios()->attach($usuariosAsociar);
         }
 
-        // 9) Respuesta exitosa para Inertia
         return redirect()->route('canciones.index')
                          ->with('success', 'Canción creada exitosamente.');
     }

@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import ApplicationLogo from '@/Components/ApplicationLogo';
 
 export default function GuestLayout({ children }) {
     return (
@@ -6,7 +7,7 @@ export default function GuestLayout({ children }) {
             <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md shadow-lg text-white">
                 <div className="container mx-auto px-6 py-3 flex justify-between items-center">
                     <Link href="/" className="text-2xl font-bold text-blue-500 hover:text-blue-400 transition-colors">
-                        LoopZ
+                        <ApplicationLogo className="h-8 w-auto" />
                     </Link>
                     <div className="flex items-center space-x-4">
                          <Link

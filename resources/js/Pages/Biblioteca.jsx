@@ -6,8 +6,7 @@ import CreatePlaylistModal from '@/Components/CreatePlaylistModal';
 
 const ImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, tipo = 'playlist', nombre = '', esStorage = false }) => {
     const [errorCarga, setErrorCarga] = useState(false);
-    const baseUrl = esStorage ? '/storage/' : '';
-    const urlImagenCompleta = src ? `${baseUrl}${src}` : null;
+    const urlImagenCompleta = src;
     const handleImageError = () => { setErrorCarga(true); };
     const PlaceholderContenido = () => (
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

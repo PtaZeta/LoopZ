@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, usePage, useForm, Link } from '@inertiajs/react';
 import DeleteUserForm from './Partials/DeleteUserForm';
@@ -9,29 +9,79 @@ import { router } from '@inertiajs/react';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
 import DangerButton from '@/Components/DangerButton';
+import {
+    UserCircleIcon,
+    PhotoIcon,
+    MusicalNoteIcon as MusicalNoteIconSolid,
+} from '@heroicons/react/24/solid';
 
 
-const ProfileImage = ({ src, alt, placeholderClass, imageClass }) => {
-    let displaySrc = null;
-    if (src) {
-        if (src.startsWith('blob:')) {
-            displaySrc = src;
+const ImagenPerfilEdit = ({ fuente, textoAlternativo, clasesImagen, clasesPlaceholder, tipo = 'perfil', nombre = '' }) => {
+    const [errorCarga, setErrorCarga] = useState(false);
+    const cacheBuster = '';
+    let urlFinal = null;
+
+    if (fuente) {
+        if (fuente.startsWith('blob:') || fuente.startsWith('http://') || fuente.startsWith('https://')) {
+            urlFinal = fuente;
         } else {
-            displaySrc = `/storage/${src}?t=${Date.now()}`;
+            urlFinal = `/storage/${fuente}${cacheBuster}`;
         }
     }
-    const uniqueKey = src ? `img-${src}` : 'placeholder';
+
+    const manejarErrorImagen = useCallback(() => {
+        setErrorCarga(true);
+    }, []);
+
+    useEffect(() => {
+        setErrorCarga(false);
+    }, [fuente]);
+
+    const obtenerIniciales = useCallback((nombreCompleto) => {
+        if (!nombreCompleto) return '';
+        const nombres = nombreCompleto.split(' ');
+        const iniciales = nombres.map(n => n.charAt(0)).join('');
+        return iniciales.toUpperCase().slice(0, 2);
+    }, []);
+
+    const IconoPlaceholder = useCallback(() => {
+        switch (tipo) {
+            case 'perfil': return <UserCircleIcon className="w-1/2 h-1/2 text-gray-500" />;
+            case 'banner': return <PhotoIcon className="w-1/3 h-1/3 text-gray-500" />;
+            default: return <PhotoIcon className="w-1/3 h-1/3 text-gray-500" />;
+        }
+    }, [tipo]);
+
+    const ContenidoPlaceholder = useCallback(() => {
+         if (tipo === 'perfil' && !fuente && nombre) {
+             return <span className="text-white text-4xl font-semibold pointer-events-none">{obtenerIniciales(nombre)}</span>;
+         }
+        return <IconoPlaceholder />;
+    }, [tipo, fuente, nombre, obtenerIniciales, IconoPlaceholder]);
+
+    const claveParaImagen = urlFinal ? `img-${urlFinal}` : null;
+    const claveParaPlaceholderWrapper = `ph-wrapper-${tipo}-${textoAlternativo ? textoAlternativo.replace(/\s+/g, '-') : 'sin-alt'}-${nombre || 'no-nombre'}`;
+
 
     return (
-        <>
-            {displaySrc ? (
-                <img key={uniqueKey} src={displaySrc} alt={alt} className={imageClass} />
+        <div className={`${clasesPlaceholder} flex items-center justify-center overflow-hidden relative`}>
+            {urlFinal && !errorCarga ? (
+                <img
+                    key={claveParaImagen}
+                    src={urlFinal}
+                    alt={textoAlternativo}
+                    className={`${clasesImagen}`}
+                    onError={manejarErrorImagen}
+                />
             ) : (
-                <div key={uniqueKey} className={placeholderClass}></div>
+                <div key={claveParaPlaceholderWrapper} className="w-full h-full flex items-center justify-center">
+                    <ContenidoPlaceholder />
+                </div>
             )}
-        </>
+        </div>
     );
 };
+
 
 export default function Edit({ mustVerifyEmail, status }) {
     const pageProps = usePage().props;
@@ -77,8 +127,8 @@ export default function Edit({ mustVerifyEmail, status }) {
                 setData('banner_perfil', file);
             }
         }
-        if (photoInputRef.current) photoInputRef.current.value = null;
-        if (bannerInputRef.current) bannerInputRef.current.value = null;
+         if (photoInputRef.current) photoInputRef.current.value = null;
+         if (bannerInputRef.current) bannerInputRef.current.value = null;
     };
 
     const handleImageUpload = (imageType) => {
@@ -98,12 +148,12 @@ export default function Edit({ mustVerifyEmail, status }) {
                 if (imageType === 'foto_perfil') setPhotoPreview(null);
                 if (imageType === 'banner_perfil') setBannerPreview(null);
                 setData(imageType, null);
-                if (photoInputRef.current) photoInputRef.current.value = null;
-                if (bannerInputRef.current) bannerInputRef.current.value = null;
+                 if (photoInputRef.current) photoInputRef.current.value = null;
+                 if (bannerInputRef.current) bannerInputRef.current.value = null;
             },
             onError: (errors) => {
-                if (photoInputRef.current) photoInputRef.current.value = null;
-                if (bannerInputRef.current) bannerInputRef.current.value = null;
+                 if (photoInputRef.current) photoInputRef.current.value = null;
+                 if (bannerInputRef.current) bannerInputRef.current.value = null;
             },
             onFinish: () => {
             },
@@ -112,10 +162,12 @@ export default function Edit({ mustVerifyEmail, status }) {
 
     const cancelPreview = (imageType) => {
         if (imageType === 'foto_perfil') {
+            if (photoPreview) URL.revokeObjectURL(photoPreview);
             setPhotoPreview(null);
             setData('foto_perfil', null);
             if (photoInputRef.current) photoInputRef.current.value = null;
         } else if (imageType === 'banner_perfil') {
+            if (bannerPreview) URL.revokeObjectURL(bannerPreview);
             setBannerPreview(null);
             setData('banner_perfil', null);
             if (bannerInputRef.current) bannerInputRef.current.value = null;
@@ -149,13 +201,13 @@ export default function Edit({ mustVerifyEmail, status }) {
 
     return (
         <AuthenticatedLayout
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-200">
-                    Profile Edit
-                </h2>
-            }
+             header={
+                 <h2 className="text-xl font-semibold leading-tight text-gray-200">
+                     Editar Perfil
+                 </h2>
+             }
         >
-            <Head title="Profile Edit" />
+            <Head title="Editar Perfil" />
 
             <input
                 type="file"
@@ -180,7 +232,7 @@ export default function Edit({ mustVerifyEmail, status }) {
 
                     {showSuccess && (
                         <div className="mb-4 p-4 bg-green-800 border border-green-600 text-green-100 rounded">
-                            Profile updated successfully!
+                            ¡Perfil actualizado exitosamente!
                         </div>
                     )}
 
@@ -189,15 +241,16 @@ export default function Edit({ mustVerifyEmail, status }) {
                             <div
                                 className={`cursor-pointer ${processing ? 'opacity-75 pointer-events-none' : ''}`}
                                 onClick={handleBannerAreaClick}
-                                title="Click to change banner"
+                                title="Click para cambiar el banner"
                             >
-                                <ProfileImage
-                                    src={bannerPreview || user.banner_perfil}
-                                    alt="Profile banner"
-                                    imageClass="w-full h-48 sm:h-64 object-cover rounded-t-lg"
-                                    placeholderClass="w-full h-48 sm:h-64 bg-gray-700 rounded-t-lg flex items-center justify-center text-gray-300"
+                                <ImagenPerfilEdit
+                                    fuente={bannerPreview || user.banner_perfil}
+                                    textoAlternativo="Banner del perfil"
+                                    clasesImagen="w-full h-48 sm:h-64 object-cover rounded-t-lg"
+                                    clasesPlaceholder="w-full h-48 sm:h-64 bg-gray-700 rounded-t-lg flex items-center justify-center text-gray-300"
+                                    tipo="banner"
                                 />
-                                {(!user.banner_perfil && !bannerPreview) && <span className="absolute inset-0 flex items-center justify-center text-sm text-gray-300 pointer-events-none">Click to add banner</span>}
+                                {(!user.banner_perfil && !bannerPreview) && <span className="absolute inset-0 flex items-center justify-center text-sm text-gray-300 pointer-events-none">Click para añadir banner</span>}
 
                                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center transition-opacity duration-300 rounded-t-lg">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white opacity-0 group-hover:opacity-75 transition-opacity duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -215,13 +268,13 @@ export default function Edit({ mustVerifyEmail, status }) {
                                         size="sm"
                                         className="bg-indigo-500 hover:bg-indigo-600 focus:bg-indigo-600 active:bg-indigo-700"
                                     >
-                                        {processing ? 'Uploading...' : 'Update Banner'}
+                                        {processing ? 'Subiendo...' : 'Actualizar Banner'}
                                     </PrimaryButton>
                                     <DangerButton
                                         onClick={() => cancelPreview('banner_perfil')}
                                         disabled={processing}
                                         size="sm"
-                                        title="Cancel Selection"
+                                        title="Cancelar selección"
                                         className="px-2 py-1 bg-red-600 hover:bg-red-700 focus:bg-red-700 active:bg-red-800"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -239,25 +292,27 @@ export default function Edit({ mustVerifyEmail, status }) {
                                 <div
                                     className={`cursor-pointer ${processing ? 'opacity-75 pointer-events-none' : ''}`}
                                     onClick={handlePhotoAreaClick}
-                                    title="Click to change profile photo"
+                                    title="Click para cambiar la foto de perfil"
                                 >
-                                    <ProfileImage
-                                        src={photoPreview || user.foto_perfil}
-                                        alt={`${user.name}'s profile picture`}
-                                        imageClass="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-gray-800 object-cover shadow-lg bg-gray-700"
-                                        placeholderClass="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-gray-800 bg-gray-600 flex items-center justify-center text-white text-3xl sm:text-4xl shadow-lg"
+                                    <ImagenPerfilEdit
+                                        fuente={photoPreview || user.foto_perfil}
+                                        textoAlternativo={`Foto de perfil de ${user.name}`}
+                                        clasesImagen="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-gray-800 object-cover shadow-lg bg-gray-700"
+                                        clasesPlaceholder="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-gray-800 bg-gray-600 flex items-center justify-center text-white text-3xl sm:text-4xl shadow-lg"
+                                        tipo="perfil"
+                                        nombre={user.name}
                                     />
                                     {(!user.foto_perfil && !photoPreview) && (
                                         <div className="absolute inset-0 flex items-center justify-center text-white text-4xl font-semibold pointer-events-none rounded-full">
                                             {getInitials(user.name)}
                                         </div>
                                     )}
-                                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center transition-opacity duration-300 rounded-full">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white opacity-0 group-hover:opacity-75 transition-opacity duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        </svg>
-                                    </div>
+                                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 flex items-center justify-center transition-opacity duration-300 rounded-full">
+                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white opacity-0 group-hover:opacity-75 transition-opacity duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                             <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                             <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                         </svg>
+                                     </div>
                                 </div>
                                 {photoPreview && (
                                     <div className="absolute bottom-0 right-0 -mb-4 z-10 flex gap-2">
@@ -267,13 +322,13 @@ export default function Edit({ mustVerifyEmail, status }) {
                                             size="sm"
                                             className="bg-indigo-500 hover:bg-indigo-600 focus:bg-indigo-600 active:bg-indigo-700"
                                         >
-                                            {processing ? '...' : 'Update'}
+                                            {processing ? '...' : 'Actualizar'}
                                         </PrimaryButton>
                                         <DangerButton
                                             onClick={() => cancelPreview('foto_perfil')}
                                             disabled={processing}
                                             size="sm"
-                                            title="Cancel Selection"
+                                            title="Cancelar selección"
                                             className="p-1 bg-red-600 hover:bg-red-700 focus:bg-red-700 active:bg-red-800"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
