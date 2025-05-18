@@ -20,10 +20,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
-        $this->call([
+        /*$this->call([
             SpotifyGenresSeeder::class,
             LicenciaSeeder::class,
-        ]);
+        ]);*/
         DB::table('cancion_contenedor')->truncate();
         DB::table('cancion_genero')->truncate();
         DB::table('loopzs_canciones')->truncate();

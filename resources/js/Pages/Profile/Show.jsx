@@ -12,11 +12,19 @@ import {
 } from '@heroicons/react/24/solid';
 import { ArrowPathIcon as LoadingIcon } from '@heroicons/react/20/solid';
 
+const isFullUrl = (url) => {
+    try {
+        new URL(url);
+        return true;
+    } catch (e) {
+        return false;
+    }
+};
+
 const ProfileImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, tipo = 'perfil', nombre = '', esStorage = false }) => {
     const [errorCarga, setErrorCarga] = useState(false);
-    const cacheBuster = '';
-    const baseUrl = esStorage ? '/storage/' : '';
-    const urlImagenCompleta = src ? `${baseUrl}${src}${cacheBuster}` : null;
+    const cacheBuster = ''; // Consider adding a timestamp or version number for cache busting
+    const urlImagenCompleta = src ? (isFullUrl(src) ? src : (esStorage ? `/storage/${src}${cacheBuster}` : `${src}${cacheBuster}`)) : null;
 
     const handleImageError = useCallback(() => {
         setErrorCarga(true);
@@ -76,13 +84,12 @@ const ProfileImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, 
 
 const CardImagenConPlaceholder = React.memo(({ src, alt, claseImagen, clasePlaceholder, tipo = 'playlist', esStorage = false }) => {
     const [errorCarga, setErrorCarga] = useState(false);
-    const baseUrl = esStorage ? '/storage/' : '';
-    const urlImagenCompleta = src ? `${baseUrl}${src}` : null;
+    const urlImagenCompleta = src ? (isFullUrl(src) ? src : (esStorage ? `/storage/${src}` : src)) : null;
 
     const handleImageError = useCallback(() => { setErrorCarga(true); }, []);
 
     const PlaceholderContenido = useCallback(() => (
-         <MusicalNoteIconSolid className="w-1/2 h-1/2 text-gray-500" />
+           <MusicalNoteIconSolid className="w-1/2 h-1/2 text-gray-500" />
     ), []);
 
     const claveUnicaParaElemento = urlImagenCompleta
@@ -117,44 +124,44 @@ const CardListaUsuarios = React.memo(({ tipo, usuarios: usuariosProp, usuarioLog
     }
 
     const MAX_SHOWN = 1;
-     let displayOrder = [];
-     const processedUserIds = new Set();
-     let finalOwner = null;
-     let finalAuthUser = null;
+      let displayOrder = [];
+      const processedUserIds = new Set();
+      let finalOwner = null;
+      let finalAuthUser = null;
 
-     for(const u of usuarios) {
-         if(u.id === usuarioLogueadoId) finalAuthUser = u;
-         if(u.pivot?.propietario === true) finalOwner = u;
-     }
-
-     if (finalAuthUser) {
-         displayOrder.push(finalAuthUser);
-         processedUserIds.add(finalAuthUser.id);
-     }
-
-     if (finalOwner && !processedUserIds.has(finalOwner.id)) {
-         if (finalAuthUser) {
-              const authIndex = displayOrder.findIndex(u => u.id === finalAuthUser.id);
-              if (authIndex !== -1) {
-                 displayOrder.splice(authIndex + 1, 0, finalOwner);
-              } else {
-                 displayOrder.push(finalOwner);
-              }
-         } else {
-             displayOrder.unshift(finalOwner);
-         }
-         processedUserIds.add(finalOwner.id);
-     }
-
-     usuarios.forEach(u => {
-         if (!processedUserIds.has(u.id)) {
-             displayOrder.push(u);
-         }
-     });
-
-      if (displayOrder.length === 0 && usuarios.length > 0) {
-          displayOrder = [...usuarios];
+      for(const u of usuarios) {
+          if(u.id === usuarioLogueadoId) finalAuthUser = u;
+          if(u.pivot?.propietario === true) finalOwner = u;
       }
+
+      if (finalAuthUser) {
+          displayOrder.push(finalAuthUser);
+          processedUserIds.add(finalAuthUser.id);
+      }
+
+      if (finalOwner && !processedUserIds.has(finalOwner.id)) {
+          if (finalAuthUser) {
+               const authIndex = displayOrder.findIndex(u => u.id === finalAuthUser.id);
+               if (authIndex !== -1) {
+                   displayOrder.splice(authIndex + 1, 0, finalOwner);
+               } else {
+                   displayOrder.push(finalOwner);
+               }
+          } else {
+               displayOrder.unshift(finalOwner);
+          }
+          processedUserIds.add(finalOwner.id);
+      }
+
+      usuarios.forEach(u => {
+          if (!processedUserIds.has(u.id)) {
+              displayOrder.push(u);
+          }
+      });
+
+       if (displayOrder.length === 0 && usuarios.length > 0) {
+            displayOrder = [...usuarios];
+       }
 
 
     const usuariosMostrados = displayOrder.slice(0, MAX_SHOWN);
@@ -200,36 +207,65 @@ const ItemCard = React.memo(({ item, tipoPredeterminado, usuarioLogueadoId }) =>
     const rutaBase = getResourceRouteBase(tipoItem);
     const nombreRuta = `${rutaBase}.show`;
     const rutaExiste = typeof route === 'function' && route().has(nombreRuta);
+    const cardWidthClass = 'w-56';
+    const cardMinWidth = '14rem';
 
-    const cardContent = (
-        <div className="block w-full p-4 pb-0 group cursor-default">
-            <div className="relative w-full aspect-square mb-3">
-                <CardImagenConPlaceholder src={item.imagen_url || item.imagen} alt={`Portada de ${item.nombre}`} claseImagen="absolute inset-0 w-full h-full object-cover rounded transition-transform duration-300 ease-in-out group-hover:scale-105" clasePlaceholder="absolute inset-0 w-full h-full rounded bg-gray-750 flex items-center justify-center" tipo={tipoItem} esStorage={true} />
-                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded">
-                    <PlayIconSolid className="w-10 h-10 sm:w-12 sm:h-12 text-white transform transition-transform duration-300 ease-in-out group-hover:scale-110" />
-                </div>
-            </div>
-            <div className="w-full px-3 sm:px-4 pb-4 flex flex-col items-center">
-                <span className="text-sm font-semibold text-gray-100 group-hover:text-white group-hover:underline line-clamp-2" title={item.nombre}>{item.nombre}</span>
-                <CardListaUsuarios tipo={tipoItem} usuarios={item.usuarios || (item.artista ? [{ name: item.artista, id: `art-${item.id}` }] : [])} usuarioLogueadoId={usuarioLogueadoId} />
+    const imageSection = (
+        <div className="relative w-full aspect-square mb-3">
+            <CardImagenConPlaceholder
+                src={item.imagen_url || item.imagen}
+                alt={`Portada de ${item.nombre}`}
+                claseImagen="absolute inset-0 w-full h-full object-cover rounded transition-transform duration-300 ease-in-out group-hover:scale-105"
+                clasePlaceholder="absolute inset-0 w-full h-full rounded bg-gray-750 flex items-center justify-center"
+                tipo={tipoItem}
+                esStorage={true}
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded group-hover:scale-105">
+                <svg className="w-10 h-10 sm:w-12 sm:h-12 text-white transform transition-transform duration-300 ease-in-out group-hover:scale-110" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd"></path></svg>
             </div>
         </div>
     );
 
+    const textSection = (
+        <div className="w-full px-3 sm:px-4 pb-4 flex flex-col items-center">
+            <span className="text-sm font-semibold text-gray-100 group-hover:text-white group-hover:underline line-clamp-2" title={item.nombre}>
+                {item.nombre}
+            </span>
+            <CardListaUsuarios tipo={tipoItem} usuarios={item.usuarios || (item.artista ? [{ name: item.artista, id: `art-${item.id}` }] : [])} usuarioLogueadoId={usuarioLogueadoId} />
+        </div>
+    );
+
+    const textSectionLinked = (
+         <div className="w-full px-3 sm:px-4 pb-4 flex flex-col items-center">
+            <Link href={rutaExiste ? route(nombreRuta, item.id) : '#'} className="block w-full group">
+                <span className="text-sm font-semibold text-gray-100 group-hover:text-white group-hover:underline line-clamp-2" title={item.nombre}>
+                    {item.nombre}
+                </span>
+            </Link>
+            <CardListaUsuarios tipo={tipoItem} usuarios={item.usuarios || (item.artista ? [{ name: item.artista, id: `art-${item.id}` }] : [])} usuarioLogueadoId={usuarioLogueadoId} />
+        </div>
+    );
+
     return (
-        <li className={`bg-gradient-to-b from-gray-800 to-gray-850 rounded-lg shadow-lg overflow-hidden flex flex-col items-center text-center transition duration-300 ease-in-out hover:from-gray-700 hover:to-gray-750 hover:shadow-xl w-48 sm:w-56 flex-shrink-0`}>
+        <li className={`bg-gradient-to-b from-gray-800 to-gray-850 rounded-lg shadow-lg overflow-hidden flex flex-col items-center text-center transition duration-300 ease-in-out hover:from-gray-700 hover:to-gray-750 hover:shadow-xl ${cardWidthClass} flex-shrink-0`}
+            style={{ minWidth: cardMinWidth }}>
             {rutaExiste ? (
-                <Link href={route(nombreRuta, item.id)} className="block w-full p-4 pb-0 group">
-                    {cardContent.props.children}
-                </Link>
+                <>
+                    <Link href={route(nombreRuta, item.id)} className="block w-full p-4 pb-0 group">
+                        {imageSection}
+                    </Link>
+                    {textSectionLinked}
+                </>
             ) : (
-                cardContent
+                <div className="block w-full p-4 pb-0 group cursor-default">
+                    {imageSection}
+                    {textSection}
+                </div>
             )}
         </li>
     );
 });
-
-const ProfileDisplayList = ({ items, usuarioLogueadoId, tipoPredeterminado = 'playlist' }) => {
+const ProfileDisplayList = React.memo(({ items, usuarioLogueadoId, tipoPredeterminado = 'playlist' }) => {
     const scrollContainerRef = useRef(null);
     const [isHovering, setIsHovering] = useState(false);
     const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -296,7 +332,7 @@ const ProfileDisplayList = ({ items, usuarioLogueadoId, tipoPredeterminado = 'pl
             </button>
         </div>
     );
-};
+});
 
 const CancionListItem = React.memo(({
     item,
@@ -420,6 +456,7 @@ const ProfileCancionesList = ({
     );
 };
 
+
 export default function Index() {
     const { props, url } = usePage();
     const { auth, cancionesUsuario = [], playlistsUsuario = [], albumesUsuario = [], epsUsuario = [], singlesUsuario = [] } = props;
@@ -466,6 +503,7 @@ export default function Index() {
         }
     }, [cancionesUsuario, toggleAleatorio, sourceId, userSongsSourceId]);
 
+
     const handlePlayPauseSingleSong = useCallback((songToPlay, songIndexInList) => {
         if (!cancionesUsuario || cancionesUsuario.length === 0) return;
 
@@ -489,26 +527,48 @@ export default function Index() {
         }
     }, [cancionesUsuario, cancionActual, sourceId, userSongsSourceId, Reproduciendo, pause, play, cargarColaYIniciar, usuario.name]);
 
-    return (
-        <AuthenticatedLayout user={auth.user} header={<div className="flex justify-between items-center"><h2 className="text-2xl font-bold leading-tight text-gray-100">Mi Perfil</h2></div>}>
-            <Head title="Perfil" />
-            <div key={url} className="py-12 min-h-screen">
-                <div className="mx-auto max-w-7xl space-y-10 sm:px-6 lg:px-8">
-                    <div className="relative px-4 sm:px-0">
-                        <div className="bg-gray-800 shadow-xl sm:rounded-lg overflow-hidden">
-                            <ProfileImagenConPlaceholder src={usuario.banner_perfil} alt="Banner del perfil" claseImagen="w-full h-52 sm:h-72 object-cover" clasePlaceholder="w-full h-52 sm:h-72 bg-gray-700 flex items-center justify-center" tipo="banner" esStorage={true} />
-                        </div>
-                        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 sm:translate-y-1/2">
-                            <ProfileImagenConPlaceholder src={usuario.foto_perfil} alt={`Foto de perfil de ${usuario.name}`} claseImagen="w-28 h-28 sm:w-36 sm:h-36 rounded-full object-cover border-4 border-slate-900 shadow-2xl" clasePlaceholder="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-slate-900 bg-gray-700 flex items-center justify-center text-white text-4xl sm:text-5xl shadow-2xl" tipo="perfil" nombre={usuario.name} esStorage={true} />
-                        </div>
+
+return (
+    <AuthenticatedLayout user={auth.user}>
+        <Head title="Perfil" />
+        <div key={url} className="pt-16 pb-12 min-h-screen">
+            <div className="mx-auto max-w-7xl space-y-10 sm:px-6 lg:px-8">
+
+                <div className="relative">
+                    <div className="bg-gray-800 shadow-xl sm:rounded-lg overflow-hidden">
+                        <ProfileImagenConPlaceholder src={usuario.banner_perfil} alt="Banner del perfil" claseImagen="w-full h-52 sm:h-72 object-cover" clasePlaceholder="w-full h-52 sm:h-72 bg-gray-700 flex items-center justify-center" tipo="banner" esStorage={true} />
+                    </div>
+                    <div className="absolute bottom-0 left-6 transform translate-y-1/2 z-10">
+                        <ProfileImagenConPlaceholder
+                            src={usuario.foto_perfil}
+                            alt={`Foto de perfil de ${usuario.name}`}
+                            claseImagen="w-28 h-28 sm:w-36 sm:h-36 rounded-full object-cover border-4 border-gray-800 shadow-md"
+                            clasePlaceholder="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-gray-800 bg-gray-700 flex items-center justify-center text-white text-4xl sm:text-5xl shadow-md"
+                            tipo="perfil"
+                            nombre={usuario.name}
+                            esStorage={true}
+                        />
+                    </div>
+                </div>
+
+                <div className="mt-72 sm:mt-96 px-4 sm:px-6">
+                    <div className="flex justify-end mb-4">
+                        <Link
+                            href={route('profile.edit')}
+                            className="inline-flex items-center px-4 py-2 bg-transparent border border-gray-600 rounded-full font-semibold text-xs text-gray-200 uppercase tracking-widest hover:bg-gray-700 hover:text-white focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition ease-in-out duration-150"
+                        >
+                            Editar perfil
+                        </Link>
                     </div>
 
-                    <div className="pt-20 sm:pt-24">
-                        <div className="p-6 sm:p-8 bg-gray-800 shadow-xl sm:rounded-lg text-center mx-4 sm:mx-0">
-                            <h3 className="text-3xl font-bold text-gray-100 mb-1">{usuario.name}</h3>
-                            <p className="text-md text-gray-400 mb-6">{usuario.email}</p>
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end">
+                        <div className="flex flex-col items-start">
+                            <h3 className="text-3xl font-bold text-white">{usuario.name}</h3>
+                        </div>
+
+                        <div className="flex items-center space-x-4 mt-4 sm:mt-0">
                             {cancionesUsuario && cancionesUsuario.length > 0 && (
-                                <div className="flex items-center justify-center space-x-4 mb-6">
+                                <div className="flex items-center space-x-4">
                                     <button
                                         onClick={handlePlayPauseUserSongs}
                                         disabled={isPlayerLoadingThisSource || !cancionesUsuario || cancionesUsuario.length === 0}
@@ -531,17 +591,11 @@ export default function Index() {
                                     </button>
                                 </div>
                             )}
-                            <div className="mt-4">
-                                <Link
-                                    href={route('profile.edit')}
-                                    className="inline-flex items-center px-6 py-2 bg-gray-700 border border-gray-600 rounded-full font-semibold text-xs text-gray-200 uppercase tracking-widest hover:bg-gray-600 focus:bg-gray-600 active:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition ease-in-out duration-150"
-                                >
-                                    Ajustes del Perfil
-                                </Link>
-                            </div>
                         </div>
                     </div>
+                </div>
 
+                <div className="space-y-10">
                     <div>
                         <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Canciones</h3>
                         <ProfileCancionesList
@@ -574,6 +628,7 @@ export default function Index() {
                     </div>
                 </div>
             </div>
-        </AuthenticatedLayout>
-    );
+        </div>
+    </AuthenticatedLayout>
+);
 }
