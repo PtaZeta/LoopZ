@@ -14,7 +14,6 @@ import { ArrowPathIcon as LoadingIcon } from '@heroicons/react/20/solid';
 import { HeartIcon as HeartIconOutline } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 
-
 const isFullUrl = (url) => {
     try {
         new URL(url);
@@ -28,22 +27,18 @@ const ProfileImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, 
     const [errorCarga, setErrorCarga] = useState(false);
     const cacheBuster = '';
     const urlImagenCompleta = src ? (isFullUrl(src) ? src : (esStorage ? `/storage/${src}${cacheBuster}` : `${src}${cacheBuster}`)) : null;
-
     const handleImageError = useCallback(() => {
         setErrorCarga(true);
     }, []);
-
     useEffect(() => {
         setErrorCarga(false);
     }, [src]);
-
     const obtenerIniciales = useCallback((nombreCompleto) => {
         if (!nombreCompleto) return '';
         const nombres = nombreCompleto.split(' ');
         const iniciales = nombres.map(n => n.charAt(0)).join('');
         return iniciales.toUpperCase().slice(0, 2);
     }, []);
-
     const PlaceholderIcono = useCallback(() => {
         switch (tipo) {
             case 'perfil': return <UserCircleIcon className="w-1/2 h-1/2 text-gray-500" />;
@@ -53,18 +48,14 @@ const ProfileImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, 
             default: return <PhotoIcon className="w-1/3 h-1/3 text-gray-500" />;
         }
     }, [tipo]);
-
     const PlaceholderContenido = useCallback(() => {
            if (tipo === 'perfil' && !src && nombre) {
              return <span className="text-white text-4xl font-semibold pointer-events-none">{obtenerIniciales(nombre)}</span>;
            }
          return <PlaceholderIcono />;
     }, [tipo, src, nombre, obtenerIniciales, PlaceholderIcono]);
-
-
     const claveParaImagen = urlImagenCompleta ? `img-${urlImagenCompleta}` : null;
     const claveParaPlaceholderWrapper = `ph-wrapper-${tipo}-${alt.replace(/\s+/g, '-')}-${nombre || 'no-nombre'}`;
-
     return (
         <div className={`${clasePlaceholder} flex items-center justify-center overflow-hidden relative`}>
             {urlImagenCompleta && !errorCarga ? (
@@ -84,25 +75,19 @@ const ProfileImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, 
     );
 };
 
-
 const CardImagenConPlaceholder = React.memo(({ src, alt, claseImagen, clasePlaceholder, tipo = 'playlist', esStorage = false }) => {
     const [errorCarga, setErrorCarga] = useState(false);
     const urlImagenCompleta = src ? (isFullUrl(src) ? src : (esStorage ? `/storage/${src}` : src)) : null;
-
     const handleImageError = useCallback(() => { setErrorCarga(true); }, []);
-
     const PlaceholderContenido = useCallback(() => (
              <MusicalNoteIconSolid className="w-1/2 h-1/2 text-gray-500" />
     ), []);
-
     const claveUnicaParaElemento = urlImagenCompleta
         ? `img-card-${urlImagenCompleta}`
         : `placeholder-card-${tipo}-${alt.replace(/\s+/g, '-')}`;
-
     useEffect(() => {
         setErrorCarga(false);
     }, [src]);
-
     return urlImagenCompleta && !errorCarga ? (
         <img
             key={claveUnicaParaElemento}
@@ -120,29 +105,24 @@ const CardImagenConPlaceholder = React.memo(({ src, alt, claseImagen, clasePlace
 
 const CardListaUsuarios = React.memo(({ tipo, usuarios: usuariosProp, usuarioLogueadoId }) => {
     const usuarios = Array.isArray(usuariosProp) ? usuariosProp : [];
-
     if (usuarios.length === 0) {
         const textoDefault = tipo === 'playlist' ? 'Sin colaboradores' : 'Artista desconocido';
         return <span className="text-xs text-gray-500 mt-1 truncate w-full">{textoDefault}</span>;
     }
-
     const MAX_SHOWN = 1;
-      let displayOrder = [];
-      const processedUserIds = new Set();
-      let finalOwner = null;
-      let finalAuthUser = null;
-
-      for(const u of usuarios) {
+    let displayOrder = [];
+    const processedUserIds = new Set();
+    let finalOwner = null;
+    let finalAuthUser = null;
+    for(const u of usuarios) {
           if(u.id === usuarioLogueadoId) finalAuthUser = u;
           if(u.pivot?.propietario === true) finalOwner = u;
-      }
-
-      if (finalAuthUser) {
+    }
+    if (finalAuthUser) {
           displayOrder.push(finalAuthUser);
           processedUserIds.add(finalAuthUser.id);
-      }
-
-      if (finalOwner && !processedUserIds.has(finalOwner.id)) {
+    }
+    if (finalOwner && !processedUserIds.has(finalOwner.id)) {
           if (finalAuthUser) {
                const authIndex = displayOrder.findIndex(u => u.id === finalAuthUser.id);
                if (authIndex !== -1) {
@@ -154,29 +134,21 @@ const CardListaUsuarios = React.memo(({ tipo, usuarios: usuariosProp, usuarioLog
                displayOrder.unshift(finalOwner);
           }
           processedUserIds.add(finalOwner.id);
-      }
-
-      usuarios.forEach(u => {
+    }
+    usuarios.forEach(u => {
           if (!processedUserIds.has(u.id)) {
               displayOrder.push(u);
           }
-      });
-
-        if (displayOrder.length === 0 && usuarios.length > 0) {
+    });
+    if (displayOrder.length === 0 && usuarios.length > 0) {
              displayOrder = [...usuarios];
-        }
-
-
+    }
     const usuariosMostrados = displayOrder.slice(0, MAX_SHOWN);
     const usuariosTooltip = displayOrder.slice(MAX_SHOWN);
-
     const textoMostrado = usuariosMostrados.map(u => u.name).join(', ');
     const numOcultos = usuariosTooltip.length;
-
     const tipoCapitalizado = tipo ? tipo.charAt(0).toUpperCase() + tipo.slice(1) : 'Item';
-
     const tituloCompleto = `${tipoCapitalizado} · ${displayOrder.map(u => u.name).join(', ')}`;
-
     return (
         <div className="relative group mt-1 w-full">
             <p className="text-xs text-gray-400 truncate w-full cursor-default" title={tituloCompleto}>
@@ -212,7 +184,6 @@ const ItemCard = React.memo(({ item, tipoPredeterminado, usuarioLogueadoId }) =>
     const rutaExiste = typeof route === 'function' && route().has(nombreRuta);
     const cardWidthClass = 'w-56';
     const cardMinWidth = '14rem';
-
     const imageSection = (
         <div className="relative w-full aspect-square mb-3">
             <CardImagenConPlaceholder
@@ -228,7 +199,6 @@ const ItemCard = React.memo(({ item, tipoPredeterminado, usuarioLogueadoId }) =>
             </div>
         </div>
     );
-
     const textSection = (
         <div className="w-full px-3 sm:px-4 pb-4 flex flex-col items-center">
             <span className="text-sm font-semibold text-gray-100 group-hover:text-white group-hover:underline line-clamp-2" title={item.nombre}>
@@ -237,7 +207,6 @@ const ItemCard = React.memo(({ item, tipoPredeterminado, usuarioLogueadoId }) =>
             <CardListaUsuarios tipo={tipoItem} usuarios={item.usuarios || (item.artista ? [{ name: item.artista, id: `art-${item.id}` }] : [])} usuarioLogueadoId={usuarioLogueadoId} />
         </div>
     );
-
     const textSectionLinked = (
           <div className="w-full px-3 sm:px-4 pb-4 flex flex-col items-center">
               <Link href={rutaExiste ? route(nombreRuta, item.id) : '#'} className="block w-full group">
@@ -248,7 +217,6 @@ const ItemCard = React.memo(({ item, tipoPredeterminado, usuarioLogueadoId }) =>
               <CardListaUsuarios tipo={tipoItem} usuarios={item.usuarios || (item.artista ? [{ name: item.artista, id: `art-${item.id}` }] : [])} usuarioLogueadoId={usuarioLogueadoId} />
           </div>
     );
-
     return (
         <li className={`bg-gradient-to-b from-gray-800 to-gray-850 rounded-lg shadow-lg overflow-hidden flex flex-col items-center text-center transition duration-300 ease-in-out hover:from-gray-700 hover:to-gray-750 hover:shadow-xl ${cardWidthClass} flex-shrink-0`}
             style={{ minWidth: cardMinWidth }}>
@@ -274,9 +242,7 @@ const ProfileDisplayList = React.memo(({ items, usuarioLogueadoId, tipoPredeterm
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
     const scrollAmount = 400;
-
     const itemsArray = Array.isArray(items) ? items : [];
-
     const updateScrollability = useCallback(() => {
         const element = scrollContainerRef.current;
         if (element) {
@@ -285,7 +251,6 @@ const ProfileDisplayList = React.memo(({ items, usuarioLogueadoId, tipoPredeterm
             setCanScrollRight(element.scrollLeft < (maxScrollLeft - 1));
         }
     }, []);
-
     useEffect(() => {
         const el = scrollContainerRef.current;
         if (!el || itemsArray.length === 0) {
@@ -301,18 +266,15 @@ const ProfileDisplayList = React.memo(({ items, usuarioLogueadoId, tipoPredeterm
             window.removeEventListener('resize', updateScrollability);
         };
     }, [updateScrollability, itemsArray.length]);
-
     const handleScroll = (direction) => {
         if (scrollContainerRef.current) {
             const amount = direction === 'left' ? -scrollAmount : scrollAmount;
             scrollContainerRef.current.scrollBy({ left: amount, behavior: 'smooth' });
         }
     };
-
     if (!itemsArray || itemsArray.length === 0) {
         return <p className="text-sm text-gray-400 italic px-4 sm:px-6">Aún no has agregado {tipoPredeterminado}s a tu perfil.</p>;
     }
-
     return (
         <div className="relative" onMouseEnter={() => setIsHovering(true)} onMouseLeave={() => setIsHovering(false)}>
             <button onClick={() => handleScroll('left')} disabled={!canScrollLeft} aria-label="Scroll Left" className={`absolute left-2 top-1/2 transform -translate-y-1/2 z-20 p-2 bg-black bg-opacity-70 rounded-full text-white transition-opacity duration-300 ease-in-out hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white ${isHovering && canScrollLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'} disabled:opacity-20 disabled:pointer-events-none disabled:cursor-not-allowed`}>
@@ -355,19 +317,15 @@ const CancionListItem = React.memo(({
         return false;
     }, []);
     const rutaItemExiste = nombreRuta ? routeExists(nombreRuta) : false;
-
     const [isHovered, setIsHovered] = useState(false);
-
     const handlePlayButtonClick = (e) => {
         e.stopPropagation();
         onPlayPauseClick(item, index);
     };
-
     const handleLoopzButtonClick = (e) => {
         e.stopPropagation();
         onToggleLoopz(item.id, isLiked);
     };
-
     return (
         <li
             className={`flex items-center space-x-3 p-2 transition duration-150 ease-in-out group rounded-md cursor-default ${isCurrentTrack ? 'bg-indigo-900/30' : 'hover:bg-gray-700/60'}`}
@@ -390,7 +348,6 @@ const CancionListItem = React.memo(({
                     <span className="text-sm text-gray-400 w-full text-center select-none">{index + 1}</span>
                 )}
             </div>
-
             <div className="flex-shrink-0">
                 <ProfileImagenConPlaceholder
                     src={item.foto_url}
@@ -401,7 +358,6 @@ const CancionListItem = React.memo(({
                     esStorage={item.foto_url && !(item.foto_url.startsWith('http://') || item.foto_url.startsWith('https://'))}
                 />
             </div>
-
             <div className="flex-grow min-w-0">
                 {rutaItemExiste ? (
                     <Link
@@ -425,7 +381,6 @@ const CancionListItem = React.memo(({
                     </p>
                 )}
             </div>
-
             <div className="flex-shrink-0">
                  <button
                      onClick={handleLoopzButtonClick}
@@ -464,14 +419,12 @@ const ProfileCancionesList = ({
     if (!items || items.length === 0) {
         return <p className="text-sm text-gray-400 italic px-4 sm:px-6">Aún no has agregado {tipoItem}s a tu perfil.</p>;
     }
-
     return (
         <ul className="space-y-1 px-4 sm:px-6">
             {items.map((item, index) => {
                 const isThisCurrentTrack = item.id === currentTrackId && currentSourceId === mainSourceId;
                 const isLoadingThisTrack = isPlayerLoading && isThisCurrentTrack && !Reproduciendo;
                 const isLikeProcessing = likeProcessingSongId === item.id;
-
                 return (
                     <CancionListItem
                         key={item.id}
@@ -492,7 +445,6 @@ const ProfileCancionesList = ({
         </ul>
     );
 };
-
 
 export default function Index() {
     const { props, url } = usePage();
@@ -518,19 +470,11 @@ export default function Index() {
         sourceId = null,
         cargando: isPlayerLoading = false
     } = playerContextValue || {};
-
     const userSongsSourceId = `user-${usuario.id}-all-canciones`;
     const isCurrentSourcePlayingUserSongs = sourceId === userSongsSourceId && Reproduciendo;
     const isPlayerLoadingThisSource = isPlayerLoading && sourceId === userSongsSourceId;
-
     const [cancionesUsuario, setCancionesUsuario] = useState(cancionesUsuarioProp);
     const [likeProcessingSongId, setLikeProcessingSongId] = useState(null);
-
-    useEffect(() => {
-        setCancionesUsuario(cancionesUsuarioProp);
-    }, [cancionesUsuarioProp]);
-
-
     const handlePlayPauseUserSongs = useCallback(() => {
         if (!cancionesUsuario || cancionesUsuario.length === 0) return;
         if (sourceId === userSongsSourceId) {
@@ -540,11 +484,10 @@ export default function Index() {
                 play();
             }
         } else {
-            const formattedSongs = cancionesUsuario.map(cancion => ({ ...cancion, }));
+            const formattedSongs = cancionesUsuario.map(cancion => ({ ...cancion }));
             cargarColaYIniciar(formattedSongs, { id: userSongsSourceId, name: `Canciones de ${usuario.name}`, type: 'userCollection', iniciar: 0 });
         }
     }, [cancionesUsuario, pause, sourceId, userSongsSourceId, Reproduciendo, play, cargarColaYIniciar, usuario.name]);
-
     const handleToggleShuffleUserSongs = useCallback(() => {
         if (!cancionesUsuario || cancionesUsuario.length === 0) return;
         if (sourceId === userSongsSourceId) {
@@ -553,13 +496,9 @@ export default function Index() {
              toggleAleatorio();
         }
     }, [cancionesUsuario, toggleAleatorio, sourceId, userSongsSourceId]);
-
-
     const handlePlayPauseSingleSong = useCallback((songToPlay, songIndexInList) => {
         if (!cancionesUsuario || cancionesUsuario.length === 0) return;
-
         const isClickedSongCurrent = cancionActual && cancionActual.id === songToPlay.id && sourceId === userSongsSourceId;
-
         if (isClickedSongCurrent) {
             if (Reproduciendo) {
                 pause();
@@ -577,24 +516,18 @@ export default function Index() {
             });
         }
     }, [cancionesUsuario, cancionActual, sourceId, userSongsSourceId, Reproduciendo, pause, play, cargarColaYIniciar, usuario.name]);
-
     const handleToggleLoopzSong = useCallback((songId, isInLoopz) => {
         if (!songId || likeProcessingSongId === songId) return;
-
         setLikeProcessingSongId(songId);
-
         setCancionesUsuario(prevCanciones =>
             prevCanciones.map(song =>
                 song.id === songId ? { ...song, is_in_user_loopz: !isInLoopz } : song
             )
         );
-
         router.post(route('cancion.loopz', { cancion: songId }), {}, {
             preserveScroll: true,
-            onSuccess: (page) => {
-            },
+            onSuccess: (page) => {},
             onError: (errors) => {
-                console.error(`Error toggling LoopZ for song ${songId}:`, errors);
                 setCancionesUsuario(prevCanciones =>
                     prevCanciones.map(song =>
                         song.id === songId ? { ...song, is_in_user_loopz: isInLoopz } : song
@@ -606,111 +539,104 @@ export default function Index() {
             },
         });
     }, [likeProcessingSongId]);
-
-
-return (
-    <AuthenticatedLayout user={auth.user}>
-        <Head title="Perfil" />
-        <div key={url} className="pt-16 pb-12 min-h-screen">
-            <div className="mx-auto max-w-7xl space-y-10 sm:px-6 lg:px-8">
-
-                <div className="relative">
-                    <div className="bg-gray-800 shadow-xl sm:rounded-lg overflow-hidden">
-                        <ProfileImagenConPlaceholder src={usuario.banner_perfil} alt="Banner del perfil" claseImagen="w-full h-52 sm:h-72 object-cover" clasePlaceholder="w-full h-52 sm:h-72 bg-gray-700 flex items-center justify-center" tipo="banner" esStorage={true} />
-                    </div>
-                    <div className="absolute bottom-0 left-6 transform translate-y-1/2 z-10">
-                        <ProfileImagenConPlaceholder
-                            src={usuario.foto_perfil}
-                            alt={`Foto de perfil de ${usuario.name}`}
-                            claseImagen="w-28 h-28 sm:w-36 sm:h-36 rounded-full object-cover border-4 border-gray-800 shadow-md"
-                            clasePlaceholder="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-gray-800 bg-gray-700 flex items-center justify-center text-white text-4xl sm:text-5xl shadow-md"
-                            tipo="perfil"
-                            nombre={usuario.name}
-                            esStorage={true}
-                        />
-                    </div>
-                </div>
-
-                <div className="mt-72 sm:mt-96 px-4 sm:px-6">
-                    <div className="flex justify-end mb-4">
-                        <Link
-                            href={route('profile.edit')}
-                            className="inline-flex items-center px-4 py-2 bg-transparent border border-gray-600 rounded-full font-semibold text-xs text-gray-200 uppercase tracking-widest hover:bg-gray-700 hover:text-white focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition ease-in-out duration-150"
-                        >
-                            Editar perfil
-                        </Link>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end">
-                        <div className="flex flex-col items-start">
-                            <h3 className="text-3xl font-bold text-white">{usuario.name}</h3>
+    return (
+        <AuthenticatedLayout user={auth.user}>
+            <Head title="Perfil" />
+            <div key={url} className="pt-16 pb-12 min-h-screen">
+                <div className="mx-auto max-w-7xl space-y-10 sm:px-6 lg:px-8">
+                    <div className="relative">
+                        <div className="bg-gray-800 shadow-xl sm:rounded-lg overflow-hidden">
+                            <ProfileImagenConPlaceholder src={usuario.banner_perfil} alt="Banner del perfil" claseImagen="w-full h-52 sm:h-72 object-cover" clasePlaceholder="w-full h-52 sm:h-72 bg-gray-700 flex items-center justify-center" tipo="banner" esStorage={true} />
                         </div>
-
-                        <div className="flex items-center space-x-4 mt-4 sm:mt-0">
-                            {cancionesUsuario && cancionesUsuario.length > 0 && (
-                                <div className="flex items-center space-x-4">
-                                    <button
-                                         onClick={handlePlayPauseUserSongs}
-                                         disabled={isPlayerLoadingThisSource || !cancionesUsuario || cancionesUsuario.length === 0}
-                                         aria-label={isCurrentSourcePlayingUserSongs ? 'Pausar canciones del usuario' : (sourceId === userSongsSourceId && cancionActual ? 'Continuar reproducción de canciones del usuario' : 'Reproducir todas las canciones del usuario')}
-                                         className="flex items-center justify-center p-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-full shadow-md hover:from-purple-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed"
-                                    >
-                                         {isPlayerLoadingThisSource ? <LoadingIcon className="w-6 h-6 animate-spin" /> : isCurrentSourcePlayingUserSongs ? <PauseIconSolid className="w-6 h-6" /> : <PlayIconSolid className="w-6 h-6" />}
-                                    </button>
-                                    <button
-                                         onClick={handleToggleShuffleUserSongs}
-                                         disabled={!cancionesUsuario || cancionesUsuario.length === 0}
-                                         aria-label={aleatorio ? "Desactivar modo aleatorio para canciones del usuario" : "Activar modo aleatorio para canciones del usuario"}
-                                         className={`flex items-center justify-center p-3 border rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed ${
-                                             aleatorio
-                                                 ? 'bg-indigo-500 text-white border-indigo-500 hover:bg-indigo-600 focus:ring-indigo-500'
-                                                 : 'bg-transparent text-gray-300 border-gray-600 hover:bg-gray-700 hover:text-white focus:ring-gray-500'
-                                         }`}
-                                    >
-                                         <ShuffleIcon className="w-6 h-6" />
-                                    </button>
-                                </div>
-                            )}
+                        <div className="absolute bottom-0 left-6 transform translate-y-1/2 z-10">
+                            <ProfileImagenConPlaceholder
+                                src={usuario.foto_perfil}
+                                alt={`Foto de perfil de ${usuario.name}`}
+                                claseImagen="w-28 h-28 sm:w-36 sm:h-36 rounded-full object-cover border-4 border-gray-800 shadow-md"
+                                clasePlaceholder="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-gray-800 bg-gray-700 flex items-center justify-center text-white text-4xl sm:text-5xl shadow-md"
+                                tipo="perfil"
+                                nombre={usuario.name}
+                                esStorage={true}
+                            />
                         </div>
                     </div>
-                </div>
-
-                <div className="space-y-10">
-                    <div>
-                        <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Canciones</h3>
-                        <ProfileCancionesList
-                            items={cancionesUsuario}
-                            tipoItem="cancion"
-                            nombreRuta={null}
-                            onPlayPauseSong={handlePlayPauseSingleSong}
-                            currentTrackId={cancionActual?.id}
-                            Reproduciendo={Reproduciendo}
-                            isPlayerLoading={isPlayerLoading}
-                            currentSourceId={sourceId}
-                            mainSourceId={userSongsSourceId}
-                            onToggleLoopz={handleToggleLoopzSong}
-                            likeProcessingSongId={likeProcessingSongId}
-                        />
+                    <div className="mt-72 sm:mt-96 px-4 sm:px-6">
+                        <div className="flex justify-end mb-4">
+                            <Link
+                                href={route('profile.edit')}
+                                className="inline-flex items-center px-4 py-2 bg-transparent border border-gray-600 rounded-full font-semibold text-xs text-gray-200 uppercase tracking-widest hover:bg-gray-700 hover:text-white focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition ease-in-out duration-150"
+                            >
+                                Editar perfil
+                            </Link>
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end">
+                            <div className="flex flex-col items-start">
+                                <h3 className="text-3xl font-bold text-white">{usuario.name}</h3>
+                            </div>
+                            <div className="flex items-center space-x-4 mt-4 sm:mt-0">
+                                {cancionesUsuario && cancionesUsuario.length > 0 && (
+                                    <div className="flex items-center space-x-4">
+                                        <button
+                                             onClick={handlePlayPauseUserSongs}
+                                             disabled={isPlayerLoadingThisSource || !cancionesUsuario || cancionesUsuario.length === 0}
+                                             aria-label={isCurrentSourcePlayingUserSongs ? 'Pausar canciones del usuario' : (sourceId === userSongsSourceId && cancionActual ? 'Continuar reproducción de canciones del usuario' : 'Reproducir todas las canciones del usuario')}
+                                             className="flex items-center justify-center p-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-full shadow-md hover:from-purple-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed"
+                                        >
+                                             {isPlayerLoadingThisSource ? <LoadingIcon className="w-6 h-6 animate-spin" /> : isCurrentSourcePlayingUserSongs ? <PauseIconSolid className="w-6 h-6" /> : <PlayIconSolid className="w-6 h-6" />}
+                                        </button>
+                                        <button
+                                             onClick={handleToggleShuffleUserSongs}
+                                             disabled={!cancionesUsuario || cancionesUsuario.length === 0}
+                                             aria-label={aleatorio ? "Desactivar modo aleatorio para canciones del usuario" : "Activar modo aleatorio para canciones del usuario"}
+                                             className={`flex items-center justify-center p-3 border rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed ${
+                                                 aleatorio
+                                                     ? 'bg-indigo-500 text-white border-indigo-500 hover:bg-indigo-600 focus:ring-indigo-500'
+                                                     : 'bg-transparent text-gray-300 border-gray-600 hover:bg-gray-700 hover:text-white focus:ring-gray-500'
+                                             }`}
+                                        >
+                                             <ShuffleIcon className="w-6 h-6" />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Playlists</h3>
-                        <ProfileDisplayList items={playlistsUsuario} usuarioLogueadoId={usuarioLogueadoId} tipoPredeterminado="playlist" />
-                    </div>
-                    <div>
-                        <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Álbumes</h3>
-                        <ProfileDisplayList items={albumesUsuario} usuarioLogueadoId={usuarioLogueadoId} tipoPredeterminado="album" />
-                    </div>
-                    <div>
-                        <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">EPs</h3>
-                        <ProfileDisplayList items={epsUsuario} usuarioLogueadoId={usuarioLogueadoId} tipoPredeterminado="ep" />
-                    </div>
-                    <div>
-                        <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Singles</h3>
-                        <ProfileDisplayList items={singlesUsuario} usuarioLogueadoId={usuarioLogueadoId} tipoPredeterminado="single" />
+                    <div className="space-y-10">
+                        <div>
+                            <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Canciones</h3>
+                            <ProfileCancionesList
+                                items={cancionesUsuario}
+                                tipoItem="cancion"
+                                nombreRuta={null}
+                                onPlayPauseSong={handlePlayPauseSingleSong}
+                                currentTrackId={cancionActual?.id}
+                                Reproduciendo={Reproduciendo}
+                                isPlayerLoading={isPlayerLoading}
+                                currentSourceId={sourceId}
+                                mainSourceId={userSongsSourceId}
+                                onToggleLoopz={handleToggleLoopzSong}
+                                likeProcessingSongId={likeProcessingSongId}
+                            />
+                        </div>
+                        <div>
+                            <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Playlists</h3>
+                            <ProfileDisplayList items={playlistsUsuario} usuarioLogueadoId={usuarioLogueadoId} tipoPredeterminado="playlist" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Álbumes</h3>
+                            <ProfileDisplayList items={albumesUsuario} usuarioLogueadoId={usuarioLogueadoId} tipoPredeterminado="album" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">EPs</h3>
+                            <ProfileDisplayList items={epsUsuario} usuarioLogueadoId={usuarioLogueadoId} tipoPredeterminado="ep" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Singles</h3>
+                            <ProfileDisplayList items={singlesUsuario} usuarioLogueadoId={usuarioLogueadoId} tipoPredeterminado="single" />
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </AuthenticatedLayout>
-);
+        </AuthenticatedLayout>
+    );
 }
