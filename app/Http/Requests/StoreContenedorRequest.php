@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth; // Import Auth facade
+use Illuminate\Validation\Rule;
 
 class StoreContenedorRequest extends FormRequest
 {
@@ -29,6 +30,7 @@ class StoreContenedorRequest extends FormRequest
             'descripcion' => ['nullable', 'string', 'max:1000'],
             'imagen' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'],
             'publico' => ['nullable', 'boolean'],
+            'tipo' => ['required', 'string', Rule::in(['album', 'ep', 'single', 'playlist'])],
             'userIds' => ['nullable', 'array'],
             'userIds.*' => ['integer', 'exists:users,id'],
         ];

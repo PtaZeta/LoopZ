@@ -102,6 +102,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/singles/{contenedor}/canciones', [ContenedorController::class, 'anadirCancion'])->name('singles.canciones.add');
     Route::delete('/singles/{contenedor}/canciones/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('singles.canciones.remove');
 
+    Route::get('/lanzamiento/crear', [ContenedorController::class, 'crearLanzamiento'])->name('lanzamiento.crear');
+    Route::post('/lanzamiento', [ContenedorController::class, 'storeLanzamiento'])->name('lanzamiento.storeLanzamiento');
+
+    Route::get('/lanzamientos/{contenedor}/canciones/search', [ContenedorController::class, 'buscarCanciones'])->name('lanzamientos.canciones.search');
+    Route::post('/lanzamientos/{contenedor}/canciones', [ContenedorController::class, 'anadirCancion'])->name('lanzamientos.canciones.add');
+    Route::delete('/lanzamientos/{contenedor}/canciones/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('lanzamientos.canciones.remove');
+
     Route::post('/contenedores/{contenedor}/toggle-loopz', [ContenedorController::class, 'toggleLoopz'])
         ->name('contenedores.toggle-loopz')
         ->where('contenedor', '[0-9]+');
@@ -113,10 +120,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/search', [SearchController::class, 'index'])->name('search.index');
     Route::post('/api/recomendaciones', [RecomendacionController::class, 'index']);
-    Route::middleware(['auth'])->group(function () {
-    Route::post('/track-played', [ReproduccionController::class, 'store'])
-         ->name('track.played');
-});
+    Route::post('/playlist/{playlist}/{cancion}/toggle', [ContenedorController::class, 'toggleCancion'])
+        ->name('playlist.toggleCancion');
 });
 
 Route::get('/spotify-login', function () {
