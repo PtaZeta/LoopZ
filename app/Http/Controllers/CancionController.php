@@ -180,9 +180,8 @@ class CancionController extends Controller
         if (!empty($usuariosAsociar) && method_exists($cancion, 'usuarios')) {
             $cancion->usuarios()->attach($usuariosAsociar);
         }
-
-        return redirect()->route('canciones.index')
-                         ->with('success', 'Canción creada exitosamente.');
+        $usuario = Auth::user();
+        return redirect()->route('profile.show', $usuario->id);
     }
     public function show($id)
     {

@@ -136,6 +136,64 @@ class ContenedorController extends Controller
     }
 
 
+    public function crearLanzamiento()
+    {
+        return Inertia::render('lanzamiento/Create');
+    }
+    public function storeLanzamiento(Request $request)
+    {
+        $validated = $request->validate([
+            'nombre' => 'required|string|max:255',
+            'descripcion' => 'nullable|string|max:1000',
+            'tipo' => 'required|in:album,ep,single',
+            'imagen' => 'nullable|image|max:4096',
+            'publico' => 'boolean',
+            'tipo' => 'required|in:album,ep,single',
+            'userIds' => 'nullable|array',
+            'userIds.*' => 'integer|exists:users,id',
+        ]);
+
+        $imagenUrl = null;
+        if ($request->hasFile('imagen') && $request->file('imagen')->isValid()) {
+            $archivoImagen = $request->file('imagen');
+            $imagenUrl = Storage::disk('s3')->url(
+                Storage::disk('s3')->putFileAs(
+                    'contenedor_imagenes',
+                    $archivoImagen,
+                    Str::uuid() . "_img.{$archivoImagen->getClientOriginalExtension()}",
+                )
+            );
+        }
+
+        $contenedor = Contenedor::create([
+            'nombre' => $validated['nombre'],
+            'descripcion' => $validated['descripcion'] ?? null,
+            'tipo' => $validated['tipo'],
+            'imagen' => $imagenUrl,
+            'tipo' => $validated['tipo'],
+            'publico' => $validated['publico'] ?? false,
+        ]);
+
+        if (method_exists($contenedor, 'usuarios')) {
+            $idCreador = Auth::id();
+            $usuariosASincronizar = [];
+
+            foreach ($validated['userIds'] ?? [] as $idUsuario) {
+                if ($idUsuario != $idCreador) {
+                    $usuariosASincronizar[(int) $idUsuario] = ['propietario' => false];
+                }
+            }
+            if ($idCreador) {
+                $usuariosASincronizar[$idCreador] = ['propietario' => true];
+            }
+
+            if (!empty($usuariosASincronizar)) {
+                $contenedor->usuarios()->attach($usuariosASincronizar);
+            }
+        }
+
+        return redirect()->route('biblioteca')->with('success', 'Lanzamiento creado exitosamente.');
+    }
     public function create(Request $peticion)
     {
         $infoRecurso = $this->getTipoVista($peticion);
@@ -230,6 +288,12 @@ class ContenedorController extends Controller
                 'delete' => $usuario->can('delete', $contenedor),
             ];
             $contenedor->is_liked_by_user = $contenedor->loopzusuarios->contains('id', $usuario->id);
+
+            $userPlaylists = $usuario->perteneceContenedores()
+                ->where('tipo', 'playlist')
+                ->with('canciones:id')
+                ->select('id', 'nombre')
+                ->get();
         } else {
             $contenedor->can = [
                 'view'   => $contenedor->publico ?? false,
@@ -237,12 +301,21 @@ class ContenedorController extends Controller
                 'delete' => false,
             ];
             $contenedor->is_liked_by_user = false;
+            $userPlaylists = collect(); // vacío
         }
 
         return Inertia::render($nombreVista, [
             'contenedor' => $contenedor,
+            'auth' => [
+                'user' => $usuario ? [
+                    'id' => $usuario->id,
+                    'name' => $usuario->name,
+                    'playlists' => $userPlaylists,
+                ] : null,
+            ],
         ]);
     }
+
 
 
     public function edit(Request $peticion, $id)
@@ -279,7 +352,6 @@ class ContenedorController extends Controller
         $rutaRedireccion = $rutaBase . '.show';
 
         $contenedor = Contenedor::findOrFail($id);
-        // Asegúrate de que validarTipoContenedor está definido en esta clase
         $this->validarTipoContenedor($contenedor, $tipoEsperado);
         $this->authorize('update', $contenedor);
 
@@ -291,7 +363,6 @@ class ContenedorController extends Controller
             $esPropietario = $propietario && $propietario->id === Auth::id();
         }
 
-        // La validación de userIds solo si es propietario
         if ($esPropietario) {
              $idsUsuariosValidados = $peticion->validate([
                  'userIds' => 'nullable|array',
@@ -301,30 +372,21 @@ class ContenedorController extends Controller
              unset($datosValidados['userIds']);
         }
 
-        $campoImagenRequest = 'imagen_nueva'; // Nombre del campo de la nueva imagen subida
-        $campoImagenModelo = 'imagen'; // Nombre del campo en el modelo/BD
-        $directorioS3 = 'contenedor_imagenes'; // Carpeta en tu bucket S3
+        $campoImagenRequest = 'imagen_nueva';
+        $campoImagenModelo = 'imagen';
+        $directorioS3 = 'contenedor_imagenes';
 
-        $rutaImagenAntigua = $contenedor->$campoImagenModelo; // Obtener la URL antigua de S3
+        $rutaImagenAntigua = $contenedor->$campoImagenModelo;
 
-        // Lógica para manejar la nueva imagen o eliminación
         if ($peticion->hasFile($campoImagenRequest) && $peticion->file($campoImagenRequest)->isValid()) {
-            // Si hay una nueva imagen válida, eliminar la antigua si existe en S3
-            if ($rutaImagenAntigua) { // Si hay una URL antigua guardada
-                 // Extraer la ruta relativa del bucket S3 desde la URL
-                 // Esto asume que la URL es del formato [URL_BASE_S3]/[directorio]/[nombre_archivo]
-                 // Puede que necesites ajustar esta lógica si tu URL es diferente
+            if ($rutaImagenAntigua) {
                  $pathAntigua = str_replace(Storage::disk('s3')->url(''), '', $rutaImagenAntigua);
 
-                 // --- VERIFICACIÓN AÑADIDA ---
-                 // Asegurarse de que la ruta extraída no esté vacía antes de intentar eliminar
                  if (!empty($pathAntigua) && Storage::disk('s3')->exists($pathAntigua)) {
                      Storage::disk('s3')->delete($pathAntigua);
                  }
-                 // --- FIN VERIFICACIÓN AÑADIDA ---
             }
 
-            // Subir la nueva imagen a S3
             $nuevoArchivoImagen = $peticion->file($campoImagenRequest);
             $datosValidados[$campoImagenModelo] = Storage::disk('s3')->url(
                 Storage::disk('s3')->putFileAs(
@@ -343,16 +405,14 @@ class ContenedorController extends Controller
                      Storage::disk('s3')->delete($pathAntigua);
                  }
             }
-            $datosValidados[$campoImagenModelo] = null; // Establecer el campo en la BD a null
+            $datosValidados[$campoImagenModelo] = null;
 
         } else {
-            // Si no se subió nueva imagen ni se pidió eliminar, no modificar el campo 'imagen'
              unset($datosValidados[$campoImagenModelo]);
         }
 
         $contenedor->update($datosValidados);
 
-        // Lógica para sincronizar usuarios (solo si es propietario)
         if ($esPropietario && method_exists($contenedor, 'usuarios')) {
             $idsUsuarios = $idsUsuariosValidados['userIds'] ?? [];
             $usuariosASincronizar = [];
@@ -371,7 +431,6 @@ class ContenedorController extends Controller
             $contenedor->usuarios()->sync($usuariosASincronizar);
         }
 
-        // Asegúrate de que getNombreTipo está definido en esta clase
         return Redirect::route($rutaRedireccion, $contenedor->id)->with('success', ucfirst($this->getNombreTipo($tipoEsperado)) . ' actualizado exitosamente.');
     }
 
@@ -560,5 +619,25 @@ class ContenedorController extends Controller
         }
 
         return Redirect::back()->with('success', $mensaje);
+    }
+
+    public function toggleCancion(Request $request, $playlistId, $songId)
+    {
+        $user = $request->user();
+
+        $playlist = Contenedor::where('id', $playlistId)
+            ->where('tipo', 'playlist')
+            ->whereHas('usuarios', fn($q) => $q->where('users.id', $user->id))
+            ->firstOrFail();
+
+        $cancion = Cancion::findOrFail($songId);
+
+        if ($playlist->canciones()->where('cancion_id', $cancion->id)->exists()) {
+            $playlist->canciones()->detach($cancion);
+        } else {
+            $playlist->canciones()->attach($cancion);
+        }
+
+        return back();
     }
 }
