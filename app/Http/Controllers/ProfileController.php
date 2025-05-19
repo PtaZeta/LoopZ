@@ -16,23 +16,16 @@ use App\Models\Cancion;
 use App\Models\Contenedor;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
-use getID3; // Asumiendo que tienes getID3 configurado
+use getID3;
+use Illuminate\Support\Facades\DB;
 
-// Helper para intentar obtener la clave de S3 desde una URL.
-// ¡Nota: Esta es una implementación básica y puede necesitar ajustarse
-// a la estructura exacta de tus URLs de S3 y no es robusta para todos los casos!
-// La práctica estándar es almacenar la ruta (key) en la base de datos, no la URL completa.
 function obtenerClaveS3DesdeUrl($url, $nombreBucket) {
     $urlParseada = parse_url($url);
     if ($urlParseada && isset($urlParseada['host']) && isset($urlParseada['path'])) {
-        // Verifica si el host contiene el nombre del bucket
         if (strpos($urlParseada['host'], $nombreBucket) !== false) {
-            // La ruta S3 es la parte 'path' sin el '/' inicial
             return ltrim($urlParseada['path'], '/');
         }
     }
-    // Si no parece una URL de S3 esperada o falla el parseo, retorna el valor original
-    // asumiendo que podría ser ya una clave/ruta
     return $url;
 }
 
@@ -40,59 +33,66 @@ function obtenerClaveS3DesdeUrl($url, $nombreBucket) {
 class ProfileController extends Controller
 {
     public function show($id): Response
-    {
-        $usuario = User::findOrFail($id);
+{
+    $usuario = User::findOrFail($id);
 
-        $withUsuariosCallback = function ($query) {
-            $query->select('users.id', 'users.name', 'users.foto_perfil');
-        };
+    $withUsuariosCallback = function ($query) {
+        $query->select('users.id', 'users.name', 'users.foto_perfil');
+    };
 
-        $consultaCanciones = $usuario->perteneceCanciones()
-            ->with(['usuarios' => $withUsuariosCallback])
-            ->orderBy('pertenece_user.created_at', 'desc')
-            ->limit(10)
-            ->get();
+    $consultaCanciones = $usuario->perteneceCanciones()
+        ->with(['usuarios' => $withUsuariosCallback])
+        ->orderBy('pertenece_user.created_at', 'desc')
+        ->limit(10)
+        ->get();
 
-        $consultaPlaylists = $usuario->perteneceContenedores()
-            ->where('contenedores.tipo', 'playlist')
-            ->with(['usuarios' => $withUsuariosCallback])
-            ->orderBy('pertenece_user.created_at', 'desc')
-            ->limit(10)
-            ->get();
+    $usuarioAuth = auth()->user();
+    $loopzSongIds = $usuarioAuth ? $this->getLoopZUsuario($usuarioAuth) : [];
 
-        $consultaAlbumes = $usuario->perteneceContenedores()
-            ->where('contenedores.tipo', 'album')
-            ->with(['usuarios' => $withUsuariosCallback])
-            ->orderBy('pertenece_user.created_at', 'desc')
-            ->limit(10)
-            ->get();
+    $consultaCanciones->each(function ($cancion) use ($loopzSongIds) {
+        $cancion->is_in_user_loopz = in_array($cancion->id, $loopzSongIds);
+    });
 
-        $consultaEps = $usuario->perteneceContenedores()
-            ->where('contenedores.tipo', 'ep')
-            ->with(['usuarios' => $withUsuariosCallback])
-            ->orderBy('pertenece_user.created_at', 'desc')
-            ->limit(10)
-            ->get();
+    $consultaPlaylists = $usuario->perteneceContenedores()
+        ->where('contenedores.tipo', 'playlist')
+        ->with(['usuarios' => $withUsuariosCallback])
+        ->orderBy('pertenece_user.created_at', 'desc')
+        ->limit(10)
+        ->get();
 
-        $consultaSingles = $usuario->perteneceContenedores()
-            ->where('contenedores.tipo', 'single')
-            ->with(['usuarios' => $withUsuariosCallback])
-            ->orderBy('pertenece_user.created_at', 'desc')
-            ->limit(10)
-            ->get();
+    $consultaAlbumes = $usuario->perteneceContenedores()
+        ->where('contenedores.tipo', 'album')
+        ->with(['usuarios' => $withUsuariosCallback])
+        ->orderBy('pertenece_user.created_at', 'desc')
+        ->limit(10)
+        ->get();
 
+    $consultaEps = $usuario->perteneceContenedores()
+        ->where('contenedores.tipo', 'ep')
+        ->with(['usuarios' => $withUsuariosCallback])
+        ->orderBy('pertenece_user.created_at', 'desc')
+        ->limit(10)
+        ->get();
 
-        $esCreador = auth()->check() && auth()->user()->id === $usuario->id;
-        return Inertia::render('Profile/Show', [
-            'usuario' => $usuario->only(['id', 'name', 'email', 'foto_perfil', 'banner_perfil']),
-            'cancionesUsuario' => $consultaCanciones,
-            'playlistsUsuario' => $consultaPlaylists,
-            'albumesUsuario' => $consultaAlbumes,
-            'epsUsuario' => $consultaEps,
-            'singlesUsuario' => $consultaSingles,
-            'es_creador' => $esCreador,
-        ]);
-    }
+    $consultaSingles = $usuario->perteneceContenedores()
+        ->where('contenedores.tipo', 'single')
+        ->with(['usuarios' => $withUsuariosCallback])
+        ->orderBy('pertenece_user.created_at', 'desc')
+        ->limit(10)
+        ->get();
+
+    $esCreador = auth()->check() && auth()->user()->id === $usuario->id;
+
+    return Inertia::render('Profile/Show', [
+        'usuario' => $usuario->only(['id', 'name', 'email', 'foto_perfil', 'banner_perfil']),
+        'cancionesUsuario' => $consultaCanciones,
+        'playlistsUsuario' => $consultaPlaylists,
+        'albumesUsuario' => $consultaAlbumes,
+        'epsUsuario' => $consultaEps,
+        'singlesUsuario' => $consultaSingles,
+        'es_creador' => $esCreador,
+    ]);
+}
 
     public function edit(Request $request): Response
     {
@@ -228,5 +228,25 @@ class ProfileController extends Controller
 
         return response()->json($usuarios);
     }
+
+        private function getLoopZUsuario($user): array
+    {
+        if (!$user) {
+            return [];
+        }
+        $loopzPlaylist = $user->perteneceContenedores()
+                                ->where('tipo', 'loopz')
+                                ->first();
+
+        if (!$loopzPlaylist) {
+            return [];
+        }
+
+        return DB::table('cancion_contenedor')
+               ->where('contenedor_id', $loopzPlaylist->id)
+               ->pluck('cancion_id')
+               ->all();
+    }
+
 
 }
