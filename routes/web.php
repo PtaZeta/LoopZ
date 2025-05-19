@@ -33,6 +33,11 @@ Route::get('/', function () {
     ]);
 })->name('welcome');
 
+Route::get('/api/welcome-random', function () {
+    $canciones = Cancion::with('generos')->inRandomOrder()->take(8)->get();
+    return response()->json($canciones);
+});
+
 Route::get('/biblioteca', function () {
     $usuario = Auth::user();
 
@@ -65,8 +70,6 @@ Route::inertia('/terms', 'Static/Terms')->name('terms');
 Route::inertia('/privacy', 'Static/Privacy')->name('privacy');
 Route::inertia('/contact', 'Static/Contact')->name('contact');
 
-Route::get('/dashboard', fn() => Inertia::render('Dashboard', ['auth' => ['user' => Auth::user()]]))
-    ->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile/{user}', [ProfileController::class, 'show'])->name('profile.show');
