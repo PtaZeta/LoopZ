@@ -3,8 +3,9 @@ import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import { Link, usePage, router } from '@inertiajs/react';
 import { PlayerContext } from '@/contexts/PlayerContext';
-import { MusicalNoteIcon, ArrowsRightLeftIcon, QueueListIcon, ArrowPathIcon as LoopIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { UserIcon, MusicalNoteIcon, ArrowUpOnSquareIcon, ArrowRightOnRectangleIcon, ArrowsRightLeftIcon, QueueListIcon, ArrowPathIcon as LoopIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { ArrowPathIcon as LoadingIcon } from '@heroicons/react/20/solid';
+
 
 const PlayIcon = (props) => (
     <svg {...props} viewBox="0 0 24 24" fill="currentColor">
@@ -284,8 +285,22 @@ export default function AuthenticatedLayout({ children, header }) {
                                     </button>
                                 </Dropdown.Trigger>
                                 <Dropdown.Content>
-                                    <Dropdown.Link href={route('profile.show', usuario.id)}>Perfil</Dropdown.Link>
-                                    <Dropdown.Link href={route('logout')} method="post" as="button">Logout</Dropdown.Link>
+                                    <Dropdown.Link href={route('profile.show', usuario.id)} className="flex items-center">
+                                        <UserIcon className="h-4 w-4 mr-2" />
+                                        Perfil
+                                    </Dropdown.Link>
+                                    <Dropdown.Link href={route('canciones.create')} method="get" className="flex items-center">
+                                        <MusicalNoteIcon className="h-4 w-4 mr-2" />
+                                        Subir canción
+                                    </Dropdown.Link>
+                                    <Dropdown.Link href={route('lanzamiento.crear')} method="get" className="flex items-center">
+                                        <ArrowUpOnSquareIcon className="h-4 w-4 mr-2" />
+                                        Subir lanzamiento
+                                    </Dropdown.Link>
+                                    <Dropdown.Link href={route('logout')} method="post" as="button" className="flex items-center">
+                                        <ArrowRightOnRectangleIcon className="h-4 w-4 mr-2" />
+                                        Cerrar sesión
+                                    </Dropdown.Link>
                                 </Dropdown.Content>
                             </Dropdown>
                         </div>

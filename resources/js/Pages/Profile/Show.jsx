@@ -1,4 +1,4 @@
-import React, { useState, useContext, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useContext, useRef, useEffect, useCallback, useMemo } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, usePage, Link, router } from '@inertiajs/react';
 import { PlayerContext } from '@/contexts/PlayerContext';
@@ -9,10 +9,15 @@ import {
     UserCircleIcon,
     PhotoIcon,
     MusicalNoteIcon as MusicalNoteIconSolid,
+    QueueListIcon,
+    UserIcon,
+    HeartIcon as HeartIconOutline,
+    ChevronRightIcon
 } from '@heroicons/react/24/solid';
 import { ArrowPathIcon as LoadingIcon } from '@heroicons/react/20/solid';
-import { HeartIcon as HeartIconOutline } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
+import ContextMenu from '@/Components/ContextMenu';
+import PropTypes from 'prop-types';
 
 const isFullUrl = (url) => {
     try {
@@ -22,8 +27,7 @@ const isFullUrl = (url) => {
         return false;
     }
 };
-
-const ProfileImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, tipo = 'perfil', nombre = '', esStorage = false }) => {
+const ProfileImagenConPlaceholder = React.memo(({ src, alt, claseImagen, clasePlaceholder, tipo = 'perfil', nombre = '', esStorage = false }) => {
     const [errorCarga, setErrorCarga] = useState(false);
     const cacheBuster = '';
     const urlImagenCompleta = src ? (isFullUrl(src) ? src : (esStorage ? `/storage/${src}${cacheBuster}` : `${src}${cacheBuster}`)) : null;
@@ -45,6 +49,7 @@ const ProfileImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, 
             case 'banner': return <PhotoIcon className="w-1/3 h-1/3 text-gray-500" />;
             case 'cancion': case 'playlist': case 'album': case 'ep': case 'single':
                 return <MusicalNoteIconSolid className="w-1/2 h-1/2 text-gray-500" />;
+
             default: return <PhotoIcon className="w-1/3 h-1/3 text-gray-500" />;
         }
     }, [tipo]);
@@ -73,7 +78,17 @@ const ProfileImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, 
             )}
         </div>
     );
+});
+ProfileImagenConPlaceholder.propTypes = {
+    src: PropTypes.string,
+    alt: PropTypes.string.isRequired,
+    claseImagen: PropTypes.string,
+    clasePlaceholder: PropTypes.string,
+    tipo: PropTypes.string,
+    nombre: PropTypes.string,
+    esStorage: PropTypes.bool,
 };
+ProfileImagenConPlaceholder.displayName = 'ProfileImagenConPlaceholder';
 
 const CardImagenConPlaceholder = React.memo(({ src, alt, claseImagen, clasePlaceholder, tipo = 'playlist', esStorage = false }) => {
     const [errorCarga, setErrorCarga] = useState(false);
@@ -102,6 +117,15 @@ const CardImagenConPlaceholder = React.memo(({ src, alt, claseImagen, clasePlace
         </div>
     );
 });
+CardImagenConPlaceholder.propTypes = {
+    src: PropTypes.string,
+    alt: PropTypes.string.isRequired,
+    claseImagen: PropTypes.string,
+    clasePlaceholder: PropTypes.string,
+    tipo: PropTypes.string,
+    esStorage: PropTypes.bool,
+};
+CardImagenConPlaceholder.displayName = 'CardImagenConPlaceholder';
 
 const CardListaUsuarios = React.memo(({ tipo, usuarios: usuariosProp, usuarioLogueadoId }) => {
     const usuarios = Array.isArray(usuariosProp) ? usuariosProp : [];
@@ -124,12 +148,12 @@ const CardListaUsuarios = React.memo(({ tipo, usuarios: usuariosProp, usuarioLog
     }
     if (finalOwner && !processedUserIds.has(finalOwner.id)) {
           if (finalAuthUser) {
-               const authIndex = displayOrder.findIndex(u => u.id === finalAuthUser.id);
-               if (authIndex !== -1) {
+                const authIndex = displayOrder.findIndex(u => u.id === finalAuthUser.id);
+                if (authIndex !== -1) {
                    displayOrder.splice(authIndex + 1, 0, finalOwner);
-               } else {
+                } else {
                    displayOrder.push(finalOwner);
-               }
+                }
           } else {
                displayOrder.unshift(finalOwner);
           }
@@ -158,7 +182,8 @@ const CardListaUsuarios = React.memo(({ tipo, usuarios: usuariosProp, usuarioLog
             {numOcultos > 0 && (
                 <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-max max-w-xs bg-gray-700 border border-gray-600 text-white text-xs rounded py-1 px-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-lg">
                     <ul className="list-none p-0 m-0">{usuariosTooltip.map(u => <li key={u.id} className="py-0.5">{u.name}</li>)}</ul>
-                    <svg className="absolute text-gray-700 h-2 w-full left-0 top-full" viewBox="0 0 255 255" xmlSpace="preserve">
+                    <svg className="absolute text-gray-700 h-2 w-full
+ left-0 top-full" viewBox="0 0 255 255" xmlSpace="preserve">
                         <polygon className="fill-current" points="0,0 127.5,127.5 255,0" />
                     </svg>
                 </div>
@@ -166,6 +191,12 @@ const CardListaUsuarios = React.memo(({ tipo, usuarios: usuariosProp, usuarioLog
         </div>
     );
 });
+CardListaUsuarios.propTypes = {
+    tipo: PropTypes.string,
+    usuarios: PropTypes.array,
+    usuarioLogueadoId: PropTypes.number,
+};
+CardListaUsuarios.displayName = 'CardListaUsuarios';
 
 const getResourceRouteBase = (tipo) => {
     switch (tipo) {
@@ -176,7 +207,6 @@ const getResourceRouteBase = (tipo) => {
         default: return tipo ? `${tipo}s` : 'items';
     }
 };
-
 const ItemCard = React.memo(({ item, tipoPredeterminado, usuarioLogueadoId }) => {
     const tipoItem = item.tipo || tipoPredeterminado;
     const rutaBase = getResourceRouteBase(tipoItem);
@@ -236,6 +266,13 @@ const ItemCard = React.memo(({ item, tipoPredeterminado, usuarioLogueadoId }) =>
         </li>
     );
 });
+ItemCard.propTypes = {
+    item: PropTypes.object.isRequired,
+    tipoPredeterminado: PropTypes.string,
+    usuarioLogueadoId: PropTypes.number,
+};
+ItemCard.displayName = 'ItemCard';
+
 const ProfileDisplayList = React.memo(({ items, usuarioLogueadoId, tipoPredeterminado = 'playlist' }) => {
     const scrollContainerRef = useRef(null);
     const [isHovering, setIsHovering] = useState(false);
@@ -268,7 +305,8 @@ const ProfileDisplayList = React.memo(({ items, usuarioLogueadoId, tipoPredeterm
     }, [updateScrollability, itemsArray.length]);
     const handleScroll = (direction) => {
         if (scrollContainerRef.current) {
-            const amount = direction === 'left' ? -scrollAmount : scrollAmount;
+            const amount = direction === 'left' ?
+-scrollAmount : scrollAmount;
             scrollContainerRef.current.scrollBy({ left: amount, behavior: 'smooth' });
         }
     };
@@ -278,26 +316,35 @@ const ProfileDisplayList = React.memo(({ items, usuarioLogueadoId, tipoPredeterm
     return (
         <div className="relative" onMouseEnter={() => setIsHovering(true)} onMouseLeave={() => setIsHovering(false)}>
             <button onClick={() => handleScroll('left')} disabled={!canScrollLeft} aria-label="Scroll Left" className={`absolute left-2 top-1/2 transform -translate-y-1/2 z-20 p-2 bg-black bg-opacity-70 rounded-full text-white transition-opacity duration-300 ease-in-out hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white ${isHovering && canScrollLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'} disabled:opacity-20 disabled:pointer-events-none disabled:cursor-not-allowed`}>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"
+ /></svg>
             </button>
             <div ref={scrollContainerRef} className="overflow-x-auto px-4 sm:px-6 pb-1 -mb-1 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
                 <ul className="flex flex-nowrap gap-4 sm:gap-6 py-1">
                     {itemsArray.map(item => (
                         <ItemCard
-                            key={`${item.tipo || tipoPredeterminado}-${item.id}`}
+                            key={`${item.tipo ||
+tipoPredeterminado}-${item.id}`}
                             item={item}
                             tipoPredeterminado={tipoPredeterminado}
                             usuarioLogueadoId={usuarioLogueadoId}
-                        />
+                         />
                     ))}
                 </ul>
             </div>
-            <button onClick={() => handleScroll('right')} disabled={!canScrollRight} aria-label="Scroll Right" className={`absolute right-2 top-1/2 transform -translate-y-1/2 z-20 p-2 bg-black bg-opacity-70 rounded-full text-white transition-opacity duration-300 ease-in-out hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white ${isHovering && canScrollRight ? 'opacity-100' : 'opacity-0 pointer-events-none'} disabled:opacity-20 disabled:pointer-events-none disabled:cursor-not-allowed`}>
+            <button onClick={() => handleScroll('right')} disabled={!canScrollRight} aria-label="Scroll Right" className={`absolute right-2 top-1/2 transform -translate-y-1/2 z-20 p-2 bg-black bg-opacity-70 rounded-full text-white transition-opacity duration-300 ease-in-out hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white ${isHovering && canScrollRight ?
+'opacity-100' : 'opacity-0 pointer-events-none'} disabled:opacity-20 disabled:pointer-events-none disabled:cursor-not-allowed`}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
             </button>
         </div>
     );
 });
+ProfileDisplayList.propTypes = {
+    items: PropTypes.array,
+    usuarioLogueadoId: PropTypes.number,
+    tipoPredeterminado: PropTypes.string,
+};
+ProfileDisplayList.displayName = 'ProfileDisplayList';
 
 const CancionListItem = React.memo(({
     item,
@@ -310,37 +357,51 @@ const CancionListItem = React.memo(({
     isLoadingTrack,
     isLiked,
     onToggleLoopz,
-    isLikeProcessing
+    isLikeProcessing,
+    onContextMenu,
 }) => {
     const routeExists = useCallback((name) => {
         if (typeof route === 'function' && typeof route().has === 'function') return route().has(name);
         return false;
     }, []);
-    const rutaItemExiste = nombreRuta ? routeExists(nombreRuta) : false;
+    const rutaItemExiste = nombreRuta
+? routeExists(nombreRuta) : false;
     const [isHovered, setIsHovered] = useState(false);
-    const handlePlayButtonClick = (e) => {
+    const handlePlayButtonClick = useCallback((e) => {
         e.stopPropagation();
         onPlayPauseClick(item, index);
-    };
-    const handleLoopzButtonClick = (e) => {
+    }, [item, index, onPlayPauseClick]);
+    const handleLoopzButtonClick = useCallback((e) => {
         e.stopPropagation();
         onToggleLoopz(item.id, isLiked);
-    };
+    }, [item?.id, isLiked, onToggleLoopz]);
+
+    const handleContextMenuLocal = useCallback((e) => {
+        if (onContextMenu) {
+            onContextMenu(e, item);
+        }
+    }, [onContextMenu, item]);
+
     return (
         <li
-            className={`flex items-center space-x-3 p-2 transition duration-150 ease-in-out group rounded-md cursor-default ${isCurrentTrack ? 'bg-indigo-900/30' : 'hover:bg-gray-700/60'}`}
+            className={`flex items-center space-x-3 p-2
+ transition duration-150 ease-in-out group rounded-md ${isCurrentTrack ? 'bg-indigo-900/30' : 'hover:bg-gray-700/60'} ${onContextMenu ? 'cursor-context-menu' : 'cursor-default'}`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             onDoubleClick={handlePlayButtonClick}
+            onContextMenu={handleContextMenuLocal}
         >
             <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                {isLoadingTrack ? (
+                {isLoadingTrack ?
+(
                     <LoadingIcon className="w-5 h-5 text-white animate-spin" />
-                ) : isPlayingCurrentTrack ? (
+                ) : isPlayingCurrentTrack ?
+(
                     <button onClick={handlePlayButtonClick} className="focus:outline-none" aria-label="Pausar">
                         <PauseIconSolid className="w-5 h-5 text-indigo-400" />
                     </button>
-                ) : (isHovered || (isCurrentTrack && !isPlayingCurrentTrack)) ? (
+                ) : (isHovered || (isCurrentTrack && !isPlayingCurrentTrack)) ?
+(
                     <button onClick={handlePlayButtonClick} className="focus:outline-none" aria-label={isCurrentTrack ? "Continuar reproducción" : "Reproducir"}>
                         <PlayIconSolid className="w-5 h-5 text-white" />
                     </button>
@@ -359,7 +420,8 @@ const CancionListItem = React.memo(({
                 />
             </div>
             <div className="flex-grow min-w-0">
-                {rutaItemExiste ? (
+                {rutaItemExiste ?
+(
                     <Link
                         href={route(nombreRuta, item.id)}
                         className={`text-sm font-medium ${isCurrentTrack ? 'text-indigo-400' : 'text-gray-100 group-hover:text-white'} hover:underline truncate block`}
@@ -377,7 +439,16 @@ const CancionListItem = React.memo(({
                 )}
                 {item.artista && (
                     <p className="text-xs text-gray-400 truncate">
-                        {typeof item.artista === 'string' ? item.artista : item.artista?.name}
+                        {item.usuarios && Array.isArray(item.usuarios) && item.usuarios.length > 0 ? (
+                            item.usuarios.map((u, idx) => (
+                                <React.Fragment key={u.id}>
+                                    <Link href={route('profile.show', u.id)} className="hover:underline">
+                                        {u.name}
+                                    </Link>
+                                    {idx < item.usuarios.length - 1 && ', '}
+                                </React.Fragment>
+                            ))
+                        ) : typeof item.artista === 'string' ? item.artista : item.artista?.name}
                     </p>
                 )}
             </div>
@@ -385,14 +456,17 @@ const CancionListItem = React.memo(({
                  <button
                      onClick={handleLoopzButtonClick}
                      disabled={isLikeProcessing}
-                     className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-800 ${isLikeProcessing ? 'text-gray-500 cursor-wait' : 'text-gray-400 hover:text-purple-400'}`}
-                     title={isLiked ? "Quitar de LoopZ" : "Añadir a LoopZ"}
+                     className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-800 ${isLikeProcessing ?
+'text-gray-500 cursor-wait' : 'text-gray-400 hover:text-purple-400'}`}
+                     title={isLiked ?
+"Quitar de LoopZ" : "Añadir a LoopZ"}
                  >
-                     {isLikeProcessing ? (
+                     {isLikeProcessing ?
+(
                          <LoadingIcon className="h-5 w-5 animate-spin text-purple-400"/>
                      ) : (
                          isLiked ? (
-                             <HeartIconSolid className="h-5 w-5 text-purple-500" />
+                            <HeartIconSolid className="h-5 w-5 text-purple-500" />
                          ) : (
                              <HeartIconOutline className="h-5 w-5" />
                          )
@@ -402,6 +476,21 @@ const CancionListItem = React.memo(({
         </li>
     );
 });
+CancionListItem.propTypes = {
+    item: PropTypes.object.isRequired,
+    index: PropTypes.number.isRequired,
+    tipoItem: PropTypes.string,
+    nombreRuta: PropTypes.string,
+    onPlayPauseClick: PropTypes.func.isRequired,
+    isCurrentTrack: PropTypes.bool,
+    isPlayingCurrentTrack: PropTypes.bool,
+    isLoadingTrack: PropTypes.bool,
+    isLiked: PropTypes.bool,
+    onToggleLoopz: PropTypes.func.isRequired,
+    isLikeProcessing: PropTypes.bool,
+    onContextMenu: PropTypes.func,
+};
+CancionListItem.displayName = 'CancionListItem';
 
 const ProfileCancionesList = ({
     items,
@@ -414,7 +503,8 @@ const ProfileCancionesList = ({
     currentSourceId,
     mainSourceId,
     onToggleLoopz,
-    likeProcessingSongId
+    likeProcessingSongId,
+    onContextMenu,
 }) => {
     if (!items || items.length === 0) {
         return <p className="text-sm text-gray-400 italic px-4 sm:px-6">Aún no has agregado {tipoItem}s a tu perfil.</p>;
@@ -424,7 +514,8 @@ const ProfileCancionesList = ({
             {items.map((item, index) => {
                 const isThisCurrentTrack = item.id === currentTrackId && currentSourceId === mainSourceId;
                 const isLoadingThisTrack = isPlayerLoading && isThisCurrentTrack && !Reproduciendo;
-                const isLikeProcessing = likeProcessingSongId === item.id;
+                const isLikeProcessing = likeProcessingSongId ===
+ item.id;
                 return (
                     <CancionListItem
                         key={item.id}
@@ -439,12 +530,28 @@ const ProfileCancionesList = ({
                         isLiked={item.is_in_user_loopz}
                         onToggleLoopz={onToggleLoopz}
                         isLikeProcessing={isLikeProcessing}
+                        onContextMenu={onContextMenu}
                     />
                 );
             })}
         </ul>
     );
 };
+ProfileCancionesList.propTypes = {
+    items: PropTypes.array,
+    tipoItem: PropTypes.string,
+    nombreRuta: PropTypes.string,
+    onPlayPauseSong: PropTypes.func.isRequired,
+    currentTrackId: PropTypes.number,
+    Reproduciendo: PropTypes.bool,
+    isPlayerLoading: PropTypes.bool,
+    currentSourceId: PropTypes.string,
+    mainSourceId: PropTypes.string,
+    onToggleLoopz: PropTypes.func.isRequired,
+    likeProcessingSongId: PropTypes.number,
+    onContextMenu: PropTypes.func,
+};
+ProfileCancionesList.displayName = 'ProfileCancionesList';
 
 export default function Index() {
     const { props, url } = usePage();
@@ -468,13 +575,68 @@ export default function Index() {
         aleatorio = false,
         cancionActual = null,
         sourceId = null,
-        cargando: isPlayerLoading = false
+        cargando: isPlayerLoading =
+ false,
+        añadirSiguiente = () => {},
     } = playerContextValue || {};
     const userSongsSourceId = `user-${usuario.id}-all-canciones`;
     const isCurrentSourcePlayingUserSongs = sourceId === userSongsSourceId && Reproduciendo;
     const isPlayerLoadingThisSource = isPlayerLoading && sourceId === userSongsSourceId;
     const [cancionesUsuario, setCancionesUsuario] = useState(cancionesUsuarioProp);
     const [likeProcessingSongId, setLikeProcessingSongId] = useState(null);
+
+    const [contextMenu, setContextMenu] = useState({
+        show: false,
+        x: 0,
+        y: 0,
+        song: null,
+    });
+    const contextMenuTimer = useRef(null);
+
+    const openContextMenu = useCallback((event, song) => {
+        event.preventDefault();
+        setContextMenu({
+            show: true,
+            x: event.pageX,
+            y: event.pageY,
+            song: song,
+        });
+    }, []);
+
+    const closeContextMenu = useCallback(() => {
+        if (contextMenuTimer.current) {
+            clearTimeout(contextMenuTimer.current);
+            contextMenuTimer.current = null;
+        }
+        setContextMenu({ ...contextMenu, show: false, song: null });
+    }, [contextMenu]);
+
+     const startCloseTimer = useCallback(() => {
+        contextMenuTimer.current = setTimeout(closeContextMenu, 100);
+    }, [closeContextMenu]);
+
+    const cancelCloseTimer = useCallback(() => {
+        if (contextMenuTimer.current) {
+            clearTimeout(contextMenuTimer.current);
+            contextMenuTimer.current = null;
+        }
+    }, []);
+
+    const handleAddToQueueNext = useCallback(() => {
+        if (contextMenu.song && añadirSiguiente) {
+            añadirSiguiente(contextMenu.song);
+            closeContextMenu();
+        }
+    }, [contextMenu.song, añadirSiguiente, closeContextMenu]);
+
+    const handleViewArtist = useCallback((artist) => {
+        if (artist?.id) {
+            router.visit(route('profile.show', artist.id));
+            closeContextMenu();
+        }
+    }, [closeContextMenu]);
+
+
     const handlePlayPauseUserSongs = useCallback(() => {
         if (!cancionesUsuario || cancionesUsuario.length === 0) return;
         if (sourceId === userSongsSourceId) {
@@ -487,7 +649,8 @@ export default function Index() {
             const formattedSongs = cancionesUsuario.map(cancion => ({ ...cancion }));
             cargarColaYIniciar(formattedSongs, { id: userSongsSourceId, name: `Canciones de ${usuario.name}`, type: 'userCollection', iniciar: 0 });
         }
-    }, [cancionesUsuario, pause, sourceId, userSongsSourceId, Reproduciendo, play, cargarColaYIniciar, usuario.name]);
+    }, [cancionesUsuario, pause, sourceId, userSongsSourceId, Reproduciendo, play, cargarColaYIniciar, usuario?.name]);
+
     const handleToggleShuffleUserSongs = useCallback(() => {
         if (!cancionesUsuario || cancionesUsuario.length === 0) return;
         if (sourceId === userSongsSourceId) {
@@ -496,6 +659,7 @@ export default function Index() {
              toggleAleatorio();
         }
     }, [cancionesUsuario, toggleAleatorio, sourceId, userSongsSourceId]);
+
     const handlePlayPauseSingleSong = useCallback((songToPlay, songIndexInList) => {
         if (!cancionesUsuario || cancionesUsuario.length === 0) return;
         const isClickedSongCurrent = cancionActual && cancionActual.id === songToPlay.id && sourceId === userSongsSourceId;
@@ -515,10 +679,12 @@ export default function Index() {
                 clickDirecto: true
             });
         }
-    }, [cancionesUsuario, cancionActual, sourceId, userSongsSourceId, Reproduciendo, pause, play, cargarColaYIniciar, usuario.name]);
+    }, [cancionesUsuario, cancionActual, sourceId, userSongsSourceId, Reproduciendo, pause, play, cargarColaYIniciar, usuario?.name]);
+
     const handleToggleLoopzSong = useCallback((songId, isInLoopz) => {
         if (!songId || likeProcessingSongId === songId) return;
         setLikeProcessingSongId(songId);
+        // Optimistic update
         setCancionesUsuario(prevCanciones =>
             prevCanciones.map(song =>
                 song.id === songId ? { ...song, is_in_user_loopz: !isInLoopz } : song
@@ -526,8 +692,23 @@ export default function Index() {
         );
         router.post(route('cancion.loopz', { cancion: songId }), {}, {
             preserveScroll: true,
-            onSuccess: (page) => {},
+            preserveState: true, // Keep preserveState
+            onSuccess: (page) => {
+                 // Update state with the list from page.props if available
+                 if (page.props.cancionesUsuario && Array.isArray(page.props.cancionesUsuario)) {
+                    setCancionesUsuario(page.props.cancionesUsuario);
+                 }
+                 // Optional: If backend also returns the updated individual song, you could use that
+                 // if (page.props.cancionActualizada) {
+                 //    setCancionesUsuario(prevCanciones =>
+                 //         prevCanciones.map(song =>
+                 //            song.id === page.props.cancionActualizada.id ? { ...song, ...page.props.cancionActualizada } : song
+                 //         )
+                 //     );
+                 // }
+            },
             onError: (errors) => {
+                // Revert optimistic update on error
                 setCancionesUsuario(prevCanciones =>
                     prevCanciones.map(song =>
                         song.id === songId ? { ...song, is_in_user_loopz: isInLoopz } : song
@@ -539,9 +720,66 @@ export default function Index() {
             },
         });
     }, [likeProcessingSongId]);
+
+    const getContextMenuOptions = useCallback(() => {
+        if (!contextMenu.song) return [];
+
+        const options = [];
+
+        options.push({
+            label: contextMenu.song.is_in_user_loopz ? "Quitar LoopZ" : "Añadir LoopZ",
+            action: () => handleToggleLoopzSong(contextMenu.song.id, contextMenu.song.is_in_user_loopz),
+            icon: contextMenu.song.is_in_user_loopz ? <HeartIconSolid className="h-5 w-5 text-purple-500" /> : <HeartIconOutline className="h-5 w-5" />,
+            disabled: likeProcessingSongId === contextMenu.song.id,
+        });
+
+        if (añadirSiguiente) {
+             options.push({
+                 label: "Añadir a la cola",
+                 action: handleAddToQueueNext,
+                 icon: <QueueListIcon className="h-5 w-5" />,
+             });
+        }
+
+
+        if (contextMenu.song.usuarios && Array.isArray(contextMenu.song.usuarios) && contextMenu.song.usuarios.length > 0) {
+            const artistSubmenuOptions = contextMenu.song.usuarios.map(artist => ({
+                label: artist.name,
+                action: () => handleViewArtist(artist),
+                icon: <UserIcon className="h-5 w-5" />,
+                disabled: !artist?.id || !artist?.name,
+            }));
+            options.push({
+                label: `Ver artista${contextMenu.song.usuarios.length > 1 ? 's' : ''}`,
+                icon: <UserIcon className="h-5 w-5" />,
+                submenu: artistSubmenuOptions,
+                disabled: artistSubmenuOptions.length === 0,
+            });
+        } else if (contextMenu.song.artista) {
+             options.push({
+                 label: `Artista: ${contextMenu.song.artista}`,
+                 icon: <UserIcon className="h-5 w-5 text-gray-400" />,
+                 disabled: true,
+             });
+        }
+
+
+        return options;
+    }, [contextMenu.song, handleToggleLoopzSong, likeProcessingSongId, añadirSiguiente, handleAddToQueueNext, handleViewArtist]);
+
+
     return (
         <AuthenticatedLayout user={auth.user}>
             <Head title="Perfil" />
+
+            <ContextMenu
+                x={contextMenu.x}
+                y={contextMenu.y}
+                show={contextMenu.show}
+                onClose={closeContextMenu}
+                options={getContextMenuOptions()}
+            />
+
             <div key={url} className="pt-16 pb-12 min-h-screen">
                 <div className="mx-auto max-w-7xl space-y-10 sm:px-6 lg:px-8">
                     <div className="relative">
@@ -579,22 +817,27 @@ export default function Index() {
                                         <button
                                              onClick={handlePlayPauseUserSongs}
                                              disabled={isPlayerLoadingThisSource || !cancionesUsuario || cancionesUsuario.length === 0}
-                                             aria-label={isCurrentSourcePlayingUserSongs ? 'Pausar canciones del usuario' : (sourceId === userSongsSourceId && cancionActual ? 'Continuar reproducción de canciones del usuario' : 'Reproducir todas las canciones del usuario')}
+                                             aria-label={isCurrentSourcePlayingUserSongs ?
+'Pausar canciones del usuario' : (sourceId === userSongsSourceId && cancionActual ? 'Continuar reproducción de canciones del usuario' : 'Reproducir todas las canciones del usuario')}
                                              className="flex items-center justify-center p-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-full shadow-md hover:from-purple-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed"
                                         >
-                                             {isPlayerLoadingThisSource ? <LoadingIcon className="w-6 h-6 animate-spin" /> : isCurrentSourcePlayingUserSongs ? <PauseIconSolid className="w-6 h-6" /> : <PlayIconSolid className="w-6 h-6" />}
+                                             {isPlayerLoadingThisSource ?
+<LoadingIcon className="h-6 w-6 animate-spin" /> : isCurrentSourcePlayingUserSongs ? <PauseIconSolid className="h-6 w-6" /> : <PlayIconSolid className="h-6 w-6" />}
                                         </button>
                                         <button
                                              onClick={handleToggleShuffleUserSongs}
-                                             disabled={!cancionesUsuario || cancionesUsuario.length === 0}
-                                             aria-label={aleatorio ? "Desactivar modo aleatorio para canciones del usuario" : "Activar modo aleatorio para canciones del usuario"}
+                                             disabled={!cancionesUsuario ||
+cancionesUsuario.length === 0}
+                                             aria-label={aleatorio ?
+"Desactivar modo aleatorio para canciones del usuario" : "Activar modo aleatorio para canciones del usuario"}
                                              className={`flex items-center justify-center p-3 border rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed ${
                                                  aleatorio
-                                                     ? 'bg-indigo-500 text-white border-indigo-500 hover:bg-indigo-600 focus:ring-indigo-500'
+                                                     ?
+'bg-indigo-500 text-white border-indigo-500 hover:bg-indigo-600 focus:ring-indigo-500'
                                                      : 'bg-transparent text-gray-300 border-gray-600 hover:bg-gray-700 hover:text-white focus:ring-gray-500'
                                              }`}
                                         >
-                                             <ShuffleIcon className="w-6 h-6" />
+                                             <ShuffleIcon className="h-6 w-6" />
                                         </button>
                                     </div>
                                 )}
@@ -616,6 +859,7 @@ export default function Index() {
                                 mainSourceId={userSongsSourceId}
                                 onToggleLoopz={handleToggleLoopzSong}
                                 likeProcessingSongId={likeProcessingSongId}
+                                onContextMenu={openContextMenu}
                             />
                         </div>
                         <div>
@@ -640,3 +884,95 @@ export default function Index() {
         </AuthenticatedLayout>
     );
 }
+
+ProfileImagenConPlaceholder.propTypes = {
+    src: PropTypes.string,
+    alt: PropTypes.string.isRequired,
+    claseImagen: PropTypes.string,
+    clasePlaceholder: PropTypes.string,
+    tipo: PropTypes.string,
+    nombre: PropTypes.string,
+    esStorage: PropTypes.bool,
+};
+
+CardImagenConPlaceholder.propTypes = {
+    src: PropTypes.string,
+    alt: PropTypes.string.isRequired,
+    claseImagen: PropTypes.string,
+    clasePlaceholder: PropTypes.string,
+    tipo: PropTypes.string,
+    esStorage: PropTypes.bool,
+};
+
+CardListaUsuarios.propTypes = {
+    tipo: PropTypes.string,
+    usuarios: PropTypes.array,
+    usuarioLogueadoId: PropTypes.number,
+};
+
+ItemCard.propTypes = {
+    item: PropTypes.object.isRequired,
+    tipoPredeterminado: PropTypes.string,
+    usuarioLogueadoId: PropTypes.number,
+};
+
+ProfileDisplayList.propTypes = {
+    items: PropTypes.array,
+    usuarioLogueadoId: PropTypes.number,
+    tipoPredeterminado: PropTypes.string,
+};
+
+CancionListItem.propTypes = {
+    item: PropTypes.object.isRequired,
+    index: PropTypes.number.isRequired,
+    tipoItem: PropTypes.string,
+    nombreRuta: PropTypes.string,
+    onPlayPauseClick: PropTypes.func.isRequired,
+    isCurrentTrack: PropTypes.bool,
+    isPlayingCurrentTrack: PropTypes.bool,
+    isLoadingTrack: PropTypes.bool,
+    isLiked: PropTypes.bool,
+    onToggleLoopz: PropTypes.func.isRequired,
+    isLikeProcessing: PropTypes.bool,
+    onContextMenu: PropTypes.func,
+};
+
+ProfileCancionesList.propTypes = {
+    items: PropTypes.array,
+    tipoItem: PropTypes.string,
+    nombreRuta: PropTypes.string,
+    onPlayPauseSong: PropTypes.func.isRequired,
+    currentTrackId: PropTypes.number,
+    Reproduciendo: PropTypes.bool,
+    isPlayerLoading: PropTypes.bool,
+    currentSourceId: PropTypes.string,
+    mainSourceId: PropTypes.string,
+    onToggleLoopz: PropTypes.func.isRequired,
+    likeProcessingSongId: PropTypes.number,
+    onContextMenu: PropTypes.func,
+};
+
+
+Index.propTypes = {
+    auth: PropTypes.object.isRequired,
+    usuario: PropTypes.shape({
+        id: PropTypes.number,
+        name: PropTypes.string,
+        banner_perfil: PropTypes.string,
+        foto_perfil: PropTypes.string,
+    }).isRequired,
+    cancionesUsuario: PropTypes.arrayOf(PropTypes.shape({
+        id: PropTypes.number.isRequired,
+        titulo: PropTypes.string.isRequired,
+        archivo_url: PropTypes.string,
+        foto_url: PropTypes.string,
+        duracion: PropTypes.number,
+        is_in_user_loopz: PropTypes.bool,
+        usuarios: PropTypes.arrayOf(PropTypes.shape({ id: PropTypes.number, name: PropTypes.string })),
+        artista: PropTypes.string,
+    })),
+    playlistsUsuario: PropTypes.array,
+    albumesUsuario: PropTypes.array,
+    epsUsuario: PropTypes.array,
+    singlesUsuario: PropTypes.array,
+};
