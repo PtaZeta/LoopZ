@@ -1,5 +1,4 @@
 <?php
-// app/Http/Requests/UpdateAlbumRequest.php
 
 namespace App\Http\Requests;
 
@@ -10,11 +9,7 @@ class UpdateAlbumRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Basic check: allow if logged in. Replace with policy if needed.
         return Auth::check();
-        // Example policy check:
-        // $album = $this->route('album');
-        // return $this->user()->can('update', $album);
     }
 
     public function rules(): array

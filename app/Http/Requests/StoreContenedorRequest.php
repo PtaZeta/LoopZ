@@ -13,8 +13,6 @@ class StoreContenedorRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        // Permitir a cualquier usuario autenticado crear un contenedor.
-        // Puedes añadir lógica más específica aquí si es necesario (ej. roles).
         return Auth::check();
     }
 
