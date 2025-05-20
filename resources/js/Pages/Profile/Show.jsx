@@ -12,7 +12,9 @@ import {
     QueueListIcon,
     UserIcon,
     HeartIcon as HeartIconOutline,
-    ChevronRightIcon
+    ChevronRightIcon,
+    ArrowUpOnSquareIcon,
+    CheckIcon
 } from '@heroicons/react/24/solid';
 import { ArrowPathIcon as LoadingIcon } from '@heroicons/react/20/solid';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
@@ -636,6 +638,18 @@ export default function Index() {
         }
     }, [closeContextMenu]);
 
+    const manejarToggleCancion = useCallback((songId, playlistId) => {
+        if (!songId || !playlistId) return;
+        router.post(route('playlist.toggleCancion', { playlist: playlistId, cancion: songId }), {}, {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: (page) => {
+                if (page.props.cancionesUsuario && Array.isArray(page.props.cancionesUsuario)) {
+                    setCancionesUsuario(page.props.cancionesUsuario);
+                }
+            },
+        });
+    }, []);
 
     const handlePlayPauseUserSongs = useCallback(() => {
         if (!cancionesUsuario || cancionesUsuario.length === 0) return;
@@ -727,6 +741,15 @@ export default function Index() {
         const options = [];
 
         options.push({
+            label: "Ver cancion",
+            icon: <MusicalNoteIconSolid className="h-5 w-5" />,
+            action: () => {
+            router.visit(route('canciones.show', contextMenu.song.id));
+            closeContextMenu();
+            },
+        });
+
+        options.push({
             label: contextMenu.song.is_in_user_loopz ? "Quitar LoopZ" : "Añadir LoopZ",
             action: () => handleToggleLoopzSong(contextMenu.song.id, contextMenu.song.is_in_user_loopz),
             icon: contextMenu.song.is_in_user_loopz ? <HeartIconSolid className="h-5 w-5 text-purple-500" /> : <HeartIconOutline className="h-5 w-5" />,
@@ -741,6 +764,11 @@ export default function Index() {
              });
         }
 
+        options.push({
+            label: "Añadir a playlist",
+            icon: <ArrowUpOnSquareIcon className="h-5 w-5" />,
+            submenu: 'userPlaylists', // Delegamos la lógica al ContextMenu
+        });
 
         if (contextMenu.song.usuarios && Array.isArray(contextMenu.song.usuarios) && contextMenu.song.usuarios.length > 0) {
             const artistSubmenuOptions = contextMenu.song.usuarios.map(artist => ({
@@ -765,7 +793,7 @@ export default function Index() {
 
 
         return options;
-    }, [contextMenu.song, handleToggleLoopzSong, likeProcessingSongId, añadirSiguiente, handleAddToQueueNext, handleViewArtist]);
+    }, [contextMenu.song, handleToggleLoopzSong, likeProcessingSongId, añadirSiguiente, handleAddToQueueNext, manejarToggleCancion, auth.user?.playlists, handleViewArtist]);
 
 
     return (
@@ -778,6 +806,14 @@ export default function Index() {
                 show={contextMenu.show}
                 onClose={closeContextMenu}
                 options={getContextMenuOptions()}
+                userPlaylists={(auth.user?.playlists || []).map(p => ({
+                    id: p.id,
+                    name: p.nombre,
+                    canciones: p.canciones || [],
+                    imagen: p.imagen, // Asegúrate de pasar la propiedad 'imagen'
+                    action: () => manejarToggleCancion(contextMenu.song?.id, p.id),
+                }))}
+                currentSong={contextMenu.song}
             />
 
             <div key={url} className="pt-16 pb-12 min-h-screen">

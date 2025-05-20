@@ -269,8 +269,8 @@ export default function AuthenticatedLayout({ children, header }) {
                                 className="w-full px-4 py-2 text-sm text-gray-200 bg-gray-700/50 border border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-gray-700 placeholder-gray-400 transition-colors"
                             />
                         </div>
-                        <Link href={route('playlists.index')} className="text-sm hover:text-blue-400 transition-colors">
-                            Playlists
+                        <Link href={route('radio')} className="text-sm hover:text-blue-400 transition-colors">
+                            Radio
                         </Link>
                     </div>
                     {usuario && (
