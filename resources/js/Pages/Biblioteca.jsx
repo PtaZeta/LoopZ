@@ -197,7 +197,7 @@ DisplayList.propTypes = {
     tipoPredeterminado: PropTypes.string,
 };
 
-export default function Biblioteca({ auth, playlists, loopzContenedores, lanzamientos }) {
+export default function Biblioteca({ auth, playlists = [], loopzContenedores = [], lanzamientos = [] }) {
     const usuarioLogueadoId = auth.user.id;
     const playlistsArray = Array.isArray(playlists) ? playlists : [];
     const loopzArray = Array.isArray(loopzContenedores) ? loopzContenedores : [];
@@ -272,10 +272,4 @@ Biblioteca.propTypes = {
     playlists: PropTypes.array,
     loopzContenedores: PropTypes.array,
     lanzamientos: PropTypes.array,
-};
-
-Biblioteca.defaultProps = {
-    playlists: [],
-    loopzContenedores: [],
-    lanzamientos: [],
 };

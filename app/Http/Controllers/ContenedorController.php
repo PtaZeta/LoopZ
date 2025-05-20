@@ -252,70 +252,87 @@ class ContenedorController extends Controller
     }
 
 
-    public function show(Request $peticion, $id)
-    {
-        $infoRecurso = $this->getTipoVista($peticion);
-        $tipoEsperado = $infoRecurso['tipo'];
-        $nombreVista = $infoRecurso['vista'] . 'Show';
+public function show(Request $peticion, $id)
+{
+    $infoRecurso = $this->getTipoVista($peticion);
+    $tipoEsperado = $infoRecurso['tipo'];
+    $nombreVista = $infoRecurso['vista'] . 'Show';
 
-        $contenedor = Contenedor::findOrFail($id);
-        $this->validarTipoContenedor($contenedor, $tipoEsperado);
+    $contenedor = Contenedor::findOrFail($id);
 
-        $usuario = Auth::user();
-        $loopzSongIds = $this->getLoopZUsuario($usuario);
-
-        $contenedor->load([
-            'canciones' => function ($query) {
-                $query->select('canciones.id', 'canciones.titulo', 'canciones.archivo_url', 'canciones.foto_url', 'canciones.duracion')
-                    ->withPivot('id as pivot_id', 'created_at as pivot_created_at')
-                    ->with(['usuarios' => function ($userQuery) {
-                        $userQuery->select('users.id', 'users.name');
-                    }])
-                    ->orderBy('pivot_created_at');
-            },
-            'usuarios:id,name',
-            'loopzusuarios:users.id'
-        ]);
-
-        $contenedor->canciones->each(function ($cancion) use ($loopzSongIds) {
-            $cancion->is_in_user_loopz = in_array($cancion->id, $loopzSongIds);
-        });
-
-        if ($usuario) {
-            $contenedor->can = [
-                'view'   => $usuario->can('view', $contenedor),
-                'edit'   => $usuario->can('update', $contenedor),
-                'delete' => $usuario->can('delete', $contenedor),
-            ];
-            $contenedor->is_liked_by_user = $contenedor->loopzusuarios->contains('id', $usuario->id);
-
-            $userPlaylists = $usuario->perteneceContenedores()
-                ->where('tipo', 'playlist')
-                ->with('canciones:id')
-                ->select('id', 'nombre')
-                ->get();
-        } else {
-            $contenedor->can = [
-                'view'   => $contenedor->publico ?? false,
-                'edit'   => false,
-                'delete' => false,
-            ];
-            $contenedor->is_liked_by_user = false;
-            $userPlaylists = collect(); // vacío
-        }
-
-        return Inertia::render($nombreVista, [
-            'contenedor' => $contenedor,
-            'auth' => [
-                'user' => $usuario ? [
-                    'id' => $usuario->id,
-                    'name' => $usuario->name,
-                    'playlists' => $userPlaylists,
-                ] : null,
-            ],
-        ]);
+    if ($contenedor->imagen && !filter_var($contenedor->imagen, FILTER_VALIDATE_URL)) {
+        $contenedor->imagen = Storage::disk('s3')->url($contenedor->imagen);
     }
 
+    $this->validarTipoContenedor($contenedor, $tipoEsperado);
+
+    $usuario = Auth::user();
+    $loopzSongIds = $this->getLoopZUsuario($usuario);
+
+    $contenedor->load([
+        'canciones' => function ($query) {
+            $query->select('canciones.id', 'canciones.titulo', 'canciones.archivo_url', 'canciones.foto_url', 'canciones.duracion')
+                ->withPivot('id as pivot_id', 'created_at as pivot_created_at')
+                ->with(['usuarios' => function ($userQuery) {
+                    $userQuery->select('users.id', 'users.name');
+                }])
+                ->orderBy('pivot_created_at');
+        },
+        'usuarios:id,name',
+        'loopzusuarios:users.id'
+    ]);
+
+    $contenedor->canciones->each(function ($cancion) use ($loopzSongIds) {
+        $cancion->is_in_user_loopz = in_array($cancion->id, $loopzSongIds);
+    });
+
+    if ($usuario) {
+        $contenedor->can = [
+            'view'   => $usuario->can('view', $contenedor),
+            'edit'   => $usuario->can('update', $contenedor),
+            'delete' => $usuario->can('delete', $contenedor),
+        ];
+        $contenedor->is_liked_by_user = $contenedor->loopzusuarios->contains('id', $usuario->id);
+
+        $userPlaylists = $usuario->perteneceContenedores()
+            ->where('tipo', 'playlist')
+            ->with('canciones:id')
+            ->select('id', 'nombre', 'imagen')
+            ->get();
+
+        $userPlaylists->each(function ($playlist) {
+            if ($playlist->imagen && !filter_var($playlist->imagen, FILTER_VALIDATE_URL)) {
+                $playlist->imagen = Storage::disk('s3')->url($playlist->imagen);
+            }
+        });
+    } else {
+        $contenedor->can = [
+            'view'   => $contenedor->publico ?? false,
+            'edit'   => false,
+            'delete' => false,
+        ];
+        $contenedor->is_liked_by_user = false;
+        $userPlaylists = collect();
+    }
+
+    return Inertia::render($nombreVista, [
+        'contenedor' => $contenedor,
+        'auth' => [
+            'user' => $usuario ? [
+                'id' => $usuario->id,
+                'name' => $usuario->name,
+                'playlists' => $userPlaylists->map(function ($p) {
+                    return [
+                        'id' => $p->id,
+                        'nombre' => $p->nombre,
+                        'imagen' => $p->imagen,
+                        'canciones' => $p->canciones,
+                    ];
+                }),
+            ] : null,
+        ],
+    ]);
+}
 
 
     public function edit(Request $peticion, $id)
@@ -364,12 +381,12 @@ class ContenedorController extends Controller
         }
 
         if ($esPropietario) {
-             $idsUsuariosValidados = $peticion->validate([
-                 'userIds' => 'nullable|array',
-                 'userIds.*' => 'integer|exists:users,id',
-             ]);
+            $idsUsuariosValidados = $peticion->validate([
+                'userIds' => 'nullable|array',
+                'userIds.*' => 'integer|exists:users,id',
+            ]);
         } else {
-             unset($datosValidados['userIds']);
+            unset($datosValidados['userIds']);
         }
 
         $campoImagenRequest = 'imagen_nueva';
@@ -380,35 +397,33 @@ class ContenedorController extends Controller
 
         if ($peticion->hasFile($campoImagenRequest) && $peticion->file($campoImagenRequest)->isValid()) {
             if ($rutaImagenAntigua) {
-                 $pathAntigua = str_replace(Storage::disk('s3')->url(''), '', $rutaImagenAntigua);
-
-                 if (!empty($pathAntigua) && Storage::disk('s3')->exists($pathAntigua)) {
-                     Storage::disk('s3')->delete($pathAntigua);
-                 }
+                if (Storage::disk('s3')->exists($rutaImagenAntigua)) {
+                    Storage::disk('s3')->delete($rutaImagenAntigua);
+                }
             }
 
             $nuevoArchivoImagen = $peticion->file($campoImagenRequest);
-            $datosValidados[$campoImagenModelo] = Storage::disk('s3')->url(
-                Storage::disk('s3')->putFileAs(
-                    $directorioS3,
-                    $nuevoArchivoImagen,
-                    Str::uuid() . "_img.{$nuevoArchivoImagen->getClientOriginalExtension()}",
-                    'public-read'
-                )
+            $nombreArchivo = Str::uuid() . "_img." . $nuevoArchivoImagen->getClientOriginalExtension();
+            $pathGuardadoS3 = Storage::disk('s3')->putFileAs(
+                $directorioS3,
+                $nuevoArchivoImagen,
+                $nombreArchivo,
+                'public-read'
             );
+
+            $urlCompleta = Storage::disk('s3')->url($pathGuardadoS3);
+            $datosValidados[$campoImagenModelo] = $urlCompleta;
 
         } elseif ($peticion->boolean('eliminar_imagen')) {
             if ($rutaImagenAntigua) {
-                 $pathAntigua = str_replace(Storage::disk('s3')->url(''), '', $rutaImagenAntigua);
-
-                 if (!empty($pathAntigua) && Storage::disk('s3')->exists($pathAntigua)) {
-                     Storage::disk('s3')->delete($pathAntigua);
-                 }
+                if (Storage::disk('s3')->exists($rutaImagenAntigua)) {
+                    Storage::disk('s3')->delete($rutaImagenAntigua);
+                }
             }
             $datosValidados[$campoImagenModelo] = null;
 
         } else {
-             unset($datosValidados[$campoImagenModelo]);
+            unset($datosValidados[$campoImagenModelo]);
         }
 
         $contenedor->update($datosValidados);
@@ -419,7 +434,7 @@ class ContenedorController extends Controller
             $idCreador = Auth::id();
 
             if ($idCreador) {
-                 $usuariosASincronizar[$idCreador] = ['propietario' => true];
+                $usuariosASincronizar[$idCreador] = ['propietario' => true];
             }
 
             foreach ($idsUsuarios as $idUsuario) {
@@ -431,10 +446,9 @@ class ContenedorController extends Controller
             $contenedor->usuarios()->sync($usuariosASincronizar);
         }
 
-        return Redirect::route($rutaRedireccion, $contenedor->id)->with('success', ucfirst($this->getNombreTipo($tipoEsperado)) . ' actualizado exitosamente.');
+        return redirect()->route($rutaRedireccion, $contenedor->id)->with('success', ucfirst($this->getNombreTipo($tipoEsperado)) . ' actualizado exitosamente.');
     }
-
-    public function destroy(Request $peticion, $id)
+        public function destroy(Request $peticion, $id)
     {
         $infoRecurso = $this->getTipoVista($peticion);
         $tipoEsperado = $infoRecurso['tipo'];
