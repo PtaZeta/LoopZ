@@ -33,66 +33,102 @@ function obtenerClaveS3DesdeUrl($url, $nombreBucket) {
 class ProfileController extends Controller
 {
     public function show($id): Response
-{
-    $usuario = User::findOrFail($id);
+    {
+        $usuario = User::findOrFail($id);
 
-    $withUsuariosCallback = function ($query) {
-        $query->select('users.id', 'users.name', 'users.foto_perfil');
-    };
+        $withUsuariosCallback = function ($query) {
+            $query->select('users.id', 'users.name', 'users.foto_perfil');
+        };
 
-    $consultaCanciones = $usuario->perteneceCanciones()
-        ->with(['usuarios' => $withUsuariosCallback])
-        ->orderBy('pertenece_user.created_at', 'desc')
-        ->limit(10)
-        ->get();
+        // Canciones del usuario
+        $consultaCanciones = $usuario->perteneceCanciones()
+            ->with([
+                'usuarios' => $withUsuariosCallback,
+                'contenedores:id,nombre' // Cargar los contenedores relacionados
+            ])
+            ->orderBy('pertenece_user.created_at', 'desc')
+            ->limit(10)
+            ->get();
 
-    $usuarioAuth = auth()->user();
-    $loopzSongIds = $usuarioAuth ? $this->getLoopZUsuario($usuarioAuth) : [];
+        $usuarioAuth = auth()->user();
+        $loopzSongIds = $usuarioAuth ? $this->getLoopZUsuario($usuarioAuth) : [];
 
-    $consultaCanciones->each(function ($cancion) use ($loopzSongIds) {
-        $cancion->is_in_user_loopz = in_array($cancion->id, $loopzSongIds);
-    });
+        // Marcar si la canción está en LoopZ del usuario logueado
+        $consultaCanciones->each(function ($cancion) use ($loopzSongIds) {
+            $cancion->is_in_user_loopz = in_array($cancion->id, $loopzSongIds);
+        });
 
-    $consultaPlaylists = $usuario->perteneceContenedores()
-        ->where('contenedores.tipo', 'playlist')
-        ->with(['usuarios' => $withUsuariosCallback])
-        ->orderBy('pertenece_user.created_at', 'desc')
-        ->limit(10)
-        ->get();
+        // Playlists del usuario
+        $consultaPlaylists = $usuario->perteneceContenedores()
+            ->where('contenedores.tipo', 'playlist')
+            ->with(['usuarios' => $withUsuariosCallback])
+            ->orderBy('pertenece_user.created_at', 'desc')
+            ->limit(10)
+            ->get();
 
-    $consultaAlbumes = $usuario->perteneceContenedores()
-        ->where('contenedores.tipo', 'album')
-        ->with(['usuarios' => $withUsuariosCallback])
-        ->orderBy('pertenece_user.created_at', 'desc')
-        ->limit(10)
-        ->get();
+        // Álbumes
+        $consultaAlbumes = $usuario->perteneceContenedores()
+            ->where('contenedores.tipo', 'album')
+            ->with(['usuarios' => $withUsuariosCallback])
+            ->orderBy('pertenece_user.created_at', 'desc')
+            ->limit(10)
+            ->get();
 
-    $consultaEps = $usuario->perteneceContenedores()
-        ->where('contenedores.tipo', 'ep')
-        ->with(['usuarios' => $withUsuariosCallback])
-        ->orderBy('pertenece_user.created_at', 'desc')
-        ->limit(10)
-        ->get();
+        // EPs
+        $consultaEps = $usuario->perteneceContenedores()
+            ->where('contenedores.tipo', 'ep')
+            ->with(['usuarios' => $withUsuariosCallback])
+            ->orderBy('pertenece_user.created_at', 'desc')
+            ->limit(10)
+            ->get();
 
-    $consultaSingles = $usuario->perteneceContenedores()
-        ->where('contenedores.tipo', 'single')
-        ->with(['usuarios' => $withUsuariosCallback])
-        ->orderBy('pertenece_user.created_at', 'desc')
-        ->limit(10)
-        ->get();
+        // Singles
+        $consultaSingles = $usuario->perteneceContenedores()
+            ->where('contenedores.tipo', 'single')
+            ->with(['usuarios' => $withUsuariosCallback])
+            ->orderBy('pertenece_user.created_at', 'desc')
+            ->limit(10)
+            ->get();
 
-    $esCreador = auth()->check() && auth()->user()->id === $usuario->id;
+        // Verificar si el usuario autenticado es el creador del perfil
+        $esCreador = auth()->check() && auth()->user()->id === $usuario->id;
 
-    return Inertia::render('Profile/Show', [
-        'usuario' => $usuario->only(['id', 'name', 'email', 'foto_perfil', 'banner_perfil']),
-        'cancionesUsuario' => $consultaCanciones,
-        'playlistsUsuario' => $consultaPlaylists,
-        'albumesUsuario' => $consultaAlbumes,
-        'epsUsuario' => $consultaEps,
-        'singlesUsuario' => $consultaSingles,
-        'es_creador' => $esCreador,
-    ]);
-}
+        // Obtener las playlists del usuario autenticado
+        if ($usuarioAuth) {
+            $userPlaylists = $usuarioAuth->perteneceContenedores()
+                ->where('tipo', 'playlist')
+                ->with('canciones:id') // Cargar canciones relacionadas
+                ->select('id', 'nombre', 'imagen') // Asegúrate de incluir la columna 'imagen'
+                ->get();
+
+            // Verifica que la URL de la imagen sea válida
+            $userPlaylists->each(function ($playlist) {
+                if ($playlist->imagen && !filter_var($playlist->imagen, FILTER_VALIDATE_URL)) {
+                    $playlist->imagen = Storage::disk('s3')->url($playlist->imagen);
+                }
+            });
+        } else {
+            $userPlaylists = collect(); // vacío
+        }
+
+        return Inertia::render('Profile/Show', [
+            'usuario' => $usuario->only(['id', 'name', 'email', 'foto_perfil', 'banner_perfil']),
+            'cancionesUsuario' => $consultaCanciones,
+            'playlistsUsuario' => $consultaPlaylists,
+            'albumesUsuario' => $consultaAlbumes,
+            'epsUsuario' => $consultaEps,
+            'singlesUsuario' => $consultaSingles,
+            'es_creador' => $esCreador,
+
+            'auth' => [
+                'user' => $usuarioAuth ? [
+                    'id' => $usuarioAuth->id,
+                    'name' => $usuarioAuth->name,
+                    'playlists' => $userPlaylists, // Aquí pasamos las playlists del usuario logueado
+                ] : null,
+            ],
+        ]);
+    }
 
     public function edit(Request $request): Response
     {

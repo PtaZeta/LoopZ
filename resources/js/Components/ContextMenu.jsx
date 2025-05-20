@@ -82,6 +82,7 @@ const ContextMenu = memo(({
             icon: playlist.icon,
             disabled: playlist.disabled,
             containsSong: playlist.canciones?.some((c) => c.id === currentSong?.id),
+            image: playlist.imagen, // Asegúrate de que 'imagen' esté disponible aquí
             action: () => {
               playlist.action();
               handleClose();
@@ -188,10 +189,16 @@ const ContextMenu = memo(({
                   role="menuitem"
                   disabled={option.disabled}
                 >
+                  {option.image && (
+                    <img
+                      src={option.image}
+                      alt={option.label}
+                      className="w-6 h-6 rounded mr-3 object-cover"
+                    />
+                  )}
                   {option.icon && <span className="mr-3">{option.icon}</span>}
                   {option.label}
                   {option.containsSong && (
-                    // Changed text-green-400 to text-white here
                     <MinimalCheckIcon className="ml-3 h-4 w-4 text-white" />
                   )}
                 </button>
@@ -240,6 +247,7 @@ ContextMenu.propTypes = {
           id: PropTypes.number.isRequired,
         })
       ),
+      imagen: PropTypes.string, // Añadimos la imagen de la playlist
     })
   ),
   currentSong: PropTypes.shape({

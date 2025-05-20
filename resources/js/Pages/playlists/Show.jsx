@@ -134,7 +134,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
     });
     const contextMenuTimer = useRef(null);
 
-    const urlImagenContenedor = obtenerUrlImagen(contenedor);
+    const urlImagenContenedor = contenedor?.imagen || obtenerUrlImagen(contenedor);
     const tipoContenedor = contenedor?.tipo || 'album';
     const tipoNombreMayuscula = getTipoNombreMayuscula(tipoContenedor);
     const rutaBase = getResourceRouteBase(tipoContenedor);
@@ -510,6 +510,14 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
     const getContextMenuOptions = useCallback(() => {
         if (!contextMenu.song) return [];
         const options = [];
+        options.push({
+            label: "Ver cancion",
+            icon: <MusicalNoteIcon className="h-5 w-5" />,
+            action: () => {
+            router.visit(route('canciones.show', contextMenu.song.id));
+            closeContextMenu();
+            },
+        });
 
         options.push({
             label: contextMenu.song.is_in_user_loopz ? "Quitar LoopZ" : "Añadir LoopZ",
@@ -571,6 +579,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                 userPlaylists={(auth.user?.playlists || []).map(p => ({
                     id: p.id,
                     name: p.nombre,
+                    imagen: p.imagen,
                     canciones: p.canciones || [],
                     action: () => manejarToggleCancion(contextMenu.song?.id, p.id),
                 }))}
@@ -581,13 +590,14 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                 <div className="mx-auto max-w-6xl sm:px-6 lg:px-8">
                     <div className="md:flex md:items-end md:space-x-8 p-6 md:p-10 bg-transparent">
                         <div className="flex-shrink-0 w-48 h-48 lg:w-64 lg:h-64 mb-6 md:mb-0 mx-auto md:mx-0 shadow-2xl rounded-lg overflow-hidden border-4 border-purple-800/50">
-                            {urlImagenContenedor ? (
+                        {urlImagenContenedor ? (
                                 <img src={urlImagenContenedor} alt={`Cover de ${contenedor?.nombre}`} className="w-full h-full object-cover" />
                             ) : (
                                 <div className="w-full h-full bg-slate-800 flex items-center justify-center text-purple-500">
                                     <MusicalNoteIcon className="h-24 w-24" />
                                 </div>
                             )}
+
                         </div>
                         <div className="flex-grow text-center md:text-left">
                             <p className="text-sm font-medium uppercase tracking-wider text-purple-400 mb-1">{tipoNombreMayuscula}</p>

@@ -82,6 +82,8 @@ class DatabaseSeeder extends Seeder
                 'cancion_original_id'  => $base->id,
             ]);
             $rmx->generos()->attach($base->generos->pluck('id')->toArray());
+
+            $rmx->usuarios()->attach($base->usuarios->random()->id, ['propietario' => true]);
             $canciones->push($rmx);
         }
 

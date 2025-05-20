@@ -72,6 +72,10 @@ Route::inertia('/contact', 'Static/Contact')->name('contact');
 
 
 Route::middleware('auth')->group(function () {
+    Route::get('/radio', function () {
+        return Inertia::render('Radio');
+    })->name('radio');
+
     Route::get('/profile/{user}', [ProfileController::class, 'show'])->name('profile.show');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
