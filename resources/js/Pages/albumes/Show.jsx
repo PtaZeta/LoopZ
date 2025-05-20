@@ -5,6 +5,7 @@ import PropTypes from 'prop-types';
 import debounce from 'lodash.debounce';
 import { PlayerContext } from '@/contexts/PlayerContext';
 import {
+    ArrowUpOnSquareIcon,
     MusicalNoteIcon,
     TrashIcon,
     PlayIcon,
@@ -133,7 +134,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
     });
     const contextMenuTimer = useRef(null);
 
-    const urlImagenContenedor = obtenerUrlImagen(contenedor);
+    const urlImagenContenedor = contenedor?.imagen || obtenerUrlImagen(contenedor);
     const tipoContenedor = contenedor?.tipo || 'album';
     const tipoNombreMayuscula = getTipoNombreMayuscula(tipoContenedor);
     const rutaBase = getResourceRouteBase(tipoContenedor);
@@ -253,6 +254,26 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             },
         });
     };
+
+    const manejarToggleCancion = (cancionId, playlistId) => {
+        if (!cancionId || !playlistId) return;
+        router.post(
+            route('playlist.toggleCancion', {
+                playlist: playlistId,
+                cancion: cancionId
+            }),
+            {},
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    closeContextMenu();
+                    router.reload({ only: ['contenedor', 'auth'] });
+                }
+            }
+        );
+    };
+
+
     const manejarAnadirCancion = (idCancion) => {
         if (anadiendoCancionId === idCancion || !contenedor?.id) return;
         setAnadiendoCancionId(idCancion);
@@ -488,16 +509,23 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
     }, [closeContextMenu]);
     const getContextMenuOptions = useCallback(() => {
         if (!contextMenu.song) return [];
-
         const options = [];
+        options.push({
+            label: "Ver cancion",
+            icon: <MusicalNoteIcon className="h-5 w-5" />,
+            action: () => {
+            router.visit(route('canciones.show', contextMenu.song.id));
+            closeContextMenu();
+            },
+        });
 
         options.push({
             label: contextMenu.song.is_in_user_loopz ? "Quitar LoopZ" : "Añadir LoopZ",
             action: () => manejarCancionLoopzToggle(contextMenu.song.id, contextMenu.song.is_in_user_loopz),
             icon: <HeartIconOutline className="h-5 w-5" />,
-            disabled: likeProcessing
-                === contextMenu.song.id,
+            disabled: likeProcessing === contextMenu.song.id,
         });
+
         if (contextMenu.song.is_in_user_loopz) {
             options[0].icon = <HeartIconSolid className="h-5 w-5 text-purple-500" />;
         }
@@ -509,63 +537,67 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             disabled: !añadirSiguiente,
         });
 
-        if (contextMenu.song.usuarios && Array.isArray(contextMenu.song.usuarios) && contextMenu.song.usuarios.length > 0) {
-            const artistSubmenuOptions = contextMenu.song.usuarios.map(artist => ({
-                label: artist.name,
-                action: () => handleViewArtist(artist),
-                icon: <UserIcon className="h-5 w-5" />,
-                disabled: !artist?.id || !artist?.name,
-            }));
-            options.push({
-                label: `Ver artista${contextMenu.song.usuarios.length > 1 ? 's' : ''}`,
-                icon: <UserIcon className="h-5 w-5" />,
-                submenu: artistSubmenuOptions,
-                disabled: artistSubmenuOptions.length === 0,
-            });
-        } else if (contextMenu.song.artista) {
-            options.push({
-                label: `Artista: ${contextMenu.song.artista}`,
-                icon: <UserIcon className="h-5 w-5 text-gray-400" />,
-                disabled: true,
-            });
-        }
+        options.push({
+            label: "Añadir a playlist",
+            icon: <ArrowUpOnSquareIcon className="h-5 w-5" />,
+            submenu: 'userPlaylists',
+        });
 
         if (contenedor?.can?.edit && contextMenu.song.pivot?.id) {
             options.push({
                 label: `Quitar de ${tipoNombreMayuscula}`,
                 action: () => manejarEliminarCancion(contextMenu.song.pivot.id),
                 icon: <TrashIcon className="h-5 w-5 text-red-500" />,
-                disabled:
-                    eliminandoPivotId === contextMenu.song.pivot.id,
+                disabled: eliminandoPivotId === contextMenu.song.pivot.id,
             });
         }
 
         return options;
-    }, [contextMenu.song, manejarCancionLoopzToggle, likeProcessing, handleAddToQueueNext, contenedor?.can?.edit, tipoNombreMayuscula, manejarEliminarCancion, eliminandoPivotId, añadirSiguiente, handleViewArtist]);
+    }, [
+        contextMenu.song,
+        manejarCancionLoopzToggle,
+        likeProcessing,
+        handleAddToQueueNext,
+        contenedor?.can?.edit,
+        tipoNombreMayuscula,
+        manejarEliminarCancion,
+        eliminandoPivotId,
+        añadirSiguiente,
+        handleViewArtist
+    ]);
+
     return (
         <AuthenticatedLayout user={auth.user}>
             <Head title={contenedor?.nombre || `Detalles de ${tipoNombreMayuscula}`} />
 
+            <ContextMenu
+                x={contextMenu.x}
+                y={contextMenu.y}
+                show={contextMenu.show}
+                onClose={closeContextMenu}
+                options={getContextMenuOptions()}
+                userPlaylists={(auth.user?.playlists || []).map(p => ({
+                    id: p.id,
+                    name: p.nombre,
+                    imagen: p.imagen,
+                    canciones: p.canciones || [],
+                    action: () => manejarToggleCancion(contextMenu.song?.id, p.id),
+                }))}
+                currentSong={contextMenu.song}
+            />
+
             <div className="py-12">
                 <div className="mx-auto max-w-6xl sm:px-6 lg:px-8">
-
-                    <ContextMenu
-                        x={contextMenu.x}
-                        y={contextMenu.y}
-                        show={contextMenu.show}
-                        onClose={closeContextMenu}
-                        options={getContextMenuOptions()}
-                    />
-
                     <div className="md:flex md:items-end md:space-x-8 p-6 md:p-10 bg-transparent">
                         <div className="flex-shrink-0 w-48 h-48 lg:w-64 lg:h-64 mb-6 md:mb-0 mx-auto md:mx-0 shadow-2xl rounded-lg overflow-hidden border-4 border-purple-800/50">
-                            {urlImagenContenedor ? (
+                        {urlImagenContenedor ? (
                                 <img src={urlImagenContenedor} alt={`Cover de ${contenedor?.nombre}`} className="w-full h-full object-cover" />
                             ) : (
                                 <div className="w-full h-full bg-slate-800 flex items-center justify-center text-purple-500">
                                     <MusicalNoteIcon className="h-24 w-24" />
                                 </div>
                             )}
+
                         </div>
                         <div className="flex-grow text-center md:text-left">
                             <p className="text-sm font-medium uppercase tracking-wider text-purple-400 mb-1">{tipoNombreMayuscula}</p>

@@ -249,7 +249,6 @@ export default function SearchIndex({ searchQuery, results }) {
               </div>
             </Link>
 
-            {/* Botón principal */}
             {principalKey === 'cancion' && (
               <button
                 onClick={handlePrincipalPlay}

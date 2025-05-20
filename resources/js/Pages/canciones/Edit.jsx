@@ -7,7 +7,6 @@ import TextInput from '@/Components/TextInput';
 import InputLabel from '@/Components/InputLabel';
 import InputError from '@/Components/InputError';
 
-// Destructure generosSeleccionados from the props
 export default function Edit({ auth, cancion, generos: todosLosGeneros, generosSeleccionados }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         titulo: cancion.titulo || '',
@@ -15,11 +14,7 @@ export default function Edit({ auth, cancion, generos: todosLosGeneros, generosS
         licencia: cancion.licencia || '',
         foto: null,
         archivo: null,
-        // Initialize 'genero' state with the generosSeleccionados prop
         genero: generosSeleccionados || [],
-
-        // Correctly handle initial users data from the mapped 'usuarios' prop
-        // The backend passes 'usuarios' inside $cancionData, which becomes the 'cancion' prop here
         userIds: cancion.usuarios ? cancion.usuarios.map(u => u.id) : [],
         _method: 'PUT',
     });
@@ -28,29 +23,23 @@ export default function Edit({ auth, cancion, generos: todosLosGeneros, generosS
     const [archivoActualNombre, setArchivoActualNombre] = useState(cancion.archivo_nombre || null);
 
     const [termGenero, setTermGenero] = useState('');
-    // Initialize resultadosGenero with all genres minus the selected ones when the component loads
     const [resultadosGenero, setResultadosGenero] = useState(
         todosLosGeneros.filter(g => !generosSeleccionados.includes(g))
     );
     const [mostrarGenero, setMostrarGenero] = useState(false);
 
-    // Adjusted search logic to use the correct results state
     const buscarGeneros = useCallback(
         debounce(term => {
             const limpio = term.trim().toLowerCase();
             if (limpio) {
-                // Filter from *all* genres, excluding currently selected ones
                 setResultadosGenero(
                     todosLosGeneros.filter(g => g.toLowerCase().includes(limpio) && !data.genero.includes(g))
                 );
             } else {
-                 // If search term is empty, show all genres not currently selected
                 setResultadosGenero(todosLosGeneros.filter(g => !data.genero.includes(g)));
             }
-            // Only show results if there's a term or if we previously searched and want to show all available
-            // setMostrarGenero(true); // This might be handled better by onFocus/onBlur, but keeping the debounce behavior
         }, 300),
-        [todosLosGeneros, data.genero] // Dependencies
+        [todosLosGeneros, data.genero]
     );
 
     const manejarTermGenero = e => {
@@ -62,62 +51,43 @@ export default function Edit({ auth, cancion, generos: todosLosGeneros, generosS
     const agregarGenero = g => {
         if (!data.genero.includes(g)) {
             setData('genero', [...data.genero, g]);
-            // Remove the added genre from the results list
             setResultadosGenero(resultadosGenero.filter(resG => resG !== g));
-             // Re-filter results based on current term and updated selected genres
             const limpio = termGenero.trim().toLowerCase();
             if (limpio) {
-                 setResultadosGenero(
+                setResultadosGenero(
                     todosLosGeneros.filter(gen => gen.toLowerCase().includes(limpio) && ![...data.genero, g].includes(gen))
-                 );
+                );
             } else {
                 setResultadosGenero(todosLosGeneros.filter(gen => ![...data.genero, g].includes(gen)));
             }
         }
-        // Optionally clear the search term after adding
-        // setTermGenero(''); // Keeping term allows adding multiple results easily
-        // setMostrarGenero(false); // Don't hide the list unless the input loses focus
     };
 
     const quitarGenero = g => {
         const nuevosGenerosSeleccionados = data.genero.filter(x => x !== g);
         setData('genero', nuevosGenerosSeleccionados);
-        // Add the removed genre back to the results list if it matches the current search term (or if search is empty)
         const limpio = termGenero.trim().toLowerCase();
         if (g.toLowerCase().includes(limpio) || !limpio) {
-             setResultadosGenero(
+            setResultadosGenero(
                 todosLosGeneros.filter(gen => gen.toLowerCase().includes(limpio) && !nuevosGenerosSeleccionados.includes(gen))
-             );
+            );
         }
-        // No need to call buscarGeneros here, the state updates will handle re-render
     };
 
-    // This cancionesRecomendadasFiltradas list logic is now superseded by the resultsGenero state
-    // You can remove or adapt this if needed elsewhere, but the dropdown uses resultadosGenero
-    // const listaGeneroFiltrada = termGenero
-    //     ? todosLosGeneros.filter(g => g.toLowerCase().includes(termGenero.trim().toLowerCase()) && !data.genero.includes(g))
-    //     : todosLosGeneros.filter(g => !data.genero.includes(g));
-
-
-    // Correctly initialize usuariosSeleccionados from the 'cancion.usuarios' prop
     const [usuariosSeleccionados, setUsuariosSeleccionados] = useState(cancion.usuarios || []);
     const [terminoBusqueda, setTerminoBusqueda] = useState('');
     const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
     const [cargandoBusqueda, setCargandoBusqueda] = useState(false);
     const [mostrarResultados, setMostrarResultados] = useState(false);
 
-    // Use useEffect to update userIds when usuariosSeleccionados changes
     useEffect(() => {
         setData('userIds', usuariosSeleccionados.map(u => u.id));
     }, [usuariosSeleccionados, setData]);
 
-
     const agregarUsuario = (usuario) => {
-        // Ensure the user is not already selected and not the currently authenticated user
         if (!usuariosSeleccionados.some(seleccionado => seleccionado.id === usuario.id) && usuario.id !== auth.user?.id) {
             const nuevosSeleccionados = [...usuariosSeleccionados, usuario];
             setUsuariosSeleccionados(nuevosSeleccionados);
-            // UserIds state will be updated by the useEffect hook
             setTerminoBusqueda('');
             setResultadosBusqueda([]);
             setMostrarResultados(false);
@@ -125,38 +95,30 @@ export default function Edit({ auth, cancion, generos: todosLosGeneros, generosS
     };
 
     const quitarUsuario = (usuarioId) => {
-        // Prevent removing the creator if they are the only user associated AND the current authenticated user
         if (usuarioId === cancion.creador_id && usuariosSeleccionados.length === 1 && auth.user?.id === usuarioId) {
-             alert('No puedes quitar al creador si es el único colaborador.');
-             return;
+            alert('No puedes quitar al creador si es el único colaborador.');
+            return;
         }
-         // Prevent removing the creator if they are the only user associated (regardless of who is logged in)
-         if (usuarioId === cancion.creador_id && usuariosSeleccionados.length === 1) {
-             alert('No puedes quitar al creador si es el único colaborador.');
-             return;
-         }
-
-
+        if (usuarioId === cancion.creador_id && usuariosSeleccionados.length === 1) {
+            alert('No puedes quitar al creador si es el único colaborador.');
+            return;
+        }
         const nuevosSeleccionados = usuariosSeleccionados.filter(usuario => usuario.id !== usuarioId);
         setUsuariosSeleccionados(nuevosSeleccionados);
-        // UserIds state will be updated by the useEffect hook
     };
 
     const realizarBusqueda = useCallback(
         debounce(async (termino) => {
             const terminoLimpio = termino.trim();
-             // Don't search if the term is empty unless explicitly trying to show all available on focus
-            if (!terminoLimpio && !mostrarResultados) { // Adjusted logic here
-                 setResultadosBusqueda([]);
-                 setCargandoBusqueda(false);
-                 return;
-             }
-
+            if (!terminoLimpio && !mostrarResultados) {
+                setResultadosBusqueda([]);
+                setCargandoBusqueda(false);
+                return;
+            }
             setCargandoBusqueda(true);
-            setMostrarResultados(true); // Ensure results dropdown is shown during search
+            setMostrarResultados(true);
             try {
                 const response = await axios.get(route('usuarios.buscar', { q: terminoLimpio }));
-                // Filter out already selected users and the current authenticated user
                 const usuariosDisponibles = response.data.filter(
                     usuario => !usuariosSeleccionados.some(seleccionado => seleccionado.id === usuario.id) && usuario.id !== auth.user?.id
                 );
@@ -168,7 +130,7 @@ export default function Edit({ auth, cancion, generos: todosLosGeneros, generosS
                 setCargandoBusqueda(false);
             }
         }, 300),
-        [usuariosSeleccionados, auth.user?.id, mostrarResultados] // Dependencies: Recreate if these change
+        [usuariosSeleccionados, auth.user?.id, mostrarResultados]
     );
 
     const manejarCambioBusqueda = (e) => {
@@ -179,17 +141,14 @@ export default function Edit({ auth, cancion, generos: todosLosGeneros, generosS
 
     const manejarFocoBusqueda = () => {
         setMostrarResultados(true);
-        // If the search term is empty, perform a search to show all available users
         if (!terminoBusqueda.trim()) {
-            realizarBusqueda(''); // Pass empty string to search all
+            realizarBusqueda('');
         } else {
-             // If there's a term, re-run the search to ensure results are fresh (e.g., if a user was added elsewhere)
-             realizarBusqueda(terminoBusqueda);
+            realizarBusqueda(terminoBusqueda);
         }
     }
 
     const manejarPerdidaFocoBusqueda = () => {
-        // Delay hiding results to allow click on a result
         setTimeout(() => setMostrarResultados(false), 150);
     }
 
@@ -199,22 +158,15 @@ export default function Edit({ auth, cancion, generos: todosLosGeneros, generosS
             preserveState: true,
             preserveScroll: true,
             onSuccess: () => {
-                // Reset file inputs manually after successful upload
                 const inputFoto = document.getElementById('foto');
                 if (inputFoto) inputFoto.value = null;
                 const inputArchivo = document.getElementById('archivo');
                 if (inputArchivo) inputArchivo.value = null;
                 setData('foto', null);
                 setData('archivo', null);
-
-                // If the backend returns updated cancion data, you might want to update state here
-                // E.g., Inertia.reload() or update cancion prop if backend returns it
-                 // Inertia reload often simpler:
-                 // Inertia.reload({ only: ['cancion', 'generosSeleccionados', 'error', 'success']});
             },
             onError: (errores) => {
                 console.error("Form errors:", errores);
-                // Inertia handles setting errors state automatically
             },
         });
     };
@@ -333,7 +285,6 @@ export default function Edit({ auth, cancion, generos: todosLosGeneros, generosS
                                         onChange={manejarTermGenero}
                                         onFocus={() => {
                                             setMostrarGenero(true);
-                                             // If input is empty on focus, show all available genres
                                             if (!termGenero.trim()) buscarGeneros('');
                                         }}
                                         onBlur={() => setTimeout(() => setMostrarGenero(false), 150)}
@@ -342,25 +293,25 @@ export default function Edit({ auth, cancion, generos: todosLosGeneros, generosS
                                     />
                                     {mostrarGenero && (
                                         <ul className="absolute z-10 mt-1 w-full bg-gray-700 border border-gray-600 rounded-md max-h-40 overflow-y-auto shadow-lg">
-                                            {resultadosGenero.length > 0 ? ( // Use resultadosGenero here
+                                            {resultadosGenero.length > 0 ? (
                                                 resultadosGenero.map((g, i) => (
                                                     <li
                                                         key={i}
                                                         className="px-4 py-2 hover:bg-gray-600 cursor-pointer text-gray-100 text-sm"
-                                                        onMouseDown={() => agregarGenero(g)} // Use onMouseDown for click-like behavior before onBlur fires
+                                                        onMouseDown={() => agregarGenero(g)}
                                                     >
                                                         {g}
                                                     </li>
                                                 ))
                                             ) : (
                                                 <li className="px-4 py-2 text-gray-400 text-sm">
-                                                     {termGenero ? "No hay géneros que coincidan" : "No hay más géneros para añadir"}
+                                                    {termGenero ? "No hay géneros que coincidan" : "No hay más géneros para añadir"}
                                                 </li>
                                             )}
                                         </ul>
                                     )}
                                     <div className="mt-2 flex flex-wrap gap-2">
-                                        {data.genero.map((g, i) => ( // Displaying genres from data.genero
+                                        {data.genero.map((g, i) => (
                                             <span key={i} className="bg-indigo-600 text-white text-xs px-2 py-1 rounded-full inline-flex items-center">
                                                 {g}
                                                 <button type="button" onClick={() => quitarGenero(g)} className="ml-2 text-indigo-100 hover:text-white focus:outline-none">
@@ -402,12 +353,12 @@ export default function Edit({ auth, cancion, generos: todosLosGeneros, generosS
                                             <ul className="mt-2 border border-gray-600 rounded-md bg-gray-700 shadow-lg max-h-60 overflow-auto z-10 absolute w-full">
                                                 {!cargandoBusqueda && resultadosBusqueda.length === 0 && (
                                                     <li className="px-4 py-2 text-sm text-gray-400">
-                                                         {terminoBusqueda ? 'No se encontraron usuarios que coincidan.' : 'Escribe para buscar o no hay más usuarios disponibles.'} {/* Improved message */}
+                                                        {terminoBusqueda ? 'No se encontraron usuarios que coincidan.' : 'Escribe para buscar o no hay más usuarios disponibles.'}
                                                     </li>
                                                 )}
                                                 {!cargandoBusqueda && resultadosBusqueda.map(usuario => (
                                                     <li key={usuario.id} className="px-4 py-2 hover:bg-gray-600 flex justify-between items-center cursor-pointer"
-                                                        onMouseDown={() => agregarUsuario(usuario)} // Use onMouseDown
+                                                        onMouseDown={() => agregarUsuario(usuario)}
                                                     >
                                                         <div>
                                                             <span className="font-medium text-sm text-gray-100">{usuario.name}</span>
@@ -415,9 +366,9 @@ export default function Edit({ auth, cancion, generos: todosLosGeneros, generosS
                                                         </div>
                                                     </li>
                                                 ))}
-                                                 {cargandoBusqueda && (
+                                                {cargandoBusqueda && (
                                                     <li className="px-4 py-2 text-sm text-gray-400">Buscando...</li>
-                                                 )}
+                                                )}
                                             </ul>
                                         )}
                                     </div>
@@ -430,16 +381,13 @@ export default function Edit({ auth, cancion, generos: todosLosGeneros, generosS
                                                         <div>
                                                             <span className="font-medium text-sm text-gray-100">{usuario.name}</span>
                                                             <span className="text-xs text-gray-400 ml-2">({usuario.email})</span>
-                                                            {/* Display (Creador) tag */}
                                                             {cancion.creador_id === usuario.id && (
                                                                 <span className="ml-2 text-xs text-blue-400 font-semibold">(Creador)</span>
                                                             )}
-                                                            {/* Display (Tú) tag if not the creator */}
-                                                             {auth.user?.id === usuario.id && cancion.creador_id !== usuario.id && (
+                                                            {auth.user?.id === usuario.id && cancion.creador_id !== usuario.id && (
                                                                 <span className="ml-2 text-xs text-green-400 font-semibold">(Tú)</span>
-                                                             )}
+                                                            )}
                                                         </div>
-                                                        {/* Only allow removing if the user is not the creator OR if there's more than one user associated */}
                                                         {!(cancion.creador_id === usuario.id && usuariosSeleccionados.length === 1) && (
                                                             <button
                                                                 type="button"
@@ -452,16 +400,14 @@ export default function Edit({ auth, cancion, generos: todosLosGeneros, generosS
                                                         )}
                                                     </li>
                                                 ))}
-                                            </ul>
-                                             {/* Display errors related to userIds */}
-                                             <InputError message={errors.userIds && typeof errors.userIds === 'string' ? errors.userIds : ''} className="mt-1 text-xs" />
-                                             {Object.keys(errors).filter(key => key.startsWith('userIds.')).map(key => (
+                                                <InputError message={errors.userIds && typeof errors.userIds === 'string' ? errors.userIds : ''} className="mt-1 text-xs" />
+                                                {Object.keys(errors).filter(key => key.startsWith('userIds.')).map(key => (
                                                     <InputError key={key} message={errors[key]} className="mt-1 text-xs" />
-                                             ))}
+                                                ))}
+                                            </ul>
                                         </div>
                                     )}
                                 </div>
-
 
                                 <div className="flex justify-end pt-5 mt-6 border-t border-gray-700">
                                     <Link

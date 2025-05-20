@@ -51,7 +51,6 @@ const ProfileImagenConPlaceholder = React.memo(({ src, alt, claseImagen, clasePl
             case 'banner': return <PhotoIcon className="w-1/3 h-1/3 text-gray-500" />;
             case 'cancion': case 'playlist': case 'album': case 'ep': case 'single':
                 return <MusicalNoteIconSolid className="w-1/2 h-1/2 text-gray-500" />;
-
             default: return <PhotoIcon className="w-1/3 h-1/3 text-gray-500" />;
         }
     }, [tipo]);
@@ -698,7 +697,6 @@ export default function Index() {
     const handleToggleLoopzSong = useCallback((songId, isInLoopz) => {
         if (!songId || likeProcessingSongId === songId) return;
         setLikeProcessingSongId(songId);
-        // Optimistic update
         setCancionesUsuario(prevCanciones =>
             prevCanciones.map(song =>
                 song.id === songId ? { ...song, is_in_user_loopz: !isInLoopz } : song
@@ -706,23 +704,13 @@ export default function Index() {
         );
         router.post(route('cancion.loopz', { cancion: songId }), {}, {
             preserveScroll: true,
-            preserveState: true, // Keep preserveState
+            preserveState: true,
             onSuccess: (page) => {
-                 // Update state with the list from page.props if available
                  if (page.props.cancionesUsuario && Array.isArray(page.props.cancionesUsuario)) {
                     setCancionesUsuario(page.props.cancionesUsuario);
                  }
-                 // Optional: If backend also returns the updated individual song, you could use that
-                 // if (page.props.cancionActualizada) {
-                 //    setCancionesUsuario(prevCanciones =>
-                 //         prevCanciones.map(song =>
-                 //            song.id === page.props.cancionActualizada.id ? { ...song, ...page.props.cancionActualizada } : song
-                 //         )
-                 //     );
-                 // }
             },
             onError: (errors) => {
-                // Revert optimistic update on error
                 setCancionesUsuario(prevCanciones =>
                     prevCanciones.map(song =>
                         song.id === songId ? { ...song, is_in_user_loopz: isInLoopz } : song
@@ -767,7 +755,7 @@ export default function Index() {
         options.push({
             label: "Añadir a playlist",
             icon: <ArrowUpOnSquareIcon className="h-5 w-5" />,
-            submenu: 'userPlaylists', // Delegamos la lógica al ContextMenu
+            submenu: 'userPlaylists',
         });
 
         if (contextMenu.song.usuarios && Array.isArray(contextMenu.song.usuarios) && contextMenu.song.usuarios.length > 0) {
@@ -791,10 +779,8 @@ export default function Index() {
              });
         }
 
-
         return options;
     }, [contextMenu.song, handleToggleLoopzSong, likeProcessingSongId, añadirSiguiente, handleAddToQueueNext, manejarToggleCancion, auth.user?.playlists, handleViewArtist]);
-
 
     return (
         <AuthenticatedLayout user={auth.user}>
@@ -810,7 +796,7 @@ export default function Index() {
                     id: p.id,
                     name: p.nombre,
                     canciones: p.canciones || [],
-                    imagen: p.imagen, // Asegúrate de pasar la propiedad 'imagen'
+                    imagen: p.imagen,
                     action: () => manejarToggleCancion(contextMenu.song?.id, p.id),
                 }))}
                 currentSong={contextMenu.song}
@@ -987,7 +973,6 @@ ProfileCancionesList.propTypes = {
     likeProcessingSongId: PropTypes.number,
     onContextMenu: PropTypes.func,
 };
-
 
 Index.propTypes = {
     auth: PropTypes.object.isRequired,

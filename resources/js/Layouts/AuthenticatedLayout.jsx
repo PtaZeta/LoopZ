@@ -122,30 +122,8 @@ export default function AuthenticatedLayout({ children, header }) {
         aleatorio, looping, cargando, playerError, sourceId,
         play, pause, siguienteCancion, anteriorCancion,
         seek, setVolumen, toggleAleatorio, toggleLoop,
-        playCola, limpiarErrores, queue
+        playCola, limpiarErrores, queue, accionesBloqueadas
     } = playerContextValue || {};
-
-    const [isControlsBlocked, setIsControlsBlocked] = useState(false);
-
-    useEffect(() => {
-        let blockTimer = null;
-        if (cargando) {
-            setIsControlsBlocked(true);
-            blockTimer = setTimeout(() => {
-                setIsControlsBlocked(false);
-            }, 500);
-        } else {
-            setIsControlsBlocked(false);
-            if (blockTimer) {
-                clearTimeout(blockTimer);
-            }
-        }
-        return () => {
-            if (blockTimer) {
-                clearTimeout(blockTimer);
-            }
-        };
-    }, [cargando]);
 
     const queueButtonRef = useRef(null);
     const queueDropdownRef = useRef(null);
@@ -387,9 +365,9 @@ export default function AuthenticatedLayout({ children, header }) {
                             onChange={handleSeekChange}
                             onMouseUp={commitSeek}
                             onTouchEnd={commitSeek}
-                            disabled={!cancionActual || !duration || isControlsBlocked}
+                            disabled={!cancionActual || !duration || accionesBloqueadas}
                             aria-label="Progreso de la canción"
-                            className="w-full h-1 rounded-lg appearance-none cursor-pointer range-progress-gradient disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full h-1 rounded-lg appearance-none cursor-pointer range-progress-gradient"
                             style={progressBarStyle}
                         />
                     </div>
@@ -412,25 +390,25 @@ export default function AuthenticatedLayout({ children, header }) {
                                     title={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"}
                                     aria-label={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"}
                                     className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${aleatorio ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'}`}
-                                    disabled={isControlsBlocked}
+                                    disabled={accionesBloqueadas}
                                 >
                                     <ShuffleIcon className="h-5 w-5" />
                                 </button>
 
                                 <button
                                     onClick={anteriorCancion}
-                                    disabled={!cancionActual && queue.length === 0 || isControlsBlocked}
+                                    disabled={!cancionActual && queue.length === 0 || accionesBloqueadas}
                                     aria-label="Canción anterior"
-                                    className="text-gray-400 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"
+                                    className="text-gray-400 hover:text-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"
                                 >
                                     <PreviousIcon className="h-5 w-5" />
                                 </button>
 
                                 <button
                                     onClick={togglePlayPause}
-                                    disabled={!cancionActual && queue.length === 0 || isControlsBlocked}
+                                    disabled={!cancionActual && queue.length === 0 || accionesBloqueadas}
                                     aria-label={Reproduciendo ? "Pausar" : "Reproducir"}
-                                    className="bg-blue-600 hover:bg-blue-500 rounded-full text-white transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+                                    className="bg-blue-600 hover:bg-blue-500 rounded-full text-white transition-colors shadow-lg flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-900"
                                 >
                                     {cargando ? (
                                         <LoadingIcon className="h-5 w-5 sm:h-6 sm:w-6 animate-spin" />
@@ -443,9 +421,9 @@ export default function AuthenticatedLayout({ children, header }) {
 
                                 <button
                                     onClick={siguienteCancion}
-                                    disabled={!cancionActual && queue.length === 0 || isControlsBlocked}
+                                    disabled={!cancionActual && queue.length === 0 || accionesBloqueadas}
                                     aria-label="Siguiente canción"
-                                    className="text-gray-400 hover:text-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"
+                                    className="text-gray-400 hover:text-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"
                                 >
                                     <NextIcon className="h-5 w-5" />
                                 </button>
@@ -455,7 +433,7 @@ export default function AuthenticatedLayout({ children, header }) {
                                     title={looping ? "Desactivar repetición" : "Activar repetición"}
                                     aria-label={looping ? "Desactivar repetición" : "Activar repetición"}
                                     className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${looping ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'}`}
-                                    disabled={isControlsBlocked}
+                                    disabled={accionesBloqueadas}
                                 >
                                     <LoopIcon className="h-5 w-5" />
                                 </button>
@@ -471,9 +449,9 @@ export default function AuthenticatedLayout({ children, header }) {
                                     onChange={handleSeekChange}
                                     onMouseUp={commitSeek}
                                     onTouchEnd={commitSeek}
-                                    disabled={!cancionActual || !duration || isControlsBlocked}
+                                    disabled={!cancionActual || !duration || accionesBloqueadas}
                                     aria-label="Progreso de la canción"
-                                    className="w-full h-1.5 rounded-lg appearance-none cursor-pointer range-progress-gradient disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-full h-1.5 rounded-lg appearance-none cursor-pointer range-progress-gradient"
                                     style={progressBarStyle}
                                 />
                                 <span className="text-xs text-gray-500 font-mono w-10 text-left">{formatTime(duration)}</span>
@@ -485,7 +463,7 @@ export default function AuthenticatedLayout({ children, header }) {
                                 <button
                                     className="text-gray-400 hover:text-blue-400 transition-colors p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900"
                                     aria-label="Volumen"
-                                    disabled={isControlsBlocked}
+                                    disabled={accionesBloqueadas}
                                 >
                                     <CurrentVolumeIcon className="h-5 w-5" />
                                 </button>
@@ -497,8 +475,8 @@ export default function AuthenticatedLayout({ children, header }) {
                                     value={volumen}
                                     onChange={handleVolumeChange}
                                     aria-label="Control de volumen"
-                                    className="w-20 h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer range-sm accent-blue-500 hover:accent-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    disabled={isControlsBlocked}
+                                    className="w-20 h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer range-sm accent-blue-500 hover:accent-blue-400"
+                                    disabled={accionesBloqueadas}
                                 />
                             </div>
 
@@ -508,7 +486,7 @@ export default function AuthenticatedLayout({ children, header }) {
                                 title="Mostrar cola de reproducción"
                                 aria-label="Mostrar cola de reproducción"
                                 className="text-gray-400 hover:text-blue-400 transition-colors p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900"
-                                disabled={isControlsBlocked}
+                                disabled={accionesBloqueadas}
                             >
                                 <QueueListIcon className="h-5 w-5" />
                             </button>
