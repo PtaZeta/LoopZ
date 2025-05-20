@@ -3,18 +3,9 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-// If your Playlist model is in App\Models:
-// use App\Models\Playlist;
 
 class UpdateSingleRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     *
-     * This assumes you have a 'single' route parameter bound to the Single model
-     * and that your Single model has a 'user_id' attribute.
-     * It checks if the currently authenticated user owns the single they are trying to update.
-     */
     public function authorize(): bool
     {
         return true;

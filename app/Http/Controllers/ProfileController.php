@@ -40,11 +40,10 @@ class ProfileController extends Controller
             $query->select('users.id', 'users.name', 'users.foto_perfil');
         };
 
-        // Canciones del usuario
         $consultaCanciones = $usuario->perteneceCanciones()
             ->with([
                 'usuarios' => $withUsuariosCallback,
-                'contenedores:id,nombre' // Cargar los contenedores relacionados
+                'contenedores:id,nombre'
             ])
             ->orderBy('pertenece_user.created_at', 'desc')
             ->limit(10)
@@ -53,12 +52,10 @@ class ProfileController extends Controller
         $usuarioAuth = auth()->user();
         $loopzSongIds = $usuarioAuth ? $this->getLoopZUsuario($usuarioAuth) : [];
 
-        // Marcar si la canción está en LoopZ del usuario logueado
         $consultaCanciones->each(function ($cancion) use ($loopzSongIds) {
             $cancion->is_in_user_loopz = in_array($cancion->id, $loopzSongIds);
         });
 
-        // Playlists del usuario
         $consultaPlaylists = $usuario->perteneceContenedores()
             ->where('contenedores.tipo', 'playlist')
             ->with(['usuarios' => $withUsuariosCallback])
@@ -66,7 +63,6 @@ class ProfileController extends Controller
             ->limit(10)
             ->get();
 
-        // Álbumes
         $consultaAlbumes = $usuario->perteneceContenedores()
             ->where('contenedores.tipo', 'album')
             ->with(['usuarios' => $withUsuariosCallback])
@@ -74,7 +70,6 @@ class ProfileController extends Controller
             ->limit(10)
             ->get();
 
-        // EPs
         $consultaEps = $usuario->perteneceContenedores()
             ->where('contenedores.tipo', 'ep')
             ->with(['usuarios' => $withUsuariosCallback])
@@ -82,7 +77,6 @@ class ProfileController extends Controller
             ->limit(10)
             ->get();
 
-        // Singles
         $consultaSingles = $usuario->perteneceContenedores()
             ->where('contenedores.tipo', 'single')
             ->with(['usuarios' => $withUsuariosCallback])
@@ -90,25 +84,22 @@ class ProfileController extends Controller
             ->limit(10)
             ->get();
 
-        // Verificar si el usuario autenticado es el creador del perfil
         $esCreador = auth()->check() && auth()->user()->id === $usuario->id;
 
-        // Obtener las playlists del usuario autenticado
         if ($usuarioAuth) {
             $userPlaylists = $usuarioAuth->perteneceContenedores()
                 ->where('tipo', 'playlist')
-                ->with('canciones:id') // Cargar canciones relacionadas
-                ->select('id', 'nombre', 'imagen') // Asegúrate de incluir la columna 'imagen'
+                ->with('canciones:id')
+                ->select('id', 'nombre', 'imagen')
                 ->get();
 
-            // Verifica que la URL de la imagen sea válida
             $userPlaylists->each(function ($playlist) {
                 if ($playlist->imagen && !filter_var($playlist->imagen, FILTER_VALIDATE_URL)) {
                     $playlist->imagen = Storage::disk('s3')->url($playlist->imagen);
                 }
             });
         } else {
-            $userPlaylists = collect(); // vacío
+            $userPlaylists = collect();
         }
 
         return Inertia::render('Profile/Show', [
@@ -124,7 +115,7 @@ class ProfileController extends Controller
                 'user' => $usuarioAuth ? [
                     'id' => $usuarioAuth->id,
                     'name' => $usuarioAuth->name,
-                    'playlists' => $userPlaylists, // Aquí pasamos las playlists del usuario logueado
+                    'playlists' => $userPlaylists,
                 ] : null,
             ],
         ]);

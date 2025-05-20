@@ -155,7 +155,6 @@ export default function Create({ auth, generos, licencias }) {
                     setResultadosBusquedaCancion([]);
                     return;
                 }
-                // Only search for songs with license_id === 2 (CC BY 4.0)
                 const response = await axios.get(route('canciones.buscar-originales', { q: terminoLimpio, license_id: 2 }));
                 setResultadosBusquedaCancion(response.data);
             } catch (error) {
@@ -171,31 +170,26 @@ export default function Create({ auth, generos, licencias }) {
     const manejarCambioBusquedaCancion = (e) => {
         const termino = e.target.value;
         setTerminoBusquedaCancion(termino);
-        // Always show results when typing
         setMostrarResultadosCancion(true);
         realizarBusquedaCancion(termino);
     };
 
     const manejarFocoBusquedaCancion = () => {
-        // Show results when input is focused. If there's a term, trigger search.
         setMostrarResultadosCancion(true);
         if (terminoBusquedaCancion.trim()) {
             realizarBusquedaCancion(terminoBusquedaCancion);
         } else {
-            setResultadosBusquedaCancion([]); // Clear previous results if focus and no term
+            setResultadosBusquedaCancion([]);
         }
     };
 
     const manejarPerdidaFocoCancion = () => {
-        // Delay hiding the results to allow onMouseDown on list items to fire
         setTimeout(() => setMostrarResultadosCancion(false), 150);
     };
 
     const seleccionarCancionOriginal = (cancion) => {
-        // Ensure the selected song has the correct license (already filtered by backend)
         setOriginalSongSelected(cancion);
         setData('cancion_original_id', cancion.id);
-        // Clear search term and results after selection
         setTerminoBusquedaCancion('');
         setResultadosBusquedaCancion([]);
         setMostrarResultadosCancion(false);
@@ -261,7 +255,6 @@ export default function Create({ auth, generos, licencias }) {
                         <div className="p-6 md:p-8 text-gray-100">
                             <form onSubmit={enviarFormulario} className="space-y-6">
                                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                                    {/* Título */}
                                     <div className="sm:col-span-2">
                                         <InputLabel htmlFor="titulo" value="Título *" className="text-gray-300" />
                                         <TextInput
@@ -274,8 +267,6 @@ export default function Create({ auth, generos, licencias }) {
                                             className={`mt-1 block w-full sm:text-sm ${errors.titulo ? 'border-red-500' : ''}`} />
                                         <InputError message={errors.titulo} className="mt-1 text-xs" />
                                     </div>
-
-                                    {/* Es remix? */}
                                     <div className="sm:col-span-2">
                                         <label className="flex items-center">
                                             <Checkbox
@@ -284,17 +275,15 @@ export default function Create({ auth, generos, licencias }) {
                                                 onChange={(e) => {
                                                     setData({ ...data, remix: e.target.checked, cancion_original_id: null });
                                                     setOriginalSongSelected(null);
-                                                    setTerminoBusquedaCancion(''); // Clear search term on checkbox change
-                                                    setResultadosBusquedaCancion([]); // Clear search results
-                                                    setMostrarResultadosCancion(false); // Hide results
+                                                    setTerminoBusquedaCancion('');
+                                                    setResultadosBusquedaCancion([]);
+                                                    setMostrarResultadosCancion(false);
                                                 }}
                                             />
                                             <span className="ml-2 text-sm text-gray-300">¿Esta canción es un remix o se basa en otra obra?</span>
                                         </label>
                                         <InputError message={errors.remix} className="mt-1 text-xs" />
                                     </div>
-
-                                    {/* Licencia o Obra Original */}
                                     {!data.remix ? (
                                         <div>
                                             <InputLabel htmlFor="licencia_id" value="Licencia" className="text-gray-300" />
@@ -312,7 +301,6 @@ export default function Create({ auth, generos, licencias }) {
                                                 ))}
                                             </select>
                                             <InputError message={errors.licencia_id} className="mt-1 text-xs" />
-
                                             {selectedLicenseDetails && (
                                                 <div className="mt-2 text-sm text-gray-400">
                                                     {selectedLicenseDetails.descripcion && (
@@ -331,8 +319,6 @@ export default function Create({ auth, generos, licencias }) {
                                             <h3 className="text-lg font-medium leading-6 text-gray-100 mb-4">
                                                 Seleccionar Obra Original (CC BY 4.0)
                                             </h3>
-
-                                            {/* Buscador de canciones originales */}
                                             {!originalSongSelected ? (
                                                 <div className="relative overflow-visible">
                                                     <InputLabel htmlFor="original-cancion-search" value="Buscar Obra Original por Título (CC BY 4.0)" className="text-gray-300" />
@@ -355,7 +341,6 @@ export default function Create({ auth, generos, licencias }) {
                                                             </svg>
                                                         </div>
                                                     )}
-
                                                     {mostrarResultadosCancion && (
                                                         <ul className="mt-2 border border-gray-600 rounded-md bg-gray-700 shadow-lg max-h-60 overflow-auto z-[9999] absolute w-full">
                                                             {cargandoBusquedaCancion ? (
@@ -406,8 +391,6 @@ export default function Create({ auth, generos, licencias }) {
                                             )}
                                         </div>
                                     )}
-
-                                    {/* Visibilidad */}
                                     <div>
                                         <InputLabel htmlFor="publico" value="Visibilidad *" className="text-gray-300 mb-1" />
                                         <select
@@ -422,8 +405,6 @@ export default function Create({ auth, generos, licencias }) {
                                         </select>
                                         <InputError message={errors.publico} className="mt-1 text-sm" />
                                     </div>
-
-                                    {/* Foto */}
                                     <div>
                                         <InputLabel htmlFor="foto" value="Foto (JPG, PNG)" className="text-gray-300" />
                                         <input
@@ -435,8 +416,6 @@ export default function Create({ auth, generos, licencias }) {
                                         {data.foto && <span className="text-xs text-gray-400 mt-1 block">{data.foto.name}</span>}
                                         <InputError message={errors.foto} className="mt-1 text-xs" />
                                     </div>
-
-                                    {/* Archivo de audio */}
                                     <div>
                                         <InputLabel htmlFor="archivo" value="Archivo de Audio (MP3, WAV) *" className="text-gray-300" />
                                         <input
@@ -450,8 +429,6 @@ export default function Create({ auth, generos, licencias }) {
                                         <InputError message={errors.archivo} className="mt-1 text-xs" />
                                     </div>
                                 </div>
-
-                                {/* Géneros */}
                                 <div className="relative pt-4">
                                     <InputLabel htmlFor="busca-genero" value="Géneros" className="text-gray-300" />
                                     <TextInput
@@ -495,7 +472,6 @@ export default function Create({ auth, generos, licencias }) {
                                     </div>
                                     <InputError message={errors.genero} className="mt-1 text-xs text-red-500" />
                                 </div>
-
                                 <div className="border-t border-gray-700 pt-6 mt-6">
                                     <h3 className="text-lg font-medium leading-6 text-gray-100 mb-4">
                                         Asociar Colaboradores
@@ -577,7 +553,6 @@ export default function Create({ auth, generos, licencias }) {
                                         </div>
                                     )}
                                 </div>
-
                                 <div className="flex justify-end pt-5 mt-6 border-t border-gray-700">
                                     <button
                                         type="submit"

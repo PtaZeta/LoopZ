@@ -25,7 +25,10 @@
     },
     "dependencies": {
         "@heroicons/react": "^2.2.0",
+        "cors": "^2.8.5",
+        "express": "^5.1.0",
         "framer-motion": "^12.9.2",
+        "icy": "^2.1.0",
         "lodash.debounce": "^4.0.8",
         "lucide-react": "^0.503.0",
         "react-window": "^1.8.11"
