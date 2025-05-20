@@ -110,9 +110,9 @@ export default function Welcome({ auth, generos }) {
 
     return (
         <Layout>
-            <Head title="Bienvenido - Música al Azar" />
+            <Head title="Bienvenido" />
 
-            <main className='pt-0'>
+            <main className='pt-20'>
                 <section className="container mx-auto px-6 py-20 md:py-28 text-center flex flex-col items-center relative overflow-hidden">
                     <div className="absolute inset-0 -z-10 opacity-10">
                         <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-900 rounded-full filter blur-3xl animate-pulse"></div>
