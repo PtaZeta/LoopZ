@@ -59,13 +59,6 @@ export default function Welcome({ auth, generos }) {
             preserveScroll: true,
             preserveState: true,
             onSuccess: (page) => {
-                 // Si el backend devuelve la canción actualizada con el estado correcto, podrías usarlo aquí
-                 // const updatedSong = page.props.updatedSong; // Asumiendo que el backend la devuelve
-                 // setCancionesAleatorias(prevCanciones =>
-                 //      prevCanciones.map(c =>
-                 //          c.id === updatedSong.id ? updatedSong : c
-                 //      )
-                 // );
             },
             onError: () => {
                  setCancionesAleatorias(prevCanciones =>

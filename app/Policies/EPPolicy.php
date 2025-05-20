@@ -38,7 +38,6 @@ class EPPolicy
     public function edit(User $user, EP $ep): bool
     {
         return $ep->usuarios->contains($user);
-        //return true;
     }
 
     /**
@@ -47,7 +46,6 @@ class EPPolicy
     public function update(User $user, EP $ep): bool
     {
         return $ep->usuarios->contains($user);
-        //return true;
     }
 
     /**
@@ -56,7 +54,6 @@ class EPPolicy
     public function delete(User $user, EP $ep): bool
     {
         return $ep->usuarios->contains($user);
-        //return true;
     }
 
     /**

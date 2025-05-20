@@ -2,11 +2,10 @@ import React from 'react';
 import { usePage, Link, Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { PencilIcon, ArrowUturnLeftIcon, MusicalNoteIcon, PlayIcon, PauseIcon } from '@heroicons/react/24/solid';
-import { usePlayer } from '@/contexts/PlayerContext'; // Correct path to your PlayerContext
+import { usePlayer } from '@/contexts/PlayerContext';
 
 export default function Mostrar() {
     const { cancion, auth } = usePage().props;
-    // Destructure relevant player state and actions from your PlayerContext
     const { cargarColaYIniciar, cancionActual, Reproduciendo, pause } = usePlayer();
 
     const formatearDuracion = (segundos) => {
@@ -20,11 +19,8 @@ export default function Mostrar() {
                                 ? cancion.foto_url
                                 : cancion.foto_url ? `/storage/${cancion.foto_url}` : null;
 
-    // Check if the song has an audio file available.
-    // Your getAudioUrl function inside PlayerContext implies cancion.archivo_url directly holds the path.
     const audioFileAvailable = !!cancion.archivo_url;
 
-    // Determine if this specific song is currently playing or paused in the player
     const isThisSongCurrent = cancionActual && cancionActual.id === cancion.id;
 
     const artistas = cancion.usuarios_mapeados && cancion.usuarios_mapeados.length > 0
@@ -41,25 +37,15 @@ export default function Mostrar() {
 
     const handlePlayPause = () => {
         if (!audioFileAvailable) {
-            // If no audio file, do nothing or show a message.
             console.warn('No hay archivo de audio disponible para esta canción.');
             return;
         }
 
         if (isThisSongCurrent && Reproduciendo) {
-            // If this song is current and playing, pause it.
             pause();
         } else if (isThisSongCurrent && !Reproduciendo) {
-            // If this song is current but paused, play it.
-            // Your `play` function in PlayerContext handles resuming the current song.
-            // However, `cargarColaYIniciar` is designed to set a new song.
-            // Let's assume `play()` should resume current, or `cargarColaYIniciar` if it's not current.
-            // Given your `play` function logic, we call `play()` if it's the current song (even if paused).
-            // Otherwise, we call `cargarColaYIniciar` to load a new song.
-            usePlayer().play(); // Use the general play function from context
+            usePlayer().play();
         } else {
-            // If this song is not current, load it and start playing.
-            // cargarColaYIniciar expects an array of songs and an optional index to start from.
             cargarColaYIniciar([cancion], { iniciar: 0, clickDirecto: true });
         }
     };

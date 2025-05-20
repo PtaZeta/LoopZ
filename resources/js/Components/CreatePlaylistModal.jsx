@@ -17,14 +17,13 @@ const CreatePlaylistModal = ({ show, onClose, usuarioLogueadoId }) => {
         publico: false,
         descripcion: '',
         imagen: null,
-        tipo: 'playlist', // Explicitly set the type
+        tipo: 'playlist',
         userIds: usuarioLogueadoId ? [usuarioLogueadoId] : [],
     });
 
     useEffect(() => {
         if (!show) {
             reset();
-            // Manually reset file input value if needed
             const fileInput = document.getElementById('imagen');
             if(fileInput) fileInput.value = null;
         } else {

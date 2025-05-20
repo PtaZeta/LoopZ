@@ -3,7 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Auth; // Importa Auth si lo vas a usar
+use Illuminate\Support\Facades\Auth;
 
 class StorePlaylistRequest extends FormRequest
 {
@@ -12,21 +12,9 @@ class StorePlaylistRequest extends FormRequest
      *
      * @return bool
      */
-    public function authorize(): bool // Asegúrate que el tipo de retorno sea bool
+    public function authorize(): bool
     {
-        // Cambia esto:
-        // return false;
-
-        // A esto (para permitir la acción por ahora):
         return true;
-
-        // --- Opcional: Implementar autorización real ---
-        // Si solo los usuarios autenticados pueden crear playlists:
-        // return Auth::check();
-        // return $this->user() != null; // Otra forma de verificar si hay usuario
-
-        // Si tienes roles/permisos (ejemplo con Spatie Permissions):
-        // return $this->user()->can('create playlists');
     }
 
     /**
@@ -36,7 +24,6 @@ class StorePlaylistRequest extends FormRequest
      */
     public function rules(): array
     {
-        // Asegúrate que tus reglas de validación estén aquí
         return [
             'nombre' => 'required|string|max:255',
             'descripcion' => 'required|string',

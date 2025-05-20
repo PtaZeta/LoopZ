@@ -3,8 +3,8 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Auth; // Import Auth facade
-use App\Models\Contenedor; // Import Contenedor model if using policies
+use Illuminate\Support\Facades\Auth;
+use App\Models\Contenedor;
 
 class UpdateContenedorRequest extends FormRequest
 {
@@ -13,14 +13,7 @@ class UpdateContenedorRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        // Permitir si el usuario está autenticado.
-        // Idealmente, deberías usar una Policy para verificar si el usuario
-        // puede actualizar *este* contenedor específico.
-        // Ejemplo con Policy (descomentar si tienes ContenedorPolicy):
-        // $contenedor = $this->route('contenedor'); // Obtiene el contenedor de la ruta
-        // return $contenedor && Auth::user()->can('update', $contenedor);
-
-        return Auth::check(); // Permitir a cualquier usuario logueado por ahora
+        return Auth::check();
     }
 
     /**
@@ -33,7 +26,7 @@ class UpdateContenedorRequest extends FormRequest
         return [
             'nombre' => ['required', 'string', 'max:255'],
             'descripcion' => ['nullable', 'string', 'max:1000'],
-            'imagen_nueva' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'], // max:2048 = 2MB
+            'imagen_nueva' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,webp', 'max:2048'],
             'eliminar_imagen' => ['nullable', 'boolean'],
             'publico' => ['nullable', 'boolean'],
             'userIds' => ['nullable', 'array'],
