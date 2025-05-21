@@ -271,7 +271,7 @@ public function show(Request $peticion, $id)
 
     $contenedor->load([
         'canciones' => function ($query) {
-            $query->select('canciones.id', 'canciones.titulo', 'canciones.archivo_url', 'canciones.foto_url', 'canciones.duracion')
+            $query->select('canciones.id', 'canciones.titulo', 'canciones.archivo_url', 'canciones.foto_url', 'canciones.duracion', 'canciones.url_amigable')
                 ->withPivot('id as pivot_id', 'created_at as pivot_created_at')
                 ->with(['usuarios' => function ($userQuery) {
                     $userQuery->select('users.id', 'users.name');
