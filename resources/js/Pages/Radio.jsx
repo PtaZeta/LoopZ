@@ -7,15 +7,15 @@ import { usePlayer } from '@/contexts/PlayerContext'
 export default function Radio() {
   const [emisoras, setEmisoras] = useState([])
   const [emisoraSeleccionada, setEmisoraSeleccionada] = useState(null)
-  const [cargando, setCargando] = useState(false)
   const [genero, setGenero] = useState('')
   const [pais, setPais] = useState('')
   const [tituloCancionActual, setTituloCancionActual] = useState(null)
-  const { cargarColaYIniciar } = usePlayer()
   const [letraCancion, setLetraCancion] = useState(null)
   const [buscandoLetra, setBuscandoLetra] = useState(false)
   const [allGenres, setAllGenres] = useState([])
   const [allCountries, setAllCountries] = useState([])
+
+  const { cargarColaYIniciar, cargando } = usePlayer() // Usamos el estado global
 
   const predefinedCountries = [
     { code: 'US', name: 'Estados Unidos' },
@@ -29,11 +29,10 @@ export default function Radio() {
     { code: 'ES', name: 'España' }
   ]
 
-  // Effect to fetch genres and countries on component mount
   useEffect(() => {
     const fetchOptions = async () => {
       try {
-        const genresRes = await axios.get('https://de1.api.radio-browser.info/json/tags')
+        const genresRes = await axios.get('https://de1.api.radio-browser.info/json/tags ')
         const sortedGenres = genresRes.data
           .filter(tag => tag.name && tag.stationcount > 0)
           .sort((a, b) => b.stationcount - a.stationcount)
@@ -42,7 +41,7 @@ export default function Radio() {
           .sort((a, b) => a.localeCompare(b))
         setAllGenres(sortedGenres)
 
-        const countriesRes = await axios.get('https://de1.api.radio-browser.info/json/countries')
+        const countriesRes = await axios.get('https://de1.api.radio-browser.info/json/countries ')
         const apiCountries = countriesRes.data
           .filter(country => country.name && country.stationcount > 0)
           .sort((a, b) => b.stationcount - a.stationcount)
@@ -58,22 +57,19 @@ export default function Radio() {
 
         const finalCountries = Array.from(combinedCountriesMap.values()).sort((a, b) => a.name.localeCompare(b.name))
         setAllCountries(finalCountries)
-
       } catch (error) {
-        console.error("Error fetching options:", error) // Added console.error for consistency
+        console.error("Error fetching options:", error)
       }
     }
+
     fetchOptions()
   }, [])
 
-  // Function to search for radio stations based on filters
   const buscarEmisoras = async () => {
-    setCargando(true)
     try {
       let url = ''
       const baseUrl = 'https://de1.api.radio-browser.info/json/stations/search'
       const params = new URLSearchParams()
-
       params.append('hidebroken', 'true')
       params.append('order', 'votes')
       params.append('reverse', 'true')
@@ -119,8 +115,6 @@ export default function Radio() {
       setEmisoras([])
       setEmisoraSeleccionada(null)
       cargarColaYIniciar([], { iniciar: 0 })
-    } finally {
-      setCargando(false)
     }
   }
 
@@ -140,21 +134,20 @@ export default function Radio() {
   }
 
   useEffect(() => {
-    buscarEmisoras();
-  }, [genero, pais]);
+    buscarEmisoras()
+  }, [genero, pais])
 
   useEffect(() => {
     if (!emisoraSeleccionada?.url_resolved) {
-      setTituloCancionActual(null);
-      setLetraCancion(null);
-      return;
+      setTituloCancionActual(null)
+      setLetraCancion(null)
+      return
     }
 
     const obtenerTituloYLetra = async () => {
       try {
         setLetraCancion(null)
         setBuscandoLetra(true)
-
         const res = await axios.get('http://localhost:3001/metadata', {
           params: { url: emisoraSeleccionada.url_resolved }
         })
@@ -168,27 +161,27 @@ export default function Radio() {
           const titulo = partes.length > 1 ? partes[1].trim() : partes[0].trim()
 
           if (!titulo) {
-            setLetraCancion('No se encontró un título de canción válido para buscar letras.');
-            setBuscandoLetra(false);
-            return;
+            setLetraCancion('No se encontró un título de canción válido para buscar letras.')
+            setBuscandoLetra(false)
+            return
           }
 
           try {
-            const encodedArtist = encodeURIComponent(artista || ' ');
-            const encodedTitle = encodeURIComponent(titulo);
+            const encodedArtist = encodeURIComponent(artista || ' ')
+            const encodedTitle = encodeURIComponent(titulo)
+            const letraRes = await axios.get(`https://api.lyrics.ovh/v1/ ${encodedArtist}/${encodedTitle}`)
 
-            const letraRes = await axios.get(`https://api.lyrics.ovh/v1/${encodedArtist}/${encodedTitle}`);
             if (letraRes.status === 404) {
-              setLetraCancion('No se encontraron letras para esta canción. El título o artista podría no coincidir.');
+              setLetraCancion('No se encontraron letras para esta canción. El título o artista podría no coincidir.')
             } else {
-              setLetraCancion(letraRes.data.lyrics || 'No hay letra disponible.');
+              setLetraCancion(letraRes.data.lyrics || 'No hay letra disponible.')
             }
           } catch (lyricsErr) {
-            console.error('Error fetching lyrics:', lyricsErr); // Log specific lyrics error
-            setLetraCancion('Ocurrió un error al cargar las letras. Inténtalo de nuevo más tarde.');
+            console.error('Error fetching lyrics:', lyricsErr)
+            setLetraCancion('Ocurrió un error al cargar las letras. Inténtalo de nuevo más tarde.')
           }
         } else {
-          setLetraCancion('No hay letra disponible.');
+          setLetraCancion('No hay letra disponible.')
         }
       } catch (err) {
         console.error('No se pudo obtener el título actual:', err)
@@ -199,13 +192,13 @@ export default function Radio() {
       }
     }
 
-    obtenerTituloYLetra();
-    const intervalId = setInterval(obtenerTituloYLetra, 30000);
-
-    return () => clearInterval(intervalId);
+    obtenerTituloYLetra()
+    const intervalId = setInterval(obtenerTituloYLetra, 30000)
+    return () => clearInterval(intervalId)
   }, [emisoraSeleccionada])
 
-  const truncar = (texto, max) => texto.length > max ? texto.slice(0, max - 3) + '...' : texto
+  const truncar = (texto, max) =>
+    texto.length > max ? texto.slice(0, max - 3) + '...' : texto
 
   return (
     <AuthenticatedLayout>
@@ -225,21 +218,27 @@ export default function Radio() {
                 <div>
                   <select
                     value={genero}
-                    onChange={e => { setGenero(e.target.value); setPais(''); }}
-                    className="p-2 rounded-md bg-gray-700 border border-gray-600 text-white max-w-xs truncate"
+                    onChange={e => { setGenero(e.target.value); setPais('') }}
+                    className={`p-2 rounded-md bg-gray-700 border border-gray-600 text-white max-w-xs truncate ${cargando ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    disabled={cargando}
                   >
                     <option value="">Seleccionar género</option>
-                    {allGenres.map(g => <option key={g} value={g}>{g.charAt(0).toUpperCase() + g.slice(1)}</option>)}
+                    {allGenres.map(g => (
+                      <option key={g} value={g}>{g.charAt(0).toUpperCase() + g.slice(1)}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
                   <select
                     value={pais}
-                    onChange={e => { setPais(e.target.value); setGenero(''); }}
-                    className="p-2 rounded-md bg-gray-700 border border-gray-600 text-white max-w-xs truncate"
+                    onChange={e => { setPais(e.target.value); setGenero('') }}
+                    className={`p-2 rounded-md bg-gray-700 border border-gray-600 text-white max-w-xs truncate ${cargando ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    disabled={cargando}
                   >
                     <option value="">Seleccionar país</option>
-                    {allCountries.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                    {allCountries.map(c => (
+                      <option key={c.code} value={c.code}>{c.name}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -251,12 +250,15 @@ export default function Radio() {
               ) : (
                 <>
                   <select
+                    key={cargando ? 'cargando' : 'listo'}
                     value={emisoraSeleccionada?.stationuuid || ''}
                     onChange={e => {
-                      const emisora = emisoras.find(s => s.stationuuid === e.target.value)
-                      reproducirRadio(emisora)
+                      if (cargando) return;
+                      const emisora = emisoras.find(s => s.stationuuid === e.target.value);
+                      reproducirRadio(emisora);
                     }}
-                    className="max-w-sm p-3 rounded-lg bg-gray-700 text-white border border-gray-600 mb-4 mx-auto block truncate"
+                    className={`max-w-sm p-3 rounded-lg bg-gray-700 text-white border border-gray-600 mb-4 mx-auto block truncate ${cargando ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    disabled={cargando}
                   >
                     {emisoras.map(e => (
                       <option key={e.stationuuid} value={e.stationuuid}>
@@ -271,7 +273,7 @@ export default function Radio() {
                         <div className="flex justify-center mb-4">
                           <img
                             src={emisoraSeleccionada.favicon}
-                            alt="Cover de la canción"
+                            alt="Cover de la emisora"
                             className="w-32 h-32 object-cover rounded-lg shadow-md"
                           />
                         </div>
@@ -287,22 +289,19 @@ export default function Radio() {
           </div>
         </div>
       </div>
-    <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            {buscandoLetra ? (
-            <p className="text-gray-400">Cargando letras...</p>
-            ) : letraCancion ? (
-            <div className="max-w-4xl mx-auto mt-6 px-4 text-white whitespace-pre-wrap">
-                <h2 className="text-xl font-bold text-blue-400 mb-2 text-center">Letra de la canción</h2>
-                {buscandoLetra ? (
-                    <p className="text-center text-gray-400">Buscando letra...</p>
-                ) : (
-                    <p className="text-center">{letraCancion.replace(/(\r\n|\r|\n){2,}/g, '\n')}</p>
-                )}
-            </div>
-            ) : (
-            <p className="text-gray-400">No hay letras disponibles para la canción actual o no se pudo encontrar.</p>
-            )}
-        </div>
+
+      <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        {buscandoLetra ? (
+          <p className="text-gray-400">Cargando letras...</p>
+        ) : letraCancion ? (
+          <div className="max-w-4xl mx-auto mt-6 px-4 text-white whitespace-pre-wrap">
+            <h2 className="text-xl font-bold text-blue-400 mb-2 text-center">Letra de la canción</h2>
+            <p className="text-center">{letraCancion.replace(/(\r\n|\r|\n){2,}/g, '\n')}</p>
+          </div>
+        ) : (
+          <p className="text-gray-400">No hay letras disponibles para la canción actual o no se pudo encontrar.</p>
+        )}
+      </div>
     </AuthenticatedLayout>
   )
 }
