@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Sluggable\HasSlug;
+use Spatie\Sluggable\SlugOptions;
 
 class Cancion extends Model
 {
@@ -19,6 +21,7 @@ class Cancion extends Model
         'licencia_id',
         'foto_url',
         'archivo_url',
+        'url_amigable',
         'publico',
         'remix',
         'cancion_original_id',
@@ -57,6 +60,20 @@ class Cancion extends Model
     public function cancionOriginal()
     {
         return $this->belongsTo(Cancion::class, 'cancion_original_id');
+    }
+    use HasSlug;
+
+
+    public function getSlugOptions(): \Spatie\Sluggable\SlugOptions
+    {
+        return SlugOptions::create()
+            ->generateSlugsFrom('titulo')
+            ->saveSlugsTo('url_amigable');
+    }
+
+    public function getRouteKeyName()
+    {
+        return 'url_amigable';
     }
 
 }

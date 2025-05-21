@@ -183,30 +183,41 @@ class CancionController extends Controller
         $usuario = Auth::user();
         return redirect()->route('profile.show', $usuario->id);
     }
-    public function show($id)
-    {
-        try {
-            $cancion = Cancion::with(['usuarios' => function ($query) {
-                $query->withPivot('propietario');
-            }])->findOrFail($id);
+        public function show($id)
+        {
+            try {
+                $cancion = Cancion::with([
+                    'usuarios' => function ($query) {
+                        $query->withPivot('propietario');
+                    },
+                    'licencia',
+                    'generos',
+                    // Ensure cancionOriginal loads its photo_url (it usually does by default)
+                    'cancionOriginal' // This will load all attributes of the original song
+                ])->findOrFail($id);
 
-             $cancion->usuarios_mapeados = $cancion->usuarios->map(function($u) {
-                 return [
-                     'id' => $u->id,
-                     'name' => $u->name,
-                     'email' => $u->email,
-                     'es_propietario' => (bool) $u->pivot->propietario
-                 ];
-             })->all();
-             unset($cancion->usuarios);
+                $cancion->usuarios_mapeados = $cancion->usuarios->map(function($u) {
+                    return [
+                        'id' => $u->id,
+                        'name' => $u->name,
+                        'email' => $u->email,
+                        'es_propietario' => (bool) $u->pivot->propietario
+                    ];
+                })->all();
+                unset($cancion->usuarios);
 
-            return Inertia::render('canciones/Show', [
-                'cancion' => $cancion
-            ]);
-        } catch (ModelNotFoundException $e) {
-             return redirect()->route('canciones.index')->with('error', 'Canción no encontrada.');
+                $cancion->generos_mapeados = $cancion->generos->map(function($g) {
+                    return $g->nombre;
+                })->implode(', ');
+                unset($cancion->generos);
+
+                return Inertia::render('canciones/Show', [
+                    'cancion' => $cancion
+                ]);
+            } catch (ModelNotFoundException $e) {
+                return redirect()->route('canciones.index')->with('error', 'Canción no encontrada.');
+            }
         }
-    }
 
     public function edit($id)
     {
