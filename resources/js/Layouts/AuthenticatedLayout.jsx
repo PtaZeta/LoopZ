@@ -122,11 +122,15 @@ export default function AuthenticatedLayout({ children, header }) {
         aleatorio, looping, cargando, playerError, sourceId,
         play, pause, siguienteCancion, anteriorCancion,
         seek, setVolumen, toggleAleatorio, toggleLoop,
-        playCola, limpiarErrores, queue, accionesBloqueadas
+        playCola, limpiarErrores, queue
     } = playerContextValue || {};
 
     const queueButtonRef = useRef(null);
     const queueDropdownRef = useRef(null);
+
+    const isPlayerActionDisabled = useMemo(() => {
+        return cargando || !cancionActual && queue.length === 0;
+    }, [cargando, cancionActual, queue.length]);
 
     useEffect(() => {
         function handleClickOutside(event) {
@@ -365,7 +369,7 @@ export default function AuthenticatedLayout({ children, header }) {
                             onChange={handleSeekChange}
                             onMouseUp={commitSeek}
                             onTouchEnd={commitSeek}
-                            disabled={!cancionActual || !duration || accionesBloqueadas}
+                            disabled={!cancionActual || !duration || isPlayerActionDisabled}
                             aria-label="Progreso de la canción"
                             className="w-full h-1 rounded-lg appearance-none cursor-pointer range-progress-gradient"
                             style={progressBarStyle}
@@ -389,26 +393,26 @@ export default function AuthenticatedLayout({ children, header }) {
                                     onClick={toggleAleatorio}
                                     title={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"}
                                     aria-label={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"}
-                                    className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${aleatorio ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'}`}
-                                    disabled={accionesBloqueadas}
+                                    className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${aleatorio ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'} ${isPlayerActionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    disabled={isPlayerActionDisabled}
                                 >
                                     <ShuffleIcon className="h-5 w-5" />
                                 </button>
 
                                 <button
                                     onClick={anteriorCancion}
-                                    disabled={!cancionActual && queue.length === 0 || accionesBloqueadas}
+                                    disabled={isPlayerActionDisabled}
                                     aria-label="Canción anterior"
-                                    className="text-gray-400 hover:text-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"
+                                    className={`text-gray-400 hover:text-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1 ${isPlayerActionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     <PreviousIcon className="h-5 w-5" />
                                 </button>
 
                                 <button
                                     onClick={togglePlayPause}
-                                    disabled={!cancionActual && queue.length === 0 || accionesBloqueadas}
+                                    disabled={isPlayerActionDisabled}
                                     aria-label={Reproduciendo ? "Pausar" : "Reproducir"}
-                                    className="bg-blue-600 hover:bg-blue-500 rounded-full text-white transition-colors shadow-lg flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-900"
+                                    className={`bg-blue-600 hover:bg-blue-500 rounded-full text-white transition-colors shadow-lg flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-900 ${isPlayerActionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     {cargando ? (
                                         <LoadingIcon className="h-5 w-5 sm:h-6 sm:w-6 animate-spin" />
@@ -421,9 +425,9 @@ export default function AuthenticatedLayout({ children, header }) {
 
                                 <button
                                     onClick={siguienteCancion}
-                                    disabled={!cancionActual && queue.length === 0 || accionesBloqueadas}
+                                    disabled={isPlayerActionDisabled}
                                     aria-label="Siguiente canción"
-                                    className="text-gray-400 hover:text-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1"
+                                    className={`text-gray-400 hover:text-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1 ${isPlayerActionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     <NextIcon className="h-5 w-5" />
                                 </button>
@@ -432,8 +436,8 @@ export default function AuthenticatedLayout({ children, header }) {
                                     onClick={toggleLoop}
                                     title={looping ? "Desactivar repetición" : "Activar repetición"}
                                     aria-label={looping ? "Desactivar repetición" : "Activar repetición"}
-                                    className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${looping ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'}`}
-                                    disabled={accionesBloqueadas}
+                                    className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${looping ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'} ${isPlayerActionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    disabled={isPlayerActionDisabled}
                                 >
                                     <LoopIcon className="h-5 w-5" />
                                 </button>
@@ -449,9 +453,9 @@ export default function AuthenticatedLayout({ children, header }) {
                                     onChange={handleSeekChange}
                                     onMouseUp={commitSeek}
                                     onTouchEnd={commitSeek}
-                                    disabled={!cancionActual || !duration || accionesBloqueadas}
+                                    disabled={!cancionActual || !duration || isPlayerActionDisabled}
                                     aria-label="Progreso de la canción"
-                                    className="w-full h-1.5 rounded-lg appearance-none cursor-pointer range-progress-gradient"
+                                    className={`w-full h-1.5 rounded-lg appearance-none cursor-pointer range-progress-gradient ${isPlayerActionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     style={progressBarStyle}
                                 />
                                 <span className="text-xs text-gray-500 font-mono w-10 text-left">{formatTime(duration)}</span>
@@ -461,9 +465,9 @@ export default function AuthenticatedLayout({ children, header }) {
                         <div className="flex items-center justify-end space-x-2 flex-1 md:flex-initial md:w-1/4 lg:w-1/3">
                             <div className="hidden lg:flex items-center space-x-2">
                                 <button
-                                    className="text-gray-400 hover:text-blue-400 transition-colors p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+                                    className={`text-gray-400 hover:text-blue-400 transition-colors p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${isPlayerActionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     aria-label="Volumen"
-                                    disabled={accionesBloqueadas}
+                                    disabled={isPlayerActionDisabled}
                                 >
                                     <CurrentVolumeIcon className="h-5 w-5" />
                                 </button>
@@ -475,8 +479,8 @@ export default function AuthenticatedLayout({ children, header }) {
                                     value={volumen}
                                     onChange={handleVolumeChange}
                                     aria-label="Control de volumen"
-                                    className="w-20 h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer range-sm accent-blue-500 hover:accent-blue-400"
-                                    disabled={accionesBloqueadas}
+                                    className={`w-20 h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer range-sm accent-blue-500 hover:accent-blue-400 ${isPlayerActionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    disabled={isPlayerActionDisabled}
                                 />
                             </div>
 
@@ -485,8 +489,8 @@ export default function AuthenticatedLayout({ children, header }) {
                                 onClick={() => setIsQueueVisible(!isQueueVisible)}
                                 title="Mostrar cola de reproducción"
                                 aria-label="Mostrar cola de reproducción"
-                                className="text-gray-400 hover:text-blue-400 transition-colors p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900"
-                                disabled={accionesBloqueadas}
+                                className={`text-gray-400 hover:text-blue-400 transition-colors p-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${isPlayerActionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                disabled={isPlayerActionDisabled}
                             >
                                 <QueueListIcon className="h-5 w-5" />
                             </button>
