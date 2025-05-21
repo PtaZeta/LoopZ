@@ -15,7 +15,11 @@ const MinimalCheckIcon = ({ className }) => (
     </svg>
 );
 
-const ContextMenu = memo(({
+MinimalCheckIcon.propTypes = {
+    className: PropTypes.string,
+};
+
+const ContextMenu = memo(function ContextMenu({
     x,
     y,
     show,
@@ -23,7 +27,7 @@ const ContextMenu = memo(({
     options,
     userPlaylists = [],
     currentSong = null
-}) => {
+}) {
     const menuRef = useRef(null);
     const [showSubMenu, setShowSubMenu] = useState(false);
     const [subMenuOptions, setSubMenuOptions] = useState([]);
@@ -57,18 +61,26 @@ const ContextMenu = memo(({
 
     if (!show) return null;
 
+    // Las coordenadas x, y ya son relativas al viewport desde Show.jsx
     const style = { top: y, left: x };
-    const menuWidth = 200;
-    const menuHeight = options.length * 35;
-    const subMenuWidth = 200;
+    const menuWidth = 200; // Ancho estimado del menú, ajusta si es necesario
+    const menuHeight = options.length * 35; // Altura estimada, ajusta si es necesario (aproximación)
+    const subMenuWidth = 200; // Ancho estimado del submenú
 
-    if (x + menuWidth > window.innerWidth + window.scrollX) {
-        style.left = x - menuWidth;
+    // Ajustes de posición para que no se salga de los bordes del viewport
+    // (estas correcciones son más robustas si también se hacen en el componente de origen como Show.jsx,
+    // pero se mantienen aquí para un control adicional)
+    if (x + menuWidth > window.innerWidth) {
+        style.left = window.innerWidth - menuWidth - 10; // 10px de margen
     }
-
-    if (y + menuHeight > window.innerHeight + window.scrollY) {
-        style.top = y - menuHeight;
-        if (style.top < window.scrollY) style.top = window.scrollY;
+    if (x < 10) {
+        style.left = 10;
+    }
+    if (y + menuHeight > window.innerHeight) {
+        style.top = window.innerHeight - menuHeight - 10;
+    }
+    if (y < 10) {
+        style.top = 10;
     }
 
     const handleOptionInteraction = (option, event) => {
@@ -90,26 +102,28 @@ const ContextMenu = memo(({
                 : [];
 
             const rect = event.currentTarget.getBoundingClientRect();
-            let subMenuX = rect.right + window.scrollX;
-            let subMenuY = rect.top + window.scrollY;
+            let subMenuX = rect.right; // Coordenada x relativa al viewport
+            let subMenuY = rect.top;   // Coordenada y relativa al viewport
 
-            if (subMenuX + subMenuWidth > window.innerWidth + window.scrollX) {
-                subMenuX = rect.left - subMenuWidth + window.scrollX;
+            // Ajuste para el submenú si se sale por la derecha
+            if (subMenuX + subMenuWidth > window.innerWidth) {
+                subMenuX = rect.left - subMenuWidth;
             }
 
             setSubMenuOptions(playlistOptions);
             setSubMenuPosition({ x: subMenuX, y: subMenuY });
             setShowSubMenu(true);
         } else if (option.submenu) {
+            // Manejo de submenús genéricos si los hubiere
             const rect = event.currentTarget.getBoundingClientRect();
-            let subMenuX = rect.right + window.scrollX;
-            let subMenuY = rect.top + window.scrollY;
+            let subMenuX = rect.right;
+            let subMenuY = rect.top;
 
-            if (subMenuX + subMenuWidth > window.innerWidth + window.scrollX) {
-                subMenuX = rect.left - subMenuWidth + window.scrollX;
+            if (subMenuX + subMenuWidth > window.innerWidth) {
+                subMenuX = rect.left - subMenuWidth;
             }
 
-            setSubMenuOptions(option.submenu);
+            setSubMenuOptions(option.submenu); // Asume que option.submenu es un array de opciones de submenú
             setSubMenuPosition({ x: subMenuX, y: subMenuY });
             setShowSubMenu(true);
         } else {
@@ -129,7 +143,8 @@ const ContextMenu = memo(({
         <>
             <div
                 ref={menuRef}
-                className="absolute z-50 bg-slate-700 rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 focus:outline-none"
+                // *** CAMBIO CLAVE AQUÍ: de "absolute" a "fixed" ***
+                className="fixed z-50 bg-slate-700 rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 focus:outline-none"
                 style={style}
                 role="menu"
                 aria-orientation="vertical"
@@ -149,6 +164,7 @@ const ContextMenu = memo(({
                                     handleClose();
                                 }
                             }}
+                            // Abre el submenú al pasar el ratón por encima, si hay un submenú
                             onMouseEnter={(e) => {
                                 if (option.submenu) handleOptionInteraction(option, e);
                             }}
@@ -168,7 +184,8 @@ const ContextMenu = memo(({
 
             {showSubMenu && (
                 <div
-                    className="absolute z-50 bg-slate-700 rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 focus:outline-none"
+                    // *** CAMBIO CLAVE AQUÍ: de "absolute" a "fixed" ***
+                    className="fixed z-50 bg-slate-700 rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 focus:outline-none"
                     style={{ top: subMenuPosition.y, left: subMenuPosition.x, minWidth: `${subMenuWidth}px` }}
                     role="menu"
                     aria-orientation="vertical"
