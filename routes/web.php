@@ -72,6 +72,9 @@ Route::inertia('/contact', 'Static/Contact')->name('contact');
 
 
 Route::middleware('auth')->group(function () {
+
+    Route::post('/canciones/{id}/incrementar-visualizacion', [CancionController::class, 'incrementarVisualizacion']);
+
     Route::get('/radio', function () {
         return Inertia::render('Radio');
     })->name('radio');

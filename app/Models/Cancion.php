@@ -61,7 +61,8 @@ class Cancion extends Model
     {
         return $this->belongsTo(Cancion::class, 'cancion_original_id');
     }
-    use HasSlug;
+
+    /*use HasSlug;
 
 
     public function getSlugOptions(): \Spatie\Sluggable\SlugOptions
@@ -74,6 +75,6 @@ class Cancion extends Model
     public function getRouteKeyName()
     {
         return 'url_amigable';
-    }
+    }*/
 
 }
