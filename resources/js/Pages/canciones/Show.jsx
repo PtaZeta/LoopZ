@@ -1,7 +1,7 @@
 import React from 'react';
 import { usePage, Link, Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { PencilIcon, ArrowUturnLeftIcon, MusicalNoteIcon, PlayIcon, PauseIcon } from '@heroicons/react/24/solid';
+import { PencilIcon, ArrowUturnLeftIcon, MusicalNoteIcon, PlayIcon, PauseIcon, SparklesIcon } from '@heroicons/react/24/solid'; // Added SparklesIcon
 import { usePlayer } from '@/contexts/PlayerContext';
 
 export default function Mostrar() {
@@ -15,9 +15,20 @@ export default function Mostrar() {
         return `${minutes}:${secondsRestantes}`;
     };
 
-    const urlFotoCompleta = cancion.foto_url?.startsWith('http')
+    // Determine which photo URL to use based on remix status
+    const currentSongPhotoUrl = cancion.foto_url?.startsWith('http')
                                 ? cancion.foto_url
                                 : cancion.foto_url ? `/storage/${cancion.foto_url}` : null;
+
+    const originalSongPhotoUrl = cancion.remix && cancion.cancion_original?.foto_url
+                                 ? (cancion.cancion_original.foto_url.startsWith('http')
+                                    ? cancion.cancion_original.foto_url
+                                    : `/storage/${cancion.cancion_original.foto_url}`)
+                                 : null;
+
+    // Use original song's photo if it's a remix and has one, otherwise use current song's photo
+    const displayPhotoUrl = originalSongPhotoUrl || currentSongPhotoUrl;
+
 
     const audioFileAvailable = !!cancion.archivo_url;
 
@@ -50,6 +61,10 @@ export default function Mostrar() {
         }
     };
 
+    const canEdit = auth.user && cancion.usuarios_mapeados.some(
+        user => user.id === auth.user.id && user.es_propietario
+    );
+
     return (
         <AuthenticatedLayout>
             <Head title={cancion.titulo || 'Detalles de Canción'} />
@@ -58,9 +73,9 @@ export default function Mostrar() {
                 <div className="mx-auto max-w-6xl sm:px-6 lg:px-8">
                     <div className="md:flex md:items-end md:space-x-8 p-6 md:p-10 bg-slate-800/50 backdrop-blur-lg rounded-xl shadow-2xl overflow-hidden">
                         <div className="flex-shrink-0 w-48 h-48 lg:w-64 lg:h-64 mb-6 md:mb-0 mx-auto md:mx-0 shadow-2xl rounded-lg overflow-hidden border-4 border-slate-700">
-                            {urlFotoCompleta ? (
+                            {displayPhotoUrl ? ( // Use displayPhotoUrl here
                                 <img
-                                    src={urlFotoCompleta}
+                                    src={displayPhotoUrl}
                                     alt={`Cover de ${cancion.titulo}`}
                                     className="w-full h-full object-cover"
                                 />
@@ -80,9 +95,33 @@ export default function Mostrar() {
                                 <span className="font-semibold text-gray-200">{cancion.usuario?.name ?? 'Usuario'}</span>
                                 {artistas !== 'Desconocido' && <span className="text-pink-400 font-semibold">• {artistas}</span>}
                                 <span>• {formatearDuracion(cancion.duracion)}</span>
-                                {cancion.genero && <span>• {cancion.genero}</span>}
-                                <span className="hidden sm:inline">• {cancion.visualizaciones?.toLocaleString() || 0} views</span>
+
+                                {/* Display Genres */}
+                                {cancion.generos_mapeados && <span>• Género: {cancion.generos_mapeados}</span>}
+
+                                {/* Display License */}
+                                {cancion.licencia && <span>• Licencia: {cancion.licencia.nombre}</span>}
                             </div>
+
+                            {/* Option 1: Subtle Text with Icon and Link */}
+                            {cancion.remix && cancion.cancion_original && (
+                                <p className="mb-8 text-sm text-gray-400 flex items-center space-x-2">
+                                    <SparklesIcon className="h-4 w-4 text-purple-400 flex-shrink-0" />
+                                    <span>
+                                        Remix de{' '}
+                                        <Link href={route('canciones.show', cancion.cancion_original.id)} className="font-semibold text-purple-300 hover:text-purple-200 underline">
+                                            {cancion.cancion_original.titulo}
+                                        </Link>{' '}
+                                        por{' '}
+                                        <span className="font-semibold text-purple-300">
+                                            {cancion.cancion_original.usuarios_mapeados && cancion.cancion_original.usuarios_mapeados.length > 0
+                                                ? cancion.cancion_original.usuarios_mapeados.map(u => u.name).join(', ')
+                                                : 'Artista Desconocido'}
+                                        </span>.
+                                    </span>
+                                </p>
+                            )}
+                            {/* End new section for Remix Information */}
 
                             {!audioFileAvailable && (
                                 <p className="text-sm text-gray-400 mb-8">No hay archivo de audio disponible para esta canción.</p>
@@ -106,12 +145,27 @@ export default function Mostrar() {
                                     className="inline-flex items-center px-6 py-3 border border-slate-700 rounded-full font-semibold text-xs text-gray-300 uppercase tracking-widest shadow-md hover:bg-slate-700 hover:border-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-25 transition ease-in-out duration-150"
                                     onClick={(e) => {
                                         e.preventDefault();
-                                        window.history.back();
+                                        if (window.history.length > 2) {
+                                            window.history.back();
+                                        } else {
+                                            window.location.href = '/';
+                                        }
                                     }}
                                 >
                                     <ArrowUturnLeftIcon className="h-4 w-4 mr-2" />
                                     Volver
                                 </Link>
+
+
+                                {canEdit && (
+                                    <Link
+                                        href={route('canciones.edit', cancion.id)}
+                                        className="inline-flex items-center px-6 py-3 border border-purple-600 rounded-full font-semibold text-xs text-purple-300 uppercase tracking-widest shadow-md bg-purple-800/20 hover:bg-purple-800/40 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-25 transition ease-in-out duration-150"
+                                    >
+                                        <PencilIcon className="h-4 w-4 mr-2" />
+                                        Editar
+                                    </Link>
+                                )}
                             </div>
                         </div>
                     </div>
