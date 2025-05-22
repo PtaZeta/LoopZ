@@ -216,32 +216,32 @@ export default function Radio() {
 
               <div className="flex flex-col md:flex-row gap-2 mb-6 mx-auto w-fit">
                 <div>
-                  <select
-                    value={genero}
-                    onChange={e => { setGenero(e.target.value); setPais('') }}
-                    className={`p-2 rounded-md bg-gray-700 border border-gray-600 text-white max-w-xs truncate ${cargando ? 'opacity-60 cursor-not-allowed' : ''}`}
-                    disabled={cargando}
-                  >
-                    <option value="">Seleccionar género</option>
-                    {allGenres.map(g => (
-                      <option key={g} value={g}>{g.charAt(0).toUpperCase() + g.slice(1)}</option>
-                    ))}
-                  </select>
+                    <select
+                        value={genero}
+                        onChange={e => { setGenero(e.target.value); setPais('') }}
+                        className={`p-2 rounded-md bg-gray-700 border border-gray-600 text-white w-64 truncate ${cargando ? 'opacity-60 cursor-not-allowed' : ''}`}
+                        disabled={cargando}
+                    >
+                        <option value="">Seleccionar género</option>
+                        {allGenres.map(g => (
+                            <option key={g} value={g}>{g.charAt(0).toUpperCase() + g.slice(1)}</option>
+                        ))}
+                    </select>
                 </div>
                 <div>
-                  <select
-                    value={pais}
-                    onChange={e => { setPais(e.target.value); setGenero('') }}
-                    className={`p-2 rounded-md bg-gray-700 border border-gray-600 text-white max-w-xs truncate ${cargando ? 'opacity-60 cursor-not-allowed' : ''}`}
-                    disabled={cargando}
-                  >
-                    <option value="">Seleccionar país</option>
-                    {allCountries.map(c => (
-                      <option key={c.code} value={c.code}>{c.name}</option>
-                    ))}
-                  </select>
+                    <select
+                        value={pais}
+                        onChange={e => { setPais(e.target.value); setGenero('') }}
+                        className={`p-2 rounded-md bg-gray-700 border border-gray-600 text-white w-64 truncate ${cargando ? 'opacity-60 cursor-not-allowed' : ''}`}
+                        disabled={cargando}
+                    >
+                        <option value="">Seleccionar país</option>
+                        {allCountries.map(c => (
+                            <option key={c.code} value={c.code}>{c.name}</option>
+                        ))}
+                    </select>
                 </div>
-              </div>
+            </div>
 
               {cargando ? (
                 <p className="text-gray-400">Cargando emisoras...</p>

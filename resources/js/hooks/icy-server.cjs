@@ -33,7 +33,7 @@ app.get('/metadata', (req, res) => {
         });
         const tiempoEsperaRespuesta = setTimeout(() => {
             if (!respuestaEnviada) {
-                res.json({ title: 'Desconocido (sin metadata)' });
+                res.json({ title: 'Desconocido' });
                 respuestaEnviada = true;
                 respuesta.destroy();
                 solicitudCliente.destroy();
