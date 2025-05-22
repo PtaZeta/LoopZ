@@ -1,9 +1,11 @@
 import React, { useState, useContext, useRef, useEffect, useCallback, useMemo } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, usePage, Link, router } from '@inertiajs/react';
+import Notificacion from '@/Components/Notificacion';
 import { PlayerContext } from '@/contexts/PlayerContext';
 import {
     PlayIcon as PlayIconSolid,
+    ShareIcon,
     PauseIcon as PauseIconSolid,
     ArrowsRightLeftIcon as ShuffleIcon,
     UserCircleIcon,
@@ -15,7 +17,8 @@ import {
     ChevronRightIcon,
     ArrowUpOnSquareIcon,
     CheckIcon,
-    XMarkIcon
+    XMarkIcon,
+    EllipsisVerticalIcon
 } from '@heroicons/react/24/solid';
 import { ArrowPathIcon as LoadingIcon } from '@heroicons/react/20/solid';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
@@ -330,28 +333,49 @@ const CancionListItem = React.memo(({
         if (typeof route === 'function' && typeof route().has === 'function') return route().has(name);
         return false;
     }, []);
+
     const rutaItemExiste = nombreRuta ? routeExists(nombreRuta) : false;
     const [isHovered, setIsHovered] = useState(false);
+
     const handlePlayButtonClick = useCallback((e) => {
         e.stopPropagation();
         onPlayPauseClick(item, index);
     }, [item, index, onPlayPauseClick]);
+
     const handleLoopzButtonClick = useCallback((e) => {
         e.stopPropagation();
         onToggleLoopz(item.id, isLiked);
     }, [item?.id, isLiked, onToggleLoopz]);
-    const handleContextMenuLocal = useCallback((e) => {
+
+    const handleContextMenuMobile = useCallback((e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (onContextMenu) {
+            const buttonRect = e.currentTarget.getBoundingClientRect();
+            onContextMenu({
+                preventDefault: () => {},
+                pageX: buttonRect.right,
+                pageY: buttonRect.top + window.scrollY,
+                currentTarget: e.currentTarget
+            }, item);
+        }
+    }, [onContextMenu, item]);
+
+    const handleContextMenuDesktop = useCallback((e) => {
         if (onContextMenu) {
             onContextMenu(e, item);
         }
     }, [onContextMenu, item]);
+
     return (
         <li
-            className={`flex items-center space-x-3 p-2 transition duration-150 ease-in-out group rounded-md ${isCurrentTrack ? 'bg-indigo-900/30' : 'hover:bg-gray-700/60'} ${onContextMenu ? 'cursor-context-menu' : 'cursor-default'}`}
+            className={`flex items-center space-x-3 p-2 transition duration-150 ease-in-out group rounded-md ${
+                isCurrentTrack ? 'bg-indigo-900/30' : 'hover:bg-gray-700/60'
+            } cursor-default`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             onDoubleClick={handlePlayButtonClick}
-            onContextMenu={handleContextMenuLocal}
+            onContextMenu={handleContextMenuDesktop}
         >
             <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
                 {isLoadingTrack ? (
@@ -410,7 +434,7 @@ const CancionListItem = React.memo(({
                     </p>
                 )}
             </div>
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 flex items-center space-x-2">
                 <button
                     onClick={handleLoopzButtonClick}
                     disabled={isLikeProcessing}
@@ -426,6 +450,13 @@ const CancionListItem = React.memo(({
                             <HeartIconOutline className="h-5 w-5" />
                         )
                     )}
+                </button>
+                                <button
+                    onClick={handleContextMenuMobile}
+                    className="p-2 rounded-full transition-colors duration-150 ease-in-out text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-800 md:hidden"
+                    title="Más opciones"
+                >
+                    <EllipsisVerticalIcon className="h-5 w-5" />
                 </button>
             </div>
         </li>
@@ -554,6 +585,27 @@ export default function Index() {
         y: 0,
         song: null,
     });
+    const [mostrarToast, setMostrarToast] = useState(false);
+    const [mensajeToast, setMensajeToast] = useState('');
+
+    const copiarAlPortapapeles = useCallback((texto, mensaje = 'Guardado en el portapapeles') => {
+            navigator.clipboard.writeText(texto).then(() => {
+                setMensajeToast(mensaje);
+                setMostrarToast(true);
+
+                setTimeout(() => {
+                    setMostrarToast(false);
+                }, 5000);
+            }).catch(err => {
+                console.error('Error al copiar:', err);
+                setMensajeToast('Error al copiar');
+                setMostrarToast(true);
+
+                setTimeout(() => {
+                    setMostrarToast(false);
+                }, 5000);
+            });
+        }, []);
     const contextMenuTimer = useRef(null);
     const openContextMenu = useCallback((event, song) => {
         event.preventDefault();
@@ -592,6 +644,15 @@ export default function Index() {
             closeContextMenu();
         }
     }, [closeContextMenu]);
+
+    const handleCompartirCancion = useCallback(() => {
+        if (contextMenu.song) {
+            const songUrl = route('canciones.show', contextMenu.song.id);
+            copiarAlPortapapeles(songUrl, 'URL de canción copiada');
+            closeContextMenu();
+        }
+    }, [contextMenu.song, copiarAlPortapapeles, closeContextMenu]);
+
     const manejarToggleCancion = useCallback((songId, playlistId) => {
         if (!songId || !playlistId) return;
         router.post(route('playlist.toggleCancion', { playlist: playlistId, cancion: songId }), {}, {
@@ -710,6 +771,11 @@ export default function Index() {
                 disabled: !artist?.id || !artist?.name,
             }));
             options.push({
+                label: "Compartir",
+                icon: <ShareIcon className="h-5 w-5" />,
+                action: handleCompartirCancion,
+            });
+            options.push({
                 label: `Ver artista${contextMenu.song.usuarios.length > 1 ? 's' : ''}`,
                 icon: <UserIcon className="h-5 w-5" />,
                 submenu: artistSubmenuOptions,
@@ -723,7 +789,7 @@ export default function Index() {
             });
         }
         return options;
-    }, [contextMenu.song, handleToggleLoopzSong, likeProcessingSongId, añadirSiguiente, handleAddToQueueNext, manejarToggleCancion, auth.user?.playlists, handleViewArtist]);
+    }, [contextMenu.song, handleToggleLoopzSong, likeProcessingSongId, añadirSiguiente, handleCompartirCancion, handleAddToQueueNext, manejarToggleCancion, auth.user?.playlists, handleViewArtist]);
     const [mostrarModalSeguidores, setMostrarModalSeguidores] = useState(false);
     const [mostrarModalSeguidos, setMostrarModalSeguidos] = useState(false);
 
@@ -890,6 +956,11 @@ export default function Index() {
                 titulo="Siguiendo"
                 isOpen={mostrarModalSeguidos}
                 onClose={() => setMostrarModalSeguidos(false)}
+            />
+            <Notificacion
+                mostrar={mostrarToast}
+                mensaje={mensajeToast}
+                tipo="success"
             />
         </AuthenticatedLayout>
     );

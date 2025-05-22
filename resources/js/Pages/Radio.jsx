@@ -15,7 +15,7 @@ export default function Radio() {
   const [allGenres, setAllGenres] = useState([])
   const [allCountries, setAllCountries] = useState([])
 
-  const { cargarColaYIniciar, cargando } = usePlayer() // Usamos el estado global
+  const { cargarColaYIniciar, cargando } = usePlayer()
 
   const predefinedCountries = [
     { code: 'US', name: 'Estados Unidos' },
@@ -32,7 +32,7 @@ export default function Radio() {
   useEffect(() => {
     const fetchOptions = async () => {
       try {
-        const genresRes = await axios.get('https://de1.api.radio-browser.info/json/tags ')
+        const genresRes = await axios.get('https://de1.api.radio-browser.info/json/tags')
         const sortedGenres = genresRes.data
           .filter(tag => tag.name && tag.stationcount > 0)
           .sort((a, b) => b.stationcount - a.stationcount)
@@ -41,7 +41,7 @@ export default function Radio() {
           .sort((a, b) => a.localeCompare(b))
         setAllGenres(sortedGenres)
 
-        const countriesRes = await axios.get('https://de1.api.radio-browser.info/json/countries ')
+        const countriesRes = await axios.get('https://de1.api.radio-browser.info/json/countries')
         const apiCountries = countriesRes.data
           .filter(country => country.name && country.stationcount > 0)
           .sort((a, b) => b.stationcount - a.stationcount)
@@ -96,16 +96,11 @@ export default function Radio() {
       setEmisoras(ordenadas)
 
       if (ordenadas.length > 0) {
+        // When searching, select the first one by default but don't force a full queue load
+        // The user will explicitly play it via the dropdown or another button
         setEmisoraSeleccionada(ordenadas[0])
-        const canciones = ordenadas.map(e => ({
-          id: e.stationuuid,
-          titulo: e.name,
-          artista: e.country || '',
-          archivo_url: e.url_resolved,
-          cover: e.favicon || '',
-          extra: e,
-        }))
-        cargarColaYIniciar(canciones, { iniciar: 0 })
+        // Remove this line to avoid automatically loading the whole list when searching
+        // cargarColaYIniciar(canciones, { iniciar: 0 })
       } else {
         setEmisoraSeleccionada(null)
         cargarColaYIniciar([], { iniciar: 0 })
@@ -121,16 +116,20 @@ export default function Radio() {
   const reproducirRadio = emisora => {
     if (!emisora?.url_resolved) return
     setEmisoraSeleccionada(emisora)
-    const canciones = emisoras.map(e => ({
-      id: e.stationuuid,
-      titulo: e.name,
-      artista: e.country || '',
-      archivo_url: e.url_resolved,
-      cover: e.favicon || '',
-      extra: e,
-    }))
-    const index = emisoras.findIndex(e => e.stationuuid === emisora.stationuuid)
-    cargarColaYIniciar(canciones, { iniciar: index >= 0 ? index : 0 })
+
+    // *** MODIFICACIÓN CLAVE AQUÍ ***
+    // Create a queue with ONLY the selected radio station
+    const singleStationQueue = [{
+      id: emisora.stationuuid,
+      titulo: emisora.name,
+      artista: emisora.country || '',
+      archivo_url: emisora.url_resolved,
+      cover: emisora.favicon || '',
+      extra: emisora,
+    }];
+    // Load this single-station queue and start playing it
+    cargarColaYIniciar(singleStationQueue, { iniciar: 0 });
+    // *** FIN MODIFICACIÓN ***
   }
 
   useEffect(() => {
@@ -169,7 +168,7 @@ export default function Radio() {
           try {
             const encodedArtist = encodeURIComponent(artista || ' ')
             const encodedTitle = encodeURIComponent(titulo)
-            const letraRes = await axios.get(`https://api.lyrics.ovh/v1/ ${encodedArtist}/${encodedTitle}`)
+            const letraRes = await axios.get(`https://api.lyrics.ovh/v1/${encodedArtist}/${encodedTitle}`)
 
             if (letraRes.status === 404) {
               setLetraCancion('No se encontraron letras para esta canción. El título o artista podría no coincidir.')
@@ -241,7 +240,7 @@ export default function Radio() {
                         ))}
                     </select>
                 </div>
-            </div>
+              </div>
 
               {cargando ? (
                 <p className="text-gray-400">Cargando emisoras...</p>
