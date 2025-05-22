@@ -37,24 +37,23 @@ class SpotifyGenresSeeder extends Seeder
 
         if ($genresResponse->status() === 404) {
             $genres = [
-                'acoustic','afrobeat','alt-rock','alternative','ambient','anime',
-                'black-metal','bluegrass','blues','bossanova','brazil','breakbeat',
-                'british','cantopop','chicago-house','children','chill','classical',
-                'club','comedy','country','dance','dancehall','death-metal','deep-house',
-                'detroit-techno','disco','disney','drum-and-bass','dub','dubstep','edm',
-                'electro','electronic','emo','folk','forro','french','funk','garage',
-                'german','gospel','grindcore','groove','grunge','guitar','happy','hard-rock',
-                'hardcore','hardstyle','heavy-metal','hip-hop','holidays','honky-tonk',
-                'house','idm','indian','indie','indie-pop','industrial','iranian','j-dance',
-                'j-idol','j-pop','j-rock','jazz','k-pop','kids','latin','latino','malay',
-                'mandopop','metal','metal-misc','metalcore','minimal-techno','movies',
-                'mpb','new-age','new-release','opera','pagode','party','piano','pop',
-                'pop-film','post-dubstep','power-pop','progressive-house','psych-rock',
-                'punk','punk-rock','r-n-b','rainy-day','reggae','reggaeton','road-trip',
-                'rock','rock-n-roll','rockabilly','romance','sad','salsa','samba',
-                'sertanejo','show-tunes','singer-songwriter','ska','sleep','songwriter',
-                'soul','soundtracks','spanish','study','summer','synth-pop','tango',
-                'tech-house','techno','trance','trip-hop','turkish','work-out','world-music'
+                'pop','hip hop','regueton','latin','rock','r&b','k-pop','edm','electronica','trap',
+                'dance','house','reggae','metal','punk','jazz','clasica','soul','blues','funk',
+                'alternativo','rock alternativo','indie','pop indie','hard rock','heavy metal','country',
+                'synth pop','rap','acustico','ambiental','romantica','salsa','samba','bossa nova',
+                'dubstep','deep house','techno','tech house','new age','punk rock','drum and bass',
+                'dub','folk','flamenco','ska','rock psicodelico','rock and roll','grunge','emo',
+                'metalcore','metal variado','trap latino','grindcore','black metal','death metal',
+                'pop poderoso','post-dubstep','minimal techno','progressive house','chill','study',
+                'sleep','relax','feliz','triste','dia lluvioso','verano','ejercicio','viaje por carretera',
+                'fiesta','comedia','anime','peliculas','disney','bandas sonoras','teatro musical',
+                'cantautor','compositor','show-tunes','opera','piano','guitarra','mpb','sertanejo',
+                'pagode','forro','brazil','brasil','espanola','frances','aleman','italiana','iran','turca',
+                'arabe','coreana','china','j-pop','j-rock','j-idol','j-dance','cantopop','mandopop',
+                'malayo','india','indie','gospel','garage','groove','bluegrass','honky tonk','country',
+                'britanico','breakbeat','idm','industrial','trip hop','ambient','world music','musica del mundo',
+                'mexicana','argentina','colombiana','peruana','cubana','dominicana','venezolana',
+                'musica andina','musica criolla','ninos','infantil','children','festividades','club'
             ];
         } elseif (! $genresResponse->successful()) {
             $status = $genresResponse->status();

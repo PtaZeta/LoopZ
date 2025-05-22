@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('seguidores', function (Blueprint $table) {
-            $table->id();
             $table->foreignId('user_id')->constrained('users');
             $table->foreignId('seguido_id')->constrained('users');
+            $table->primary(['user_id', 'seguido_id']);
             $table->timestamps();
         });
     }
