@@ -145,15 +145,19 @@ export default function Welcome({ auth, generos }) {
 
                                 return (
                                     <div key={cancion.id} className={`bg-gray-800 rounded-lg shadow-lg overflow-hidden group transition-all transform hover:-translate-y-1 hover:shadow-xl ${estaSonando ? 'ring-2 ring-blue-500' : ''}`}>
-                                        <div className="w-full h-48 bg-gray-700 flex items-center justify-center text-gray-500">
+                                        <Link href={route('canciones.show', { cancione: cancion.id })} className="block w-full h-48 bg-gray-700 flex items-center justify-center text-gray-500 hover:opacity-90 transition-opacity">
                                             {cancion.foto_url ? (
                                                 <img src={cancion.foto_url} alt={cancion.titulo} className="w-full h-full object-cover" />
                                             ) : (
                                                 <MusicalNoteIcon className="w-10 h-10" />
                                             )}
-                                        </div>
+                                        </Link>
                                         <div className="p-4">
-                                            <h3 className="font-semibold text-lg text-white mb-1 group-hover:text-blue-400 transition-colors truncate">{cancion.titulo}</h3>
+                                            <h3 className="font-semibold text-lg text-white mb-1 group-hover:text-blue-400 transition-colors truncate">
+                                                <Link href={route('canciones.show', { cancione: cancion.id })} className="hover:underline">
+                                                    {cancion.titulo}
+                                                </Link>
+                                            </h3>
                                             {cancion.generos && cancion.generos.length > 0 ? (
                                                 <p className="text-sm text-gray-400 mb-3 truncate">
                                                     Género/s: {cancion.generos.map(g => g.nombre).join(', ')}
@@ -179,7 +183,7 @@ export default function Welcome({ auth, generos }) {
                                                     title={cancion.is_in_user_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ"}
                                                 >
                                                     {procesandoLoopz ? (
-                                                         <LoadingIcon className="h-5 w-5 animate-spin text-purple-400"/>
+                                                        <LoadingIcon className="h-5 w-5 animate-spin text-purple-400"/>
                                                     ) : (
                                                         cancion.is_in_user_loopz ? (
                                                             <HeartIconSolid className="h-5 w-5 text-purple-500" />
