@@ -6,7 +6,7 @@ import { PlayerContext } from '@/contexts/PlayerContext';
 import {
     UserIcon, MusicalNoteIcon, ArrowUpOnSquareIcon, ArrowRightOnRectangleIcon,
     ArrowsRightLeftIcon, QueueListIcon, XCircleIcon,
-    RadioIcon, Bars3Icon, ListBulletIcon // ListBulletIcon for Playlists
+    RadioIcon, Bars3Icon,
 } from '@heroicons/react/24/outline';
 import { ArrowPathIcon as LoadingIcon } from '@heroicons/react/20/solid';
 
@@ -359,10 +359,6 @@ export default function AuthenticatedLayout({ children, header }) {
                             <Link href={route('radio')} className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50 flex items-center space-x-2">
                                 <RadioIcon className="h-5 w-5" />
                                 <span>Radio</span>
-                            </Link>
-                            <Link href={route('playlists.index')} className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50 flex items-center space-x-2">
-                                <ListBulletIcon className="h-5 w-5" />
-                                <span>Playlists</span>
                             </Link>
                         </div>
 

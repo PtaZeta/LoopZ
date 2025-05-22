@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import PropTypes from 'prop-types';
 import debounce from 'lodash.debounce';
+import Notificacion from '@/Components/Notificacion';
 import { PlayerContext } from '@/contexts/PlayerContext';
 import {
     ArrowUpOnSquareIcon,
@@ -135,13 +136,31 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         y: 0,
         song: null,
     });
-
+    const [mostrarToast, setMostrarToast] = useState(false);
+    const [mensajeToast, setMensajeToast] = useState('');
     const [containerContextMenu, setContainerContextMenu] = useState({
         show: false,
         x: 0,
         y: 0,
     });
+    const copiarAlPortapapeles = useCallback((texto, mensaje = 'Guardado en el portapapeles') => {
+        navigator.clipboard.writeText(texto).then(() => {
+            setMensajeToast(mensaje);
+            setMostrarToast(true);
 
+            setTimeout(() => {
+                setMostrarToast(false);
+            }, 5000);
+        }).catch(err => {
+            console.error('Error al copiar:', err);
+            setMensajeToast('Error al copiar');
+            setMostrarToast(true);
+
+            setTimeout(() => {
+                setMostrarToast(false);
+            }, 5000);
+        });
+    }, []);
     const contextMenuTimer = useRef(null);
     const isMobile = window.innerWidth <= 768;
 
@@ -539,20 +558,11 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
     const handleCompartirCancion = useCallback(() => {
         if (contextMenu.song) {
             const songUrl = route('canciones.show', contextMenu.song.id);
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(songUrl).then(() => {
-                    alert('Enlace copiado al portapapeles!');
-                }).catch(err => {
-                    alert('Error al copiar el enlace: ' + err);
-                });
-            } else {
-                alert('La función de copiar al portapapeles no está disponible en este navegador. Por favor, copia el siguiente enlace manualmente: ' + songUrl);
-            }
+            copiarAlPortapapeles(songUrl, 'URL de canción copiada');
             closeContextMenu();
         }
-    }, [contextMenu.song, closeContextMenu]);
+    }, [contextMenu.song, copiarAlPortapapeles, closeContextMenu]);
 
-    // New functions for container context menu
     const openContainerContextMenu = useCallback((event) => {
         const rect = event.currentTarget.getBoundingClientRect();
         setContainerContextMenu({
@@ -562,21 +572,13 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         });
     }, []);
 
-    const handleShareContainer = useCallback(() => {
+    const handleCompartirContenedor = useCallback(() => {
         if (contenedor) {
             const containerUrl = route(`${rutaBase}.show`, contenedor.id);
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(containerUrl).then(() => {
-                    alert(`Enlace de ${tipoNombreMayuscula} copiado al portapapeles!`);
-                }).catch(err => {
-                    alert(`Error al copiar el enlace de ${tipoNombreMayuscula}: ` + err);
-                });
-            } else {
-                alert(`La función de copiar al portapapeles no está disponible en este navegador. Por favor, copia el siguiente enlace manualmente: ` + containerUrl);
-            }
+            copiarAlPortapapeles(containerUrl, `URL de ${tipoNombreMayuscula} copiada`);
             closeContainerContextMenu();
         }
-    }, [contenedor, rutaBase, tipoNombreMayuscula, closeContainerContextMenu]);
+    }, [contenedor, rutaBase, tipoNombreMayuscula, copiarAlPortapapeles, closeContainerContextMenu]);
 
     const handleEditContainer = useCallback(() => {
         if (contenedor?.can?.edit && contenedor?.id && rutaBase) {
@@ -669,7 +671,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         options.push({
             label: `Compartir ${tipoNombreMayuscula}`,
             icon: <ShareIcon className="h-5 w-5" />,
-            action: handleShareContainer,
+            action: handleCompartirContenedor,
         });
         if (contenedor?.can?.delete) {
             options.push({
@@ -679,13 +681,22 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             });
         }
         return options;
-    }, [contenedor, tipoNombreMayuscula, handleShareContainer, handleEditContainer]);
+    }, [contenedor, tipoNombreMayuscula, handleCompartirContenedor, handleEditContainer]);
 
 
     return (
         <AuthenticatedLayout user={auth.user}>
             <Head title={contenedor?.nombre || `Detalles de ${tipoNombreMayuscula}`} />
-
+            <style dangerouslySetInnerHTML={{ __html: `
+                @keyframes fadeSlideIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                @keyframes fadeSlideOut {
+                    from { opacity: 1; transform: translateY(0); }
+                    to { opacity: 0; transform: translateY(10px); }
+                }
+            ` }} />
             <ContextMenu
                 x={contextMenu.x}
                 y={contextMenu.y}
@@ -944,6 +955,11 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                     )}
                 </div>
             </div>
+            <Notificacion
+                mostrar={mostrarToast}
+                mensaje={mensajeToast}
+                tipo="success"
+            />
         </AuthenticatedLayout>
     );
 }
