@@ -6,7 +6,7 @@ import { PlayerContext } from '@/contexts/PlayerContext';
 import {
     UserIcon, MusicalNoteIcon, ArrowUpOnSquareIcon, ArrowRightOnRectangleIcon,
     ArrowsRightLeftIcon, QueueListIcon, XCircleIcon,
-    RadioIcon, Bars3Icon, ListBulletIcon // ListBulletIcon for Playlists
+    RadioIcon, Bars3Icon,
 } from '@heroicons/react/24/outline';
 import { ArrowPathIcon as LoadingIcon } from '@heroicons/react/20/solid';
 
@@ -60,6 +60,15 @@ const RepeatIcon = (props) => (
         <path d="M7 7H17V10L21 6L17 2V5H7C5.34 5 4 6.34 4 8V16H6V8C6 7.45 6.45 7 7 7ZM17 17H7V14L3 18L7 22V19H17C18.66 19 20 17.66 20 16V8H18V16C18 16.55 17.55 17 17 17Z" />
     </svg>
 );
+
+// Icono para repetir una sola canción
+const RepeatOneIcon = (props) => (
+    <svg {...props} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M7 7H17V10L21 6L17 2V5H7C5.34 5 4 6.34 4 8V16H6V8C6 7.45 6.45 7 7 7ZM17 17H7V14L3 18L7 22V19H17C18.66 19 20 17.66 20 16V8H18V16C18 16.55 17.55 17 17 17Z" />
+        <path d="M12 11V13L10 13V11L12 11Z" />
+    </svg>
+);
+
 
 // Custom Lines Icon for "Biblioteca"
 const CustomLinesIcon = (props) => (
@@ -139,7 +148,7 @@ export default function AuthenticatedLayout({ children, header }) {
     const playerContextValue = useContext(PlayerContext);
     const {
         cancionActual, cancionActualIndex, Reproduciendo, tiempoActual, duration, volumen,
-        aleatorio, looping, cargando, playerError, sourceId,
+        aleatorio, looping, loopingOne, cargando, playerError, sourceId, // Añadido loopingOne
         play, pause, siguienteCancion, anteriorCancion,
         seek, setVolumen, toggleAleatorio, toggleLoop,
         playCola, limpiarErrores, queue
@@ -247,6 +256,38 @@ export default function AuthenticatedLayout({ children, header }) {
 
     const hasQueue = queue && queue.length > 0 || cancionActual;
     const mainPaddingBottom = hasQueue ? 'pb-24 md:pb-28' : 'pb-5';
+
+    // Determinar el icono y el título del botón de loop
+    const LoopButtonIcon = useMemo(() => {
+        if (loopingOne) {
+            return RepeatOneIcon;
+        } else if (looping) {
+            return RepeatIcon;
+        }
+        return RepeatIcon; // Icono por defecto cuando no hay loop
+    }, [looping, loopingOne]);
+
+    const loopButtonTitle = useMemo(() => {
+        if (loopingOne) {
+            return "Repetir una canción";
+        } else if (looping) {
+            return "Repetir cola";
+        }
+        return "Activar repetición";
+    }, [looping, loopingOne]);
+
+    const loopButtonClassName = useMemo(() => {
+        let base = 'p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex';
+        if (isPlayerActionDisabled) {
+            base += ' opacity-50 cursor-not-allowed';
+        } else if (looping || loopingOne) {
+            base += ' text-blue-500 hover:text-blue-400';
+        } else {
+            base += ' text-gray-400 hover:text-blue-400';
+        }
+        return base;
+    }, [looping, loopingOne, isPlayerActionDisabled]);
+
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-gray-300 font-sans">
@@ -359,10 +400,6 @@ export default function AuthenticatedLayout({ children, header }) {
                             <Link href={route('radio')} className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50 flex items-center space-x-2">
                                 <RadioIcon className="h-5 w-5" />
                                 <span>Radio</span>
-                            </Link>
-                            <Link href={route('playlists.index')} className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50 flex items-center space-x-2">
-                                <ListBulletIcon className="h-5 w-5" />
-                                <span>Playlists</span>
                             </Link>
                         </div>
 
@@ -488,14 +525,15 @@ export default function AuthenticatedLayout({ children, header }) {
                                     <NextIcon className="h-5 w-5" />
                                 </button>
 
+                                {/* Botón de Loop con 3 estados */}
                                 <button
                                     onClick={toggleLoop}
-                                    title={looping ? "Desactivar repetición" : "Activar repetición"}
-                                    aria-label={looping ? "Desactivar repetición" : "Activar repetición"}
-                                    className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${looping ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'} ${isPlayerActionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    title={loopButtonTitle}
+                                    aria-label={loopButtonTitle}
+                                    className={loopButtonClassName}
                                     disabled={isPlayerActionDisabled}
                                 >
-                                    <RepeatIcon className="h-5 w-5" />
+                                    <LoopButtonIcon className="h-5 w-5" />
                                 </button>
                             </div>
 

@@ -24,6 +24,16 @@ const ImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, tipo = 
     );
 };
 
+ImagenConPlaceholder.propTypes = {
+    src: PropTypes.string,
+    alt: PropTypes.string.isRequired,
+    claseImagen: PropTypes.string,
+    clasePlaceholder: PropTypes.string,
+    tipo: PropTypes.string,
+    nombre: PropTypes.string,
+    esStorage: PropTypes.bool,
+};
+
 const ListaUsuariosPlaylist = ({ tipo, usuarios: usuariosProp, usuarioLogueadoId }) => {
     const usuarios = Array.isArray(usuariosProp) ? usuariosProp : [];
     if (usuarios.length === 0) {
@@ -72,6 +82,12 @@ const ListaUsuariosPlaylist = ({ tipo, usuarios: usuariosProp, usuarioLogueadoId
     );
 };
 
+ListaUsuariosPlaylist.propTypes = {
+    tipo: PropTypes.string,
+    usuarios: PropTypes.array,
+    usuarioLogueadoId: PropTypes.number.isRequired,
+};
+
 const getResourceRouteBase = (tipo) => {
     switch (tipo) {
         case 'album': return 'albumes';
@@ -88,10 +104,10 @@ const DisplayList = ({ items, usuarioLogueadoId, tipoPredeterminado = 'playlist'
     const [isHovering, setIsHovering] = useState(false);
     const [canScrollLeft, setCanScrollLeft] = useState(false);
     const [canScrollRight, setCanScrollRight] = useState(false);
-    const scrollAmount = 400;
+    const scrollAmount = 250;
     const itemsArray = Array.isArray(items) ? items : [];
-    const cardWidthClass = 'w-56';
-    const cardMinWidth = '14rem';
+    const cardWidthClass = 'w-40 sm:w-56';
+    const cardMinWidth = '10rem';
 
     const updateScrollability = useCallback(() => {
         const el = scrollContainerRef.current;
@@ -131,19 +147,19 @@ const DisplayList = ({ items, usuarioLogueadoId, tipoPredeterminado = 'playlist'
                 className={`bg-gradient-to-b from-gray-800 to-gray-850 rounded-lg shadow-lg overflow-hidden flex flex-col items-center text-center transition duration-300 ease-in-out hover:from-gray-700 hover:to-gray-750 hover:shadow-xl ${cardWidthClass} flex-shrink-0`}
                 style={{ minWidth: cardMinWidth }}
             >
-                <Link href={route(rutaShow, item.id)} className="block w-full p-4 pb-0 group">
-                    <div className="relative w-full aspect-square mb-3">
+                <Link href={route(rutaShow, item.id)} className="block w-full p-2 pb-0 group sm:p-4 sm:pb-0">
+                    <div className="relative w-full aspect-square mb-2 sm:mb-3">
                         <ImagenConPlaceholder
                             src={item.imagen} alt={`Portada de ${item.nombre}`}
                             claseImagen="absolute inset-0 w-full h-full object-cover rounded transition-transform duration-300 ease-in-out group-hover:scale-105"
                             clasePlaceholder="absolute inset-0 w-full h-full rounded bg-gray-750 flex items-center justify-center"
                             tipo={tipoItem} esStorage={true} />
                         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded group-hover:scale-105">
-                            <svg className="w-10 h-10 sm:w-12 sm:h-12 text-white transform transition-transform duration-300 ease-in-out group-hover:scale-110" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd"></path></svg>
+                            <svg className="w-8 h-8 sm:w-12 sm:h-12 text-white transform transition-transform duration-300 ease-in-out group-hover:scale-110" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd"></path></svg>
                         </div>
                     </div>
                 </Link>
-                <div className="w-full px-3 sm:px-4 pb-4 flex flex-col items-center">
+                <div className="w-full px-2 sm:px-4 pb-4 flex flex-col items-center">
                     <Link href={route(rutaShow, item.id)} className="block w-full group">
                         <span className="text-sm font-semibold text-gray-100 group-hover:text-white group-hover:underline line-clamp-2" title={item.nombre}>
                             {item.nombre}
@@ -177,7 +193,7 @@ const DisplayList = ({ items, usuarioLogueadoId, tipoPredeterminado = 'playlist'
                 ref={scrollContainerRef}
                 className="overflow-x-auto pb-1 -mb-1 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]"
             >
-                <ul className="flex flex-nowrap gap-4 sm:gap-6 px-1 py-1">
+                <ul className="flex flex-nowrap gap-3 sm:gap-6 px-1 py-1">
                     {itemsArray.map(item => renderItemCard(item))}
                 </ul>
             </div>
@@ -209,16 +225,25 @@ export default function Biblioteca({ auth, playlists = [], loopzContenedores = [
         <AuthenticatedLayout user={auth.user}>
             <Head title="Mi Biblioteca" />
 
-            <main className="py-8 px-4 sm:px-6 lg:px-8 min-h-screen">
-                <h2 className="font-semibold text-xl text-gray-200 leading-tight mb-6">Mi Biblioteca</h2>
+            <main className="py-6 px-4 sm:py-8 sm:px-6 lg:px-8 min-h-screen relative">
+                <h2 className="font-semibold text-lg sm:text-xl text-gray-200 leading-tight mb-4 sm:mb-6">Mi Biblioteca</h2>
 
-                <div className="space-y-12">
+                <div className="block sm:hidden absolute top-[66px] right-4 z-20">
+                    <button
+                        onClick={() => setShowCreatePlaylistModal(true)}
+                        className="px-4 py-1.5 rounded-full text-sm font-semibold bg-gradient-to-r from-blue-600 to-pink-600 hover:from-blue-500 hover:to-pink-500 text-white shadow-lg transition-all transform hover:scale-105 duration-300 ease-in-out"
+                    >
+                        Crear Playlist
+                    </button>
+                </div>
+
+                <div className="space-y-8 sm:space-y-12">
                     <div>
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-2xl font-semibold text-gray-100">Tus Playlists</h3>
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6">
+                            <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-2 sm:mb-0">Tus Playlists</h3>
                             <button
                                 onClick={() => setShowCreatePlaylistModal(true)}
-                                className="relative z-10 px-6 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-blue-600 to-pink-600 hover:from-blue-500 hover:to-pink-500 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105 duration-300 ease-in-out"
+                                className="hidden sm:block relative z-10 px-6 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-blue-600 to-pink-600 hover:from-blue-500 hover:to-pink-500 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105 duration-300 ease-in-out"
                             >
                                 Crear Playlist
                             </button>
@@ -230,29 +255,29 @@ export default function Biblioteca({ auth, playlists = [], loopzContenedores = [
                                 tipoPredeterminado="playlist"
                             />
                         ) : (
-                            <p className="text-gray-400 italic">No tienes ninguna playlist todavía.</p>
+                            <p className="text-gray-400 italic text-sm sm:text-base">No tienes ninguna playlist todavía.</p>
                         )}
                     </div>
                     <div>
-                        <h3 className="text-2xl font-semibold mb-6 text-gray-100">Mis LoopZs</h3>
+                        <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-100">Mis LoopZs</h3>
                         {loopzArray.length > 0 ? (
                             <DisplayList
                                 items={loopzArray}
                                 usuarioLogueadoId={usuarioLogueadoId}
                             />
                         ) : (
-                            <p className="text-gray-400 italic">No has marcado nada como LoopZ todavía.</p>
+                            <p className="text-gray-400 italic text-sm sm:text-base">No has marcado nada como LoopZ todavía.</p>
                         )}
                     </div>
                     <div>
-                        <h3 className="text-2xl font-semibold mb-6 text-gray-100">Mis lanzamientos</h3>
+                        <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-100">Mis lanzamientos</h3>
                         {lanzamientosArray.length > 0 ? (
                             <DisplayList
                                 items={lanzamientosArray}
                                 usuarioLogueadoId={usuarioLogueadoId}
                             />
                         ) : (
-                            <p className="text-gray-400 italic">No hay lanzamientos aún.</p>
+                            <p className="text-gray-400 italic text-sm sm:text-base">No hay lanzamientos aún.</p>
                         )}
                     </div>
                 </div>
