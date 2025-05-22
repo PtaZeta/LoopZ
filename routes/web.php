@@ -129,6 +129,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/api/recomendaciones', [RecomendacionController::class, 'index']);
     Route::post('/playlist/{playlist}/{cancion}/toggle', [ContenedorController::class, 'toggleCancion'])
         ->name('playlist.toggleCancion');
+
+    Route::post('/profile/{id}/seguir', [ProfileController::class, 'seguirUsuario'])->name('profile.seguirUsuario');
+
 });
 
 Route::get('/spotify-login', function () {

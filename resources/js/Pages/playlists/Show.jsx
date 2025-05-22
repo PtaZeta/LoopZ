@@ -536,7 +536,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         }
     }, [closeContextMenu]);
 
-    const handleShareSong = useCallback(() => {
+    const handleCompartirCancion = useCallback(() => {
         if (contextMenu.song) {
             const songUrl = route('canciones.show', contextMenu.song.id);
             if (navigator.clipboard) {
@@ -631,7 +631,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         options.push({
             label: "Compartir",
             icon: <ShareIcon className="h-5 w-5" />,
-            action: handleShareSong,
+            action: handleCompartirCancion,
         });
         if (contenedor?.can?.edit && contextMenu.song.pivot?.id) {
             options.push({
@@ -648,7 +648,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         manejarCancionLoopzToggle,
         likeProcessing,
         handleAddToQueueNext,
-        handleShareSong,
+        handleCompartirCancion,
         contenedor?.can?.edit,
         tipoNombreMayuscula,
         manejarEliminarCancion,

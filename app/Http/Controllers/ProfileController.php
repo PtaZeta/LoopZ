@@ -36,6 +36,10 @@ class ProfileController extends Controller
     {
         $usuario = User::findOrFail($id);
 
+        $seguidores = $usuario->seguidores()->get();
+
+        $seguidos = $usuario->seguidos()->get();
+
         $withUsuariosCallback = function ($query) {
             $query->select('users.id', 'users.name', 'users.foto_perfil');
         };
@@ -110,7 +114,8 @@ class ProfileController extends Controller
             'epsUsuario' => $consultaEps,
             'singlesUsuario' => $consultaSingles,
             'es_creador' => $esCreador,
-
+            'seguidores' => $seguidores,
+            'seguidos' => $seguidos,
             'auth' => [
                 'user' => $usuarioAuth ? [
                     'id' => $usuarioAuth->id,
@@ -118,6 +123,10 @@ class ProfileController extends Controller
                     'playlists' => $userPlaylists,
                 ] : null,
             ],
+            'seguidores_count' => $usuario->seguidores()->count(),
+            'seguidos_count' => $usuario->seguidos()->count(),
+            'is_following' => $usuarioAuth ? $usuarioAuth->seguidos->contains($usuario->id) : false,
+
         ]);
     }
 
@@ -275,5 +284,26 @@ class ProfileController extends Controller
                ->all();
     }
 
+    public function seguirUsuario(Request $request, $id)
+    {
+        $usuarioSeguir = User::findOrFail($id);
+        $usuarioSeguidor = $request->user();
 
+        if ($usuarioSeguidor->id === $usuarioSeguir->id) {
+            return Redirect::back()->with('error', 'No puedes seguirte a ti mismo');
+        }
+
+        // Verificar correctamente usando wherePivot
+        $siguiendo = $usuarioSeguidor->seguidos()
+            ->wherePivot('user_id', $usuarioSeguir->id)
+            ->exists();
+
+        if ($siguiendo) {
+            $usuarioSeguidor->seguidos()->detach($usuarioSeguir->id);
+        } else {
+            $usuarioSeguidor->seguidos()->attach($usuarioSeguir->id);
+        }
+
+        return Redirect::back();
+    }
 }

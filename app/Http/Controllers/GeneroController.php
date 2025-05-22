@@ -88,12 +88,12 @@ class GeneroController extends Controller
             })
             ->with('canciones.generos', 'usuarios')
             ->get();
-
         $generoFiltro = $genero->nombre;
 
-
         $playlistFiltradas = $playlistTodas->filter(function ($playlist) use ($generoFiltro) {
-            return $playlist->generoPredominante() === $generoFiltro;
+            return $playlist->canciones->contains(function ($cancion) use ($generoFiltro) {
+                return $cancion->generos->contains('nombre', $generoFiltro);
+            });
         });
 
         $countPlaylists = $playlistFiltradas->count();
@@ -102,16 +102,13 @@ class GeneroController extends Controller
              $randomPlaylists = collect([$playlistFiltradas->first()]);
         }
 
-
         $usuariosDelGenero = User::where('id', '!=', $userId)
-            ->whereHas('perteneceCanciones.generos', function ($query) use ($genero) {
-                $query->where('nombre', $genero->nombre);
+            ->whereHas('perteneceCanciones.generos', function ($query) use ($generoFiltro) {
+                $query->where('nombre', $generoFiltro);
             })
             ->with('perteneceCanciones')
             ->inRandomOrder()
-            ->take(4)
             ->get(['id', 'name', 'foto_perfil']);
-
 
         return Inertia::render('genero/Show', [
             'genero' => $genero,
