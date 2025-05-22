@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreGeneroRequest;
 use App\Http\Requests\UpdateGeneroRequest;
+use App\Models\Cancion;
 use App\Models\Contenedor;
 use App\Models\Genero;
 use App\Models\User;
@@ -76,31 +77,29 @@ class GeneroController extends Controller
     {
 
     }
-
     public function show(Genero $genero)
     {
         $userId = Auth::id();
+        $generoFiltro = $genero->nombre;
 
-        $playlistTodas = Contenedor::where('tipo', 'playlist')
+        $playlistsDelGenero = Contenedor::where('tipo', 'playlist')
             ->where('publico', true)
             ->whereDoesntHave('usuarios', function ($query) use ($userId) {
                 $query->where('user_id', $userId)->where('propietario', true);
             })
-            ->with('canciones.generos', 'usuarios')
-            ->get();
-        $generoFiltro = $genero->nombre;
+            ->whereHas('canciones.generos', function ($query) use ($generoFiltro) {
+                $query->where('nombre', $generoFiltro);
+            })
+            ->with(['canciones.generos', 'usuarios'])
+            ->get()
+            ->values();
 
-        $playlistFiltradas = $playlistTodas->filter(function ($playlist) use ($generoFiltro) {
-            return $playlist->canciones->contains(function ($cancion) use ($generoFiltro) {
-                return $cancion->generos->contains('nombre', $generoFiltro);
-            });
-        });
-
-        $countPlaylists = $playlistFiltradas->count();
-        $randomPlaylists = $countPlaylists > 0 ? $playlistFiltradas->random(min(4, $countPlaylists)) : collect();
-        if ($countPlaylists > 0 && $countPlaylists < min(4, $countPlaylists) && $countPlaylists === 1) {
-             $randomPlaylists = collect([$playlistFiltradas->first()]);
-        }
+        $cancionesDelGenero = Cancion::whereHas('generos', function ($query) use ($generoFiltro) {
+                $query->where('nombre', $generoFiltro);
+            })
+            ->with(['generos', 'usuarios'])
+            ->get()
+            ->values();
 
         $usuariosDelGenero = User::where('id', '!=', $userId)
             ->whereHas('perteneceCanciones.generos', function ($query) use ($generoFiltro) {
@@ -108,14 +107,17 @@ class GeneroController extends Controller
             })
             ->with('perteneceCanciones')
             ->inRandomOrder()
-            ->get(['id', 'name', 'foto_perfil']);
+            ->get(['id', 'name', 'foto_perfil'])
+            ->values();
 
         return Inertia::render('genero/Show', [
             'genero' => $genero,
-            'playlists' => $randomPlaylists->values(),
-            'usuariosDelGenero' => $usuariosDelGenero->values(),
+            'playlists' => $playlistsDelGenero,
+            'canciones' => $cancionesDelGenero,
+            'usuariosDelGenero' => $usuariosDelGenero,
         ]);
     }
+
 
     public function edit(Genero $genero)
     {
