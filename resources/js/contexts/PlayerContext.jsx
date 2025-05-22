@@ -35,6 +35,7 @@ export const PlayerProvider = ({ children }) => {
     const [volumen, setVolumen] = useState(0.5);
     const [aleatorio, setAleatorio] = useState(false);
     const [looping, setLooping] = useState(false);
+    const [loopingOne, setLoopingOne] = useState(false);
     const [sourceId, setSourceId] = useState(null);
     const [cargando, setCargando] = useState(false);
     const [playerError, setPlayerError] = useState(null);
@@ -48,9 +49,11 @@ export const PlayerProvider = ({ children }) => {
         const vol = sessionStorage.getItem('volumen_player');
         const shf = sessionStorage.getItem('aleatorio_player');
         const lop = sessionStorage.getItem('looping_player');
+        const lopOne = sessionStorage.getItem('loopingOne_player');
         if (vol !== null) setVolumen(Number(vol));
         if (shf !== null) setAleatorio(shf === 'true');
         if (lop !== null) setLooping(lop === 'true');
+        if (lopOne !== null) setLoopingOne(lopOne === 'true');
     }, []);
 
     useEffect(() => {
@@ -64,6 +67,10 @@ export const PlayerProvider = ({ children }) => {
     useEffect(() => {
         sessionStorage.setItem('looping_player', String(looping));
     }, [looping]);
+
+    useEffect(() => {
+        sessionStorage.setItem('loopingOne_player', String(loopingOne));
+    }, [loopingOne]);
 
     useEffect(() => {
         if (cancionActualIndex >= 0) {
@@ -178,6 +185,15 @@ export const PlayerProvider = ({ children }) => {
     const siguienteCancion = useCallback(async () => {
         if (colaActual.length === 0) return;
         limpiarErrores();
+
+        if (loopingOne) {
+            seek(0);
+            if (!Reproduciendo) {
+                play();
+            }
+            return;
+        }
+
         let nextIndex = cancionActualIndex + 1;
         while (
             nextIndex < colaActual.length &&
@@ -293,6 +309,7 @@ export const PlayerProvider = ({ children }) => {
         reservasRecomendadas,
         aleatorio,
         looping,
+        loopingOne,
         fetchReservas,
         limpiarErrores,
         reiniciarPlayer,
@@ -300,12 +317,22 @@ export const PlayerProvider = ({ children }) => {
         preloadedSongIndex,
         seek,
         getAudioUrl,
-        cancionActual
+        cancionActual,
+        play
     ]);
 
     const anteriorCancion = useCallback(() => {
         if (colaActual.length === 0) return;
         limpiarErrores();
+
+        if (loopingOne) {
+            seek(0);
+            if (!Reproduciendo) {
+                play();
+            }
+            return;
+        }
+
         let prevIndex = cancionActualIndex - 1;
         if (prevIndex < 0) {
             if (looping) {
@@ -361,7 +388,7 @@ export const PlayerProvider = ({ children }) => {
             setCargando(true);
             setCancionActualIndex(targetIndex);
         }
-    }, [colaActual, cancionActualIndex, looping, limpiarErrores, seek, Reproduciendo, preloadedSongIndex, getAudioUrl]);
+    }, [colaActual, cancionActualIndex, looping, loopingOne, limpiarErrores, seek, Reproduciendo, preloadedSongIndex, getAudioUrl, play]); // Añadido loopingOne y play
 
     const cargarColaYIniciar = useCallback((canciones, opciones = {}) => {
         if (audioRef.current) {
@@ -471,8 +498,19 @@ export const PlayerProvider = ({ children }) => {
 
     const toggleLoop = useCallback(() => {
         limpiarErrores();
-        setLooping(l => !l);
-    }, [limpiarErrores]);
+        setLooping(prevLooping => {
+            if (prevLooping && !loopingOne) {
+                setLoopingOne(true);
+                return true;
+            } else if (prevLooping && loopingOne) {
+                setLoopingOne(false);
+                return false;
+            } else {
+                setLoopingOne(false);
+                return true;
+            }
+        });
+    }, [limpiarErrores, loopingOne]);
 
     const playCola = useCallback((i) => {
         limpiarErrores();
@@ -629,7 +667,14 @@ export const PlayerProvider = ({ children }) => {
             setCargando(true);
         };
         const onMainEnded = () => {
-            siguienteCancion();
+            if (loopingOne) {
+                seek(0);
+                if (!Reproduciendo) {
+                    play();
+                }
+            } else {
+                siguienteCancion();
+            }
         };
         const onMainError = (e) => {
             setCargando(false);
@@ -711,7 +756,9 @@ export const PlayerProvider = ({ children }) => {
             let nextSongIndexToPreload = -1;
             if (colaActual.length > 0) {
                 const potentialNextIndex = cancionActualIndex !== -1 ? cancionActualIndex + 1 : 0;
-                if (potentialNextIndex < colaActual.length) {
+                if (loopingOne) {
+                    nextSongIndexToPreload = -1;
+                } else if (potentialNextIndex < colaActual.length) {
                     nextSongIndexToPreload = potentialNextIndex;
                 } else if (looping && colaActual.length > 0 && cancionActualIndex !== -1) {
                     nextSongIndexToPreload = 0;
@@ -787,11 +834,14 @@ export const PlayerProvider = ({ children }) => {
         getAudioUrl,
         colaActual,
         looping,
+        loopingOne, // Añadido
         cancionActualIndex,
         preloadedSongIndex,
         Reproduciendo,
         userInitiatedPlayRef,
-        cancionActual
+        cancionActual,
+        play, // Añadido
+        seek // Añadido
     ]);
 
     return (
@@ -807,6 +857,7 @@ export const PlayerProvider = ({ children }) => {
                 volumen,
                 aleatorio,
                 looping,
+                loopingOne,
                 sourceId,
                 cargando,
                 playerError,
