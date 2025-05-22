@@ -11,8 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('canciones', function (Blueprint $table) {
-            $table->string('url_amigable')->unique()->after('titulo');
+        Schema::create('seguidores', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users');
+            $table->foreignId('seguido_id')->constrained('users');
+            $table->timestamps();
         });
     }
 
@@ -21,8 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('canciones', function (Blueprint $table) {
-            $table->dropColumn('url_amigable');
-        });
+        Schema::dropIfExists('seguidores');
     }
 };
