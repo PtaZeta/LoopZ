@@ -3,7 +3,11 @@ import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import { Link, usePage, router } from '@inertiajs/react';
 import { PlayerContext } from '@/contexts/PlayerContext';
-import { UserIcon, MusicalNoteIcon, ArrowUpOnSquareIcon, ArrowRightOnRectangleIcon, ArrowsRightLeftIcon, QueueListIcon, ArrowPathIcon as LoopIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import {
+    UserIcon, MusicalNoteIcon, ArrowUpOnSquareIcon, ArrowRightOnRectangleIcon,
+    ArrowsRightLeftIcon, QueueListIcon, XCircleIcon,
+    RadioIcon, Bars3Icon, ListBulletIcon // ListBulletIcon for Playlists
+} from '@heroicons/react/24/outline';
 import { ArrowPathIcon as LoadingIcon } from '@heroicons/react/20/solid';
 
 
@@ -51,6 +55,22 @@ const VolumeMuteIcon = (props) => (
 
 const ShuffleIcon = ArrowsRightLeftIcon;
 
+const RepeatIcon = (props) => (
+    <svg {...props} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M7 7H17V10L21 6L17 2V5H7C5.34 5 4 6.34 4 8V16H6V8C6 7.45 6.45 7 7 7ZM17 17H7V14L3 18L7 22V19H17C18.66 19 20 17.66 20 16V8H18V16C18 16.55 17.55 17 17 17Z" />
+    </svg>
+);
+
+// Custom Lines Icon for "Biblioteca"
+const CustomLinesIcon = (props) => (
+    <svg {...props} viewBox="0 0 24 24" fill="currentColor">
+        <rect x="7" y="5" width="2" height="14" />
+        <rect x="11" y="5" width="2" height="14" />
+        <line x1="16" y1="5" x2="19" y2="19" stroke="currentColor" strokeWidth="2" />
+    </svg>
+);
+
+
 const formatTime = (seconds) => {
     if (isNaN(seconds) || seconds < 0 || !isFinite(seconds)) return '0:00';
     const minutes = Math.floor(seconds / 60);
@@ -89,9 +109,9 @@ const PlayerImagenItem = memo(({ url, titulo, className = "w-10 h-10", iconoFall
     const placeholderIconSize = isQueueItem ? 'h-4 w-4' : 'h-6 w-6';
 
     if (error || !src) {
-        const finalClassName = `${className} ${placeholderSizeClass}`;
+        const finalClassName = `${className} bg-slate-700 flex items-center justify-center text-slate-500 rounded flex-shrink-0`;
         return (
-            <div className={`${finalClassName} bg-slate-700 flex items-center justify-center text-slate-500 rounded flex-shrink-0`}>
+            <div className={finalClassName}>
                 {iconoFallback || <MusicalNoteIcon className={placeholderIconSize} />}
             </div>
         );
@@ -237,9 +257,9 @@ export default function AuthenticatedLayout({ children, header }) {
                             <ApplicationLogo className="h-8 w-auto" />
                         </Link>
                     </div>
-                    <div className="hidden md:flex flex-grow items-center justify-center space-x-6">
-                        <Link href={route('biblioteca')} className="text-sm hover:text-blue-400 transition-colors">
-                            Biblioteca
+                    <div className="hidden md:flex flex-grow items-center justify-center space-x-6"> {/* Reduced space-x from 12 to 6 */}
+                        <Link href={route('biblioteca')} className="text-sm hover:text-blue-400 transition-colors flex flex-col items-center group">
+                            <CustomLinesIcon className="h-8 w-8 text-gray-300 group-hover:text-blue-400 transition-colors" />
                         </Link>
                         <div className="relative w-full max-w-md">
                             <input
@@ -251,8 +271,8 @@ export default function AuthenticatedLayout({ children, header }) {
                                 className="w-full px-4 py-2 text-sm text-gray-200 bg-gray-700/50 border border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-gray-700 placeholder-gray-400 transition-colors"
                             />
                         </div>
-                        <Link href={route('radio')} className="text-sm hover:text-blue-400 transition-colors">
-                            Radio
+                        <Link href={route('radio')} className="text-sm hover:text-blue-400 transition-colors flex flex-col items-center group">
+                            <RadioIcon className="h-8 w-8 text-gray-300 group-hover:text-blue-400 transition-colors" />
                         </Link>
                     </div>
                     {usuario && (
@@ -289,16 +309,13 @@ export default function AuthenticatedLayout({ children, header }) {
                     )}
                     <div className="md:hidden flex items-center">
                         <button onClick={() => setShowingMobileMenu(!showingMobileMenu)} className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none transition duration-150 ease-in-out">
-                            <svg className="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                                <path className={!showingMobileMenu ? 'inline-flex' : 'hidden'} strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-                                <path className={showingMobileMenu ? 'inline-flex' : 'hidden'} strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                            <Bars3Icon className="h-6 w-6" />
                         </button>
                     </div>
                 </div>
                 {showingMobileMenu && (
-                    <div className="md:hidden border-t border-gray-700/50">
-                        <div className="p-3 space-y-3">
+                    <div className="md:hidden border-t border-gray-700/50 pt-2 pb-3 space-y-1">
+                        <div className="px-4 mb-4">
                             <input
                                 type="search"
                                 value={searchQuery}
@@ -307,32 +324,71 @@ export default function AuthenticatedLayout({ children, header }) {
                                 placeholder="Buscar..."
                                 className="w-full px-4 py-2.5 text-sm text-gray-200 bg-gray-700/50 border border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-gray-700 placeholder-gray-400 transition-colors"
                             />
-                            <Link href={route('biblioteca')} className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50">
-                                Biblioteca
-                            </Link>
-                            <Link href={route('playlists.index')} className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50">
-                                Playlists
-                            </Link>
-                            {usuario ? (
-                                <>
-                                    <Link href={route('profile.show', usuario.id)} className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50">
-                                        Perfil
-                                    </Link>
-                                    <button onClick={() => { router.post(route('logout')); }} className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50">
-                                        Logout
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    <Link href={route('login')} className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50">
-                                        Iniciar Sesión
-                                    </Link>
-                                    <Link href={route('register')} className="block px-3 py-2 rounded-md text-base font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-md">
-                                        Registrarse
-                                    </Link>
-                                </>
-                            )}
                         </div>
+
+                        {usuario ? (
+                            <div className="px-4 pb-3 border-b border-gray-700/50 mb-3">
+                                <Link href={route('profile.show', usuario.id)} className="flex items-center space-x-3 text-white">
+                                    <img
+                                        src={usuario.foto_perfil}
+                                        alt={usuario.name}
+                                        className="h-10 w-10 rounded-full object-cover"
+                                    />
+                                    <span className="text-base font-medium">{usuario.name}</span>
+                                </Link>
+                            </div>
+                        ) : (
+                            <div className="px-4 pb-3 border-b border-gray-700/50 mb-3">
+                                <Link href={route('login')} className="block py-2 text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50 rounded-md flex items-center space-x-2">
+                                    <UserIcon className="h-5 w-5" />
+                                    <span>Iniciar Sesión</span>
+                                </Link>
+                                <Link href={route('register')} className="block mt-2 py-2 text-base font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-md text-center flex items-center justify-center space-x-2">
+                                    <UserIcon className="h-5 w-5" />
+                                    <span>Registrarse</span>
+                                </Link>
+                            </div>
+                        )}
+
+                        <div className="space-y-1 px-2 pb-3 border-b border-gray-700/50 mb-3">
+                            <h5 className="text-xs uppercase text-gray-500 font-semibold px-2 mb-1">Navegación</h5>
+                            <Link href={route('biblioteca')} className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50 flex items-center space-x-2">
+                                <CustomLinesIcon className="h-5 w-5" />
+                                <span>Biblioteca</span>
+                            </Link>
+                            <Link href={route('radio')} className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50 flex items-center space-x-2">
+                                <RadioIcon className="h-5 w-5" />
+                                <span>Radio</span>
+                            </Link>
+                            <Link href={route('playlists.index')} className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50 flex items-center space-x-2">
+                                <ListBulletIcon className="h-5 w-5" />
+                                <span>Playlists</span>
+                            </Link>
+                        </div>
+
+                        {usuario && (
+                            <div className="space-y-1 px-2 pb-3 border-b border-gray-700/50 mb-3">
+                                <h5 className="text-xs uppercase text-gray-500 font-semibold px-2 mb-1">Tus Contenidos</h5>
+                                <Link href={route('canciones.create')} method="get" className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50 flex items-center space-x-2">
+                                    <MusicalNoteIcon className="h-5 w-5" />
+                                    <span>Subir canción</span>
+                                </Link>
+                                <Link href={route('lanzamiento.crear')} method="get" className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50 flex items-center space-x-2">
+                                    <ArrowUpOnSquareIcon className="h-5 w-5" />
+                                    <span>Subir lanzamiento</span>
+                                </Link>
+                            </div>
+                        )}
+
+                        {usuario && (
+                            <div className="space-y-1 px-2">
+                                <h5 className="text-xs uppercase text-gray-500 font-semibold px-2 mb-1">Sesión</h5>
+                                <button onClick={() => { router.post(route('logout')); }} className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50 flex items-center space-x-2">
+                                    <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                                    <span>Cerrar sesión</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
             </header>
@@ -439,7 +495,7 @@ export default function AuthenticatedLayout({ children, header }) {
                                     className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${looping ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'} ${isPlayerActionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     disabled={isPlayerActionDisabled}
                                 >
-                                    <LoopIcon className="h-5 w-5" />
+                                    <RepeatIcon className="h-5 w-5" />
                                 </button>
                             </div>
 
@@ -500,49 +556,26 @@ export default function AuthenticatedLayout({ children, header }) {
                                     ref={queueDropdownRef}
                                     className="absolute bottom-full right-0 mb-2 w-64 sm:w-80 max-h-80 overflow-y-auto bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 p-2"
                                 >
-                                    <h4 className="text-sm font-semibold text-gray-300 px-2 pb-2 border-b border-slate-600 mb-2">Cola de Reproducción</h4>
-                                    {queue && queue.length > 0 ? (
-                                        <ul className="space-y-1">
-                                            {queue.map((cancion, index) => (
-                                                <li
-                                                    key={`${cancion.id}-${index}`}
-                                                    className={`flex items-center justify-between p-2 rounded cursor-pointer group ${index === cancionActualIndex ? 'bg-blue-900/50' : 'hover:bg-slate-700/70'}`}
-                                                    onClick={() => handlePlayFromQueueClick(index)}
-                                                >
-                                                    <div className="flex items-center space-x-2 overflow-hidden">
-                                                        <PlayerImagenItem
-                                                            url={obtenerUrlImagenLayout(cancion)}
-                                                            titulo={cancion.titulo}
-                                                            className="w-8 h-8"
-                                                            iconoFallback={<MusicalNoteIcon className="h-4 w-4" />}
-                                                            isQueueItem={true}
-                                                        />
-                                                        <div className="overflow-hidden">
-                                                            <p
-                                                                className={`text-xs truncate ${index === cancionActualIndex ? 'text-blue-300 font-semibold' : 'text-gray-200 group-hover:text-white'}`}
-                                                                title={cancion.titulo}
-                                                            >
-                                                                {cancion.titulo}
-                                                            </p>
-                                                            <p
-                                                                className={`text-xs truncate ${index === cancionActualIndex ? 'text-blue-400' : 'text-gray-400 group-hover:text-gray-300'}`}
-                                                                title={cancion.usuarios?.map(u => u.name).join(', ') || cancion.artista || ''}
-                                                            >
-                                                                {cancion.usuarios?.map(u => u.name).join(', ') || cancion.artista || 'Artista Desconocido'}
-                                                            </p>
-                                                        </div>
+                                    <h4 className="text-sm font-semibold text-gray-300 px-2 pb-2 border-b border-slate-700">Cola de Reproducción</h4>
+                                    {queue.length === 0 && cancionActual ? (
+                                        <p className="text-gray-400 text-sm p-2">La cola está vacía. Reproduciendo solo la canción actual.</p>
+                                    ) : queue.length === 0 ? (
+                                        <p className="text-gray-400 text-sm p-2">La cola está vacía.</p>
+                                    ) : (
+                                        <ul className="divide-y divide-slate-700">
+                                            {queue.map((song, index) => (
+                                                <li key={song.id || index} className={`flex items-center p-2 text-sm ${index === cancionActualIndex ? 'bg-blue-900/50 text-blue-300' : 'hover:bg-slate-700/50'} cursor-pointer transition-colors rounded-md group`} onClick={() => handlePlayFromQueueClick(index)}>
+                                                    <PlayerImagenItem url={obtenerUrlImagenLayout(song)} titulo={song.titulo} className="w-8 h-8 mr-2" isQueueItem={true} />
+                                                    <div className="flex-grow overflow-hidden">
+                                                        <p className="font-medium truncate">{song.titulo}</p>
+                                                        <p className="text-xs text-gray-400 truncate">{song.artista || 'Artista Desconocido'}</p>
                                                     </div>
-                                                    {Reproduciendo && index === cancionActualIndex && (
-                                                        <PauseIcon className="h-4 w-4 text-blue-400 flex-shrink-0 ml-2" />
-                                                    )}
-                                                    {!Reproduciendo && index === cancionActualIndex && (
-                                                        <PlayIcon className="h-4 w-4 text-blue-400 flex-shrink-0 ml-2" />
+                                                    {index === cancionActualIndex && Reproduciendo && (
+                                                        <MusicalNoteIcon className="h-4 w-4 ml-2 text-blue-400 animate-pulse" />
                                                     )}
                                                 </li>
                                             ))}
                                         </ul>
-                                    ) : (
-                                        <p className="text-xs text-gray-400 italic px-2 py-1">La cola está vacía.</p>
                                     )}
                                 </div>
                             )}
@@ -553,5 +586,3 @@ export default function AuthenticatedLayout({ children, header }) {
         </div>
     );
 }
-
-export { PlayerImagenItem };
