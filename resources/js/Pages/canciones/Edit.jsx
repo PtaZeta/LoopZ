@@ -196,18 +196,6 @@ export default function Edit({ auth, cancion, generos: todosLosGeneros, generosS
                                             className={`mt-1 block w-full sm:text-sm ${errors.titulo ? 'border-red-500' : ''}`} />
                                         <InputError message={errors.titulo} className="mt-1 text-xs" />
                                     </div>
-
-                                    <div className="sm:col-span-2">
-                                        <InputLabel htmlFor="licencia" value="Licencia" className="text-gray-300" />
-                                        <TextInput
-                                            id="licencia"
-                                            type="text"
-                                            name="licencia"
-                                            value={data.licencia}
-                                            onChange={(e) => setData('licencia', e.target.value)}
-                                            className={`mt-1 block w-full sm:text-sm ${errors.licencia ? 'border-red-500' : ''}`} />
-                                        <InputError message={errors.licencia} className="mt-1 text-xs" />
-                                    </div>
                                     <div>
                                         <InputLabel htmlFor="publico" value="Visibilidad *" className="text-gray-300 mb-1" />
                                         <select

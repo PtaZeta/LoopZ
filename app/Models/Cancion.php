@@ -4,13 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Laravel\Scout\Searchable;
 use Spatie\Sluggable\HasSlug;
 use Spatie\Sluggable\SlugOptions;
 
 class Cancion extends Model
 {
     /** @use HasFactory<\Database\Factories\CancionFactory> */
-    use HasFactory;
+    use HasFactory, Searchable;
 
     protected $table = 'canciones';
 
@@ -76,5 +77,15 @@ class Cancion extends Model
     {
         return 'url_amigable';
     }*/
+
+    public function toSearchableArray(): array
+    {
+        $array = $this->toArray();
+
+        $this->loadMissing('usuarios');
+        $array['usuario_names'] = $this->usuarios->pluck('name')->toArray();
+
+        return $array;
+    }
 
 }

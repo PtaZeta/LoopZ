@@ -102,7 +102,7 @@ export default function PlaylistComunidad({ auth, genero, playlists, canciones, 
 
     return (
         <Layout>
-            <Head title={`Comunidad de ${genero.nombre}`} />
+            <Head title={`${genero.nombre}`} />
 
             <main className="pt-20">
                 <section className="container mx-auto px-4 py-10 md:py-16 text-center flex flex-col items-center relative overflow-hidden">
