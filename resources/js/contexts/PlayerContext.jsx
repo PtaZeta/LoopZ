@@ -597,12 +597,11 @@ export const PlayerProvider = ({ children }) => {
             if (audio.currentTime >= 10 && !hasCountedRef.current && cancionActual) {
                 hasCountedRef.current = true;
 
-                // Get the CSRF token from the meta tag
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
                 if (!csrfToken) {
                     console.error('CSRF token not found. Make sure you have <meta name="csrf-token" content="{{ csrf_token() }}"> in your HTML head.');
-                    return; // Exit if token is not found
+                    return;
                 }
 
                 fetch(`/canciones/${cancionActual.id}/incrementar-visualizacion`, {
@@ -610,26 +609,25 @@ export const PlayerProvider = ({ children }) => {
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
                         'Accept': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken, // Add the CSRF token here
+                        'X-CSRF-TOKEN': csrfToken,
                     },
                 })
                 .then(response => {
                     if (!response.ok) {
-                        // Log the response status and text for better debugging
                         console.error(`HTTP error! status: ${response.status}, text: ${response.statusText}`);
                         throw new Error('Error en la respuesta');
                     }
                     return response.json();
                 })
                 .then(data => {
-                    // Optionally, handle the successful response data
                     console.log('Visualización incrementada:', data.visualizaciones);
                 })
                 .catch(err => {
                     console.error('Error al contar visualización:', err);
                 });
             }
-        };        const onMainLoadedMetadata = () => {
+        };
+        const onMainLoadedMetadata = () => {
             if (isFinite(audio.duration) && audio.duration > 0) {
                 setDuration(audio.duration);
             } else {

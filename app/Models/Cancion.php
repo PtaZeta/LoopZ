@@ -26,6 +26,7 @@ class Cancion extends Model
         'publico',
         'remix',
         'cancion_original_id',
+        'visualizaciones',
     ];
 
     public function contenedores()

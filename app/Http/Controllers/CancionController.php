@@ -16,6 +16,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
@@ -544,13 +545,37 @@ class CancionController extends Controller
         return response()->json($canciones);
     }
 
-    public function incrementarVisualizacion(Cancion $cancion)
-    {
-        $cancion->increment('visualizaciones');
 
-        return response()->json([
-            'message' => 'Visualización incrementada',
-            'visualizaciones' => $cancion->visualizaciones,
+    public function incrementarVisualizacion(Request $request, $id)
+    {
+        DB::table('canciones')
+            ->where('id', $id)
+            ->increment('visualizaciones');
+
+        $visualizaciones = DB::table('canciones')->where('id', $id)->value('visualizaciones');
+
+        $response = response()->json([
+            'message' => 'Visualización incrementada con éxito',
+            'visualizaciones' => $visualizaciones,
+            'cancion_id' => $id,
         ]);
+
+        if ($visualizaciones === 100) {
+            $cancion = Cancion::with('usuarios')->find($id);
+
+            if ($cancion && $cancion->usuarios->isNotEmpty()) {
+                foreach ($cancion->usuarios as $usuario) {
+                    Notificacion::create([
+                        'titulo' => '¡Tu canción llegó a 100 visualizaciones!',
+                        'mensaje' => "La canción '{$cancion->titulo}' ha alcanzado 100 reproducciones.",
+                        'leido' => false,
+                        'user_id' => $usuario->id,
+                    ]);
+                }
+            }
+        }
+
+        return $response;
     }
+
 }
