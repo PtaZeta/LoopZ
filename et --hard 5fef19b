@@ -1,0 +1,20 @@
+[33m4bca4a5[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mbuscadorynotis[m[33m)[m Eliminar archivo grande y agregarlo al .gitignore
+[33m64979ca[m Ignorar archivo binario demasiado grande
+[33mc3b34f3[m carga
+[33maaa3394[m Buscador terminado y retoques en perfil falta poco.
+[33m5fef19b[m Cambiar CRUD de canciones para aplciar AWS y licencias.
+[33mf85d726[m Arreglo de incrementar visualización añadiendo token CRSF
+[33m140aaae[m Mover ejecutable meilisearch
+[33mdc6d5bd[m Mejora de búsqueda con laravel/scout y meilisearch
+[33m2bcda47[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m Merge pull request #199 from PtaZeta/generosyplaylists
+[33mbb52b2f[m Fixeo de cola infinita y nueva funcion loop en una cancion
+[33m4394700[m Generos terminados y cambios responsives para movil
+[33mc0321f3[m Desplegable de profile actualizado
+[33mc660766[m Merge pull request #198 from PtaZeta/seguir-usuarios
+[33ma6ff331[m[33m ([m[1;31morigin/seguir-usuarios[m[33m)[m Añadir funcion seguir usuarios en el perfil, con conteo de seguidores y seguidos y cambio en la lógica de los géneros
+[33mb2c388c[m Arreglar desplegable profile y migracion seguidores
+[33m1804cb7[m Cambios de layout tanto pc como móvil
+[33m458fa3e[m Merge pull request #197 from PtaZeta/interfaz
+[33m85bc159[m Mejoras de interfaz para show de playlist y Ultima versión radio
+[33mbf10e91[m Merge pull request #196 from PtaZeta/interfaz
+[33m1cee4d0[m[33m ([m[1;31morigin/interfaz[m[33m)[m Segunda versión de radio y mejoras visuales en show de canciones y playlist.
