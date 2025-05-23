@@ -794,7 +794,7 @@ export default function Index() {
     const [mostrarModalSeguidos, setMostrarModalSeguidos] = useState(false);
 
     return (
-        <AuthenticatedLayout user={auth.user}>
+        <AuthenticatedLayout>
             <Head title="Perfil" />
             <ContextMenu
                 x={contextMenu.x}
