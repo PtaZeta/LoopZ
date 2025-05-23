@@ -506,7 +506,6 @@ class CancionController extends Controller
     public function incrementarVisualizacion(Cancion $cancion)
     {
         $cancion->increment('visualizaciones');
-
         return response()->json([
             'message' => 'Visualización incrementada',
             'visualizaciones' => $cancion->visualizaciones,
