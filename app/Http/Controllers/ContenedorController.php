@@ -6,6 +6,7 @@ use App\Http\Requests\StoreContenedorRequest;
 use App\Http\Requests\UpdateContenedorRequest;
 use App\Models\Contenedor;
 use App\Models\Cancion;
+use App\Models\Notificacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -191,6 +192,21 @@ class ContenedorController extends Controller
                 $contenedor->usuarios()->attach($usuariosASincronizar);
             }
         }
+
+
+            $creador = Auth::user();
+            $seguidores = $creador->seguidores;
+
+            if ($contenedor->publico) {
+                foreach ($seguidores as $seguidor) {
+                    Notificacion::create([
+                        'user_id' => $seguidor->id,
+                        'titulo' => 'Nuevo lanzamiento de ' . $creador->name,
+                        'mensaje' => $creador->name . ' ha subido un nuevo ' . $contenedor->tipo . ': ' . $contenedor->nombre,
+                    ]);
+                }
+            }
+
 
         return redirect()->route('biblioteca')->with('success', 'Lanzamiento creado exitosamente.');
     }
@@ -635,23 +651,47 @@ public function show(Request $peticion, $id)
         return Redirect::back()->with('success', $mensaje);
     }
 
-    public function toggleCancion(Request $request, $playlistId, $songId)
+        public function incrementarVisualizacion(Request $request, Cancion $cancion)
     {
-        $user = $request->user();
+        // Incrementa visualizaciones
+        $cancion->increment('visualizaciones');
+        $cancion->refresh();
 
-        $playlist = Contenedor::where('id', $playlistId)
-            ->where('tipo', 'playlist')
-            ->whereHas('usuarios', fn($q) => $q->where('users.id', $user->id))
-            ->firstOrFail();
+        $threshold = 10;
+        $notificacionEnviada = false;
 
-        $cancion = Cancion::findOrFail($songId);
+        $visualizaciones = (int) $cancion->visualizaciones;
 
-        if ($playlist->canciones()->where('cancion_id', $cancion->id)->exists()) {
-            $playlist->canciones()->detach($cancion);
-        } else {
-            $playlist->canciones()->attach($cancion);
+        if ($visualizaciones === $threshold) {
+            $usuarios = $cancion->propietarios;
+
+            Log::info("Canción ID: {$cancion->id}");
+            Log::info("Usuarios asociados: " . $usuarios?->count());
+            Log::info("IDs de usuarios: " . json_encode($usuarios?->pluck('id')));
+
+            if ($usuarios && $usuarios->isNotEmpty()) {
+                foreach ($usuarios as $usuario) {
+                    Log::info("Creando notificación para usuario ID: " . $usuario->id);
+
+                    Notificacion::create([
+                        'titulo' => '¡Felicidades!',
+                        'mensaje' => "Tu canción '{$cancion->titulo}' ha alcanzado las {$threshold} visualizaciones. ¡Sigue así!",
+                        'leido' => false,
+                        'user_id' => $usuario->id,
+                    ]);
+                }
+
+                $notificacionEnviada = true;
+            } else {
+                Log::warning("No hay usuarios asociados a la canción ID: {$cancion->id}");
+            }
         }
 
-        return back();
+        return response()->json([
+            'message' => 'Visualización incrementada con éxito.',
+            'visualizaciones' => $cancion->visualizaciones,
+            'notificacion_enviada' => $notificacionEnviada,
+        ]);
     }
+
 }

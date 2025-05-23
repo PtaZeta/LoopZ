@@ -17,6 +17,8 @@ export default function CrearLanzamiento({ auth }) {
         descripcion: '',
         imagen: null,
         userIds: auth.user ? [auth.user.id] : [],
+        // Initialize 'publico' as a boolean, defaulting to false (private)
+        publico: false,
     });
 
     const [terminoBusqueda, setTerminoBusqueda] = useState('');
@@ -25,10 +27,12 @@ export default function CrearLanzamiento({ auth }) {
     const [cargandoBusqueda, setCargandoBusqueda] = useState(false);
     const [mostrarResultados, setMostrarResultados] = useState(false);
 
+    // Reusable Tailwind CSS classes for consistent styling
     const coreInputStyle = 'rounded-md shadow-sm border-gray-600 bg-gray-800 text-gray-200 focus:outline-none focus:border-transparent focus:ring-2 focus:ring-purple-500 focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed';
     const autofillStyle = '[&:-webkit-autofill]:!bg-transparent [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_theme(colors.gray.800)] [&:-webkit-autofill]:![-webkit-text-fill-color:theme(colors.gray.200)] [&:-webkit-autofill:hover]:!bg-transparent [&:-webkit-autofill:focus]:!bg-transparent [&:-webkit-autofill:focus]:!border-transparent [&:-webkit-autofill:focus]:ring-2 [&:-webkit-autofill:focus]:ring-purple-500 [&:-webkit-autofill:focus]:ring-offset-gray-800';
     const fileInputStyle = 'text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-800 file:text-indigo-200 hover:file:bg-indigo-700 cursor-pointer';
 
+    // Effect to ensure the creator is always in the selected users
     useEffect(() => {
         if (auth.user && !usuariosSeleccionados.some(u => u.id === auth.user.id)) {
             const usuarioCreador = { id: auth.user.id, name: auth.user.name, email: auth.user.email };
@@ -36,8 +40,9 @@ export default function CrearLanzamiento({ auth }) {
             setUsuariosSeleccionados(nuevosSeleccionados);
             setData('userIds', nuevosSeleccionados.map(u => u.id));
         }
-    }, [auth.user]);
+    }, [auth.user, usuariosSeleccionados, setData]); // Added setData to dependency array
 
+    // Function to add a user to the selected list
     const agregarUsuario = (usuario) => {
         if (!usuariosSeleccionados.some(seleccionado => seleccionado.id === usuario.id)) {
             const nuevosUsuariosSeleccionados = [...usuariosSeleccionados, usuario];
@@ -49,6 +54,7 @@ export default function CrearLanzamiento({ auth }) {
         }
     };
 
+    // Function to remove a user from the selected list
     const quitarUsuario = (usuarioId) => {
         if (auth.user?.id === usuarioId) {
             alert("No puedes quitar al creador del lanzamiento.");
@@ -59,72 +65,79 @@ export default function CrearLanzamiento({ auth }) {
         setData('userIds', nuevosUsuariosSeleccionados.map(u => u.id));
     };
 
+    // Debounced function to search for users
     const realizarBusqueda = useCallback(
         debounce(async (termino) => {
             if (!auth.user) return;
             setCargandoBusqueda(true);
             try {
                 const respuesta = await axios.get(route('usuarios.buscar', { q: termino, limit: 10 }));
+                // Filter out already selected users and the current authenticated user
                 const usuariosDisponibles = respuesta.data.filter(
                     usuario => usuario.id !== auth.user.id && !usuariosSeleccionados.some(seleccionado => seleccionado.id === usuario.id)
                 );
                 setResultadosBusqueda(usuariosDisponibles);
             } catch (error) {
+                console.error("Error buscando usuarios:", error);
                 setResultadosBusqueda([]);
             } finally {
                 setCargandoBusqueda(false);
             }
         }, 300),
-        [usuariosSeleccionados, auth.user?.id]
+        [usuariosSeleccionados, auth.user]
     );
 
+    // Handler for changes in the user search input
     const manejarCambioBusqueda = (e) => {
         const termino = e.target.value;
         setTerminoBusqueda(termino);
         if (termino.trim() === '') {
             setResultadosBusqueda([]);
-            setMostrarResultados(true);
-            realizarBusqueda.cancel();
-            realizarBusqueda('');
+            setMostrarResultados(false); // Hide results if search is empty
+            realizarBusqueda.cancel(); // Cancel any pending debounced calls
         } else {
             setMostrarResultados(true);
             realizarBusqueda(termino);
         }
     };
 
+    // Handler for focusing on the user search input
     const manejarFocoBusqueda = () => {
-        if (!terminoBusqueda.trim()) {
-            setMostrarResultados(true);
-            if (resultadosBusqueda.length === 0 && !cargandoBusqueda) {
-                realizarBusqueda('');
-            }
-        } else {
-            setMostrarResultados(true);
+        setMostrarResultados(true);
+        // If there's no search term, trigger an empty search to show initial users
+        if (!terminoBusqueda.trim() && resultadosBusqueda.length === 0 && !cargandoBusqueda) {
+             realizarBusqueda('');
         }
     };
 
+    // Handler for form submission
     const manejarEnvio = (e) => {
         e.preventDefault();
-        const finalUserIds = Array.from(new Set( auth.user ? [...data.userIds, auth.user.id] : data.userIds));
+
+        // Ensure the authenticated user is always included in userIds
+        const finalUserIds = Array.from(new Set(auth.user ? [...data.userIds, auth.user.id] : data.userIds));
+
+        // data.publico is already a boolean from the select onChange handler
         const dataToSend = { ...data, userIds: finalUserIds, imagen: data.imagen };
 
         post(route('lanzamiento.storeLanzamiento'), {
-            forceFormData: true,
+            forceFormData: true, // Necessary for file uploads with Inertia
             preserveScroll: true,
             onSuccess: () => {
-                reset();
+                reset(); // Reset form fields
                 if (auth.user && usuarioCreadorInicial) {
-                    setUsuariosSeleccionados([usuarioCreadorInicial]);
-                    setData(currentData => ({...currentData, userIds: [auth.user.id]}));
+                    setUsuariosSeleccionados([usuarioCreadorInicial]); // Reset selected users to only the creator
+                    // Reset 'publico' to its default boolean value (false) after success
+                    setData(currentData => ({...currentData, userIds: [auth.user.id], publico: false}));
                 } else {
                     setUsuariosSeleccionados([]);
-                    setData(currentData => ({...currentData, userIds: []}));
+                    setData(currentData => ({...currentData, userIds: [], publico: false}));
                 }
                 setTerminoBusqueda('');
                 setResultadosBusqueda([]);
                 setMostrarResultados(false);
                 const fileInput = document.getElementById('imagen');
-                if(fileInput) fileInput.value = null;
+                if(fileInput) fileInput.value = null; // Clear file input manually
             },
             onError: (err) => {
                 console.error("Error al crear lanzamiento:", err);
@@ -132,6 +145,7 @@ export default function CrearLanzamiento({ auth }) {
         });
     };
 
+    // Effect to handle clicks outside the search results to hide them
     useEffect(() => {
         const handleClickOutside = (event) => {
             const searchContainer = document.getElementById('search-container');
@@ -157,6 +171,7 @@ export default function CrearLanzamiento({ auth }) {
 
                             <form onSubmit={manejarEnvio} className="space-y-6">
 
+                                {/* Nombre del Lanzamiento */}
                                 <div>
                                     <InputLabel htmlFor="nombre" value="Nombre *" className="text-gray-300 mb-1" />
                                     <input
@@ -171,6 +186,7 @@ export default function CrearLanzamiento({ auth }) {
                                     <InputError message={errors.nombre} className="mt-1 text-xs text-red-400" />
                                 </div>
 
+                                {/* Tipo de Lanzamiento */}
                                 <div>
                                     <InputLabel htmlFor="tipo" value="Tipo de Lanzamiento *" className="text-gray-300 mb-1" />
                                     <select
@@ -188,6 +204,7 @@ export default function CrearLanzamiento({ auth }) {
                                     <InputError message={errors.tipo} className="mt-1 text-xs text-red-400" />
                                 </div>
 
+                                {/* Descripción */}
                                 <div>
                                     <InputLabel htmlFor="descripcion" value="Descripción" className="text-gray-300 mb-1" />
                                     <textarea
@@ -200,6 +217,7 @@ export default function CrearLanzamiento({ auth }) {
                                     <InputError message={errors.descripcion} className="mt-1 text-xs text-red-400" />
                                 </div>
 
+                                {/* Imagen */}
                                 <div>
                                     <InputLabel htmlFor="imagen" value="Imagen (Opcional)" className="text-gray-300 mb-1" />
                                     <input
@@ -215,6 +233,22 @@ export default function CrearLanzamiento({ auth }) {
                                         </div>
                                     )}
                                     <InputError message={errors.imagen} className="mt-1 text-xs text-red-400" />
+                                </div>
+
+                                <div>
+                                    <InputLabel htmlFor="publico" value="Visibilidad del Lanzamiento *" className="text-gray-300 mb-1" />
+                                    <select
+                                        id="publico"
+                                        name="publico"
+                                        value={data.publico}
+                                        onChange={(e) => setData('publico', e.target.value === 'true')}
+                                        className={`mt-1 block w-full sm:text-sm ${coreInputStyle} ${errors.publico ? 'border-red-500' : ''}`}
+                                        required
+                                    >
+                                        <option value="false">Privado</option>
+                                        <option value="true">Público</option>
+                                    </select>
+                                    <InputError message={errors.publico} className="mt-1 text-xs text-red-400" />
                                 </div>
 
                                 <div className="border-t border-slate-700 pt-6 mt-6">

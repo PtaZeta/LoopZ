@@ -5,6 +5,7 @@ use App\Http\Controllers\CancionController;
 use App\Http\Controllers\ContenedorController;
 use App\Http\Controllers\EPController;
 use App\Http\Controllers\GeneroController;
+use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecomendacionController;
 use App\Http\Controllers\ReproduccionController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SingleController;
 use App\Models\Cancion;
 use App\Models\Genero;
+use App\Models\Notificacion;
 use App\Models\User;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Auth;
@@ -131,7 +133,43 @@ Route::middleware('auth')->group(function () {
         ->name('playlist.toggleCancion');
 
     Route::post('/profile/{id}/seguir', [ProfileController::class, 'seguirUsuario'])->name('profile.seguirUsuario');
+    Route::get('/notificaciones', [NotificacionController::class, 'index'])->name('notificaciones.index');
+    Route::post('/notificaciones/{id}/marcar-leida', [NotificacionController::class, 'marcarComoLeida'])->name('notificaciones.marcarComoLeida');
+    Route::post('/notificaciones/marcar-todas-leidas', [NotificacionController::class, 'marcarTodasComoLeidas'])->name('notificaciones.marcarTodasComoLeidas');
+    /*Route::post('/canciones/{id}/notificar-cien-visualizaciones', function ($id, Request $request) {
+        try {
+            $cancion = Cancion::find($id);
 
+            if (!$cancion) {
+                return response()->json(['message' => 'Canción no encontrada.'], 404);
+            }
+
+            $usuarios = $cancion->usuarios;
+
+            if ($usuarios->isEmpty()) {
+                return response()->json(['message' => 'No hay usuarios asociados a esta canción para notificar.'], 200);
+            }
+
+            $notificacionesCreadas = 0;
+            foreach ($usuarios as $usuario) {
+                Notificacion::create([
+                    'titulo' => '¡Felicidades!',
+                    'mensaje' => "Tu canción '{$cancion->titulo}' ha alcanzado las 10 visualizaciones. ¡Sigue así!", // Ajusta el mensaje si debe ser 100
+                    'leido' => false,
+                    'user_id' => $usuario->id,
+                ]);
+                $notificacionesCreadas++;
+            }
+
+            return response()->json([
+                'message' => 'Notificaciones enviadas exitosamente.',
+                'notificaciones_creadas' => $notificacionesCreadas
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error al procesar la notificación.', 'error' => $e->getMessage()], 500);
+        }
+    });*/
 });
 
 Route::get('/spotify-login', function () {

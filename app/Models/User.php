@@ -70,6 +70,11 @@ class User extends Authenticatable
         return $this->belongsToMany(User::class, 'seguidores', 'seguido_id', 'user_id');
     }
 
+    public function notificaciones()
+    {
+        return $this->hasMany(Notificacion::class);
+    }
+
     public function toSearchableArray(): array
     {
         $array = $this->toArray();
