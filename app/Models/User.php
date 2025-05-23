@@ -5,12 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-
+use Laravel\Scout\Searchable;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, Searchable;
 
     protected $fillable = [
         'name',
@@ -68,5 +68,15 @@ class User extends Authenticatable
     public function seguidos()
     {
         return $this->belongsToMany(User::class, 'seguidores', 'seguido_id', 'user_id');
+    }
+
+    public function toSearchableArray(): array
+    {
+        $array = $this->toArray();
+
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+        ];
     }
 }

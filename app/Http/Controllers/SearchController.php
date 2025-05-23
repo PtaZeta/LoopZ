@@ -15,12 +15,24 @@ class SearchController extends Controller
     {
         $query = $request->input('query', '');
 
-        $canciones = Cancion::with('usuarios')
-            ->where('titulo', 'like', "%{$query}%")
-            ->orWhereHas('usuarios', function ($q) use ($query) {
-                $q->where('name', 'like', "%{$query}%");
-            })
-            ->get();
+        $canciones = Cancion::search($query)->get();
+        $users = User::search($query)->get();
+
+        $playlists = Contenedor::search($query)
+                               ->where('tipo', 'playlist')
+                               ->get();
+
+        $eps = Contenedor::search($query)
+                         ->where('tipo', 'ep')
+                         ->get();
+
+        $singles = Contenedor::search($query)
+                             ->where('tipo', 'single')
+                             ->get();
+
+        $albumes = Contenedor::search($query)
+                             ->where('tipo', 'album')
+                             ->get();
 
         $usuario = Auth::user();
         $loopzSongIds = [];
@@ -39,48 +51,6 @@ class SearchController extends Controller
         $canciones->each(function ($cancion) use ($loopzSongIds) {
             $cancion->is_in_user_loopz = in_array($cancion->id, $loopzSongIds);
         });
-
-        $users = User::where('name', 'like', "%{$query}%")->get();
-
-        $playlists = Contenedor::with('usuarios')
-            ->where('tipo', 'playlist')
-            ->where(function ($q) use ($query) {
-                $q->where('nombre', 'like', "%{$query}%")
-                ->orWhereHas('usuarios', function ($q2) use ($query) {
-                    $q2->where('name', 'like', "%{$query}%");
-                });
-            })
-            ->get();
-
-        $eps = Contenedor::with('usuarios')
-            ->where('tipo', 'ep')
-            ->where(function ($q) use ($query) {
-                $q->where('nombre', 'like', "%{$query}%")
-                ->orWhereHas('usuarios', function ($q2) use ($query) {
-                    $q2->where('name', 'like', "%{$query}%");
-                });
-            })
-            ->get();
-
-        $singles = Contenedor::with('usuarios')
-            ->where('tipo', 'single')
-            ->where(function ($q) use ($query) {
-                $q->where('nombre', 'like', "%{$query}%")
-                ->orWhereHas('usuarios', function ($q2) use ($query) {
-                    $q2->where('name', 'like', "%{$query}%");
-                });
-            })
-            ->get();
-
-        $albumes = Contenedor::with('usuarios')
-            ->where('tipo', 'album')
-            ->where(function ($q) use ($query) {
-                $q->where('nombre', 'like', "%{$query}%")
-                ->orWhereHas('usuarios', function ($q2) use ($query) {
-                    $q2->where('name', 'like', "%{$query}%");
-                });
-            })
-            ->get();
 
         return Inertia::render('Search/Index', [
             'searchQuery' => $query,

@@ -14,8 +14,10 @@
         "jwilsson/spotify-web-api-php": "^0.8.1",
         "laravel/framework": "^11.31",
         "laravel/sanctum": "^4.0",
+        "laravel/scout": "^10.15",
         "laravel/tinker": "^2.9",
         "league/flysystem-aws-s3-v3": "^3.0",
+        "meilisearch/meilisearch-php": "^1.14",
         "spatie/laravel-sluggable": "^3.7",
         "tightenco/ziggy": "^2.0"
     },

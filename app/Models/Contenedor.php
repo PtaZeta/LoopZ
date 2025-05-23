@@ -5,11 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Scout\Searchable;
 
 class Contenedor extends Model
 {
     /** @use HasFactory<\Database\Factories\ContenedorFactory> */
-    use HasFactory;
+    use HasFactory, Searchable;
 
     protected $fillable = [
         'nombre',
@@ -59,4 +60,18 @@ class Contenedor extends Model
         $frecuencias = $generos->countBy();
         return $frecuencias->sortDesc()->keys()->first();
     }
+
+    public function toSearchableArray(): array
+    {
+        $array = $this->toArray();
+
+        $this->loadMissing('usuarios');
+        $array['usuario_names'] = $this->usuarios->pluck('name')->toArray();
+
+        $this->loadMissing('canciones');
+        $array['cancion_titles'] = $this->canciones->pluck('titulo')->toArray();
+
+        return $array;
+    }
+
 }
