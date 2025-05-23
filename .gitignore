@@ -21,4 +21,4 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
-.meilisearch-linux-amd64
+meilisearch-linux-amd64
