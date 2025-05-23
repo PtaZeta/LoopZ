@@ -170,6 +170,9 @@ Route::middleware('auth')->group(function () {
             return response()->json(['message' => 'Error al procesar la notificación.', 'error' => $e->getMessage()], 500);
         }
     });*/
+    Route::get('/sobrenosotros', function () {
+        return Inertia::render('SobreNosotros');
+    })->name('sobrenosotros');
 });
 
 Route::get('/spotify-login', function () {

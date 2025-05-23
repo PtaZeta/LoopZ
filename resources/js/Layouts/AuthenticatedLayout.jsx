@@ -143,17 +143,15 @@ export default function AuthenticatedLayout({ children, header }) {
         seek, setVolumen, toggleAleatorio, toggleLoop,
         playCola, limpiarErrores, queue
     } = playerContextValue ||
-    {};
+        {};
 
     const queueButtonRef = useRef(null);
     const queueDropdownRef = useRef(null);
     const notificacionesButtonRef = useRef(null);
     const notificacionesDropdownRef = useRef(null);
-
     const isPlayerActionDisabled = useMemo(() => {
         return cargando || !cancionActual && queue.length === 0;
     }, [cargando, cancionActual, queue.length]);
-
     useEffect(() => {
         function handleClickOutside(event) {
             if (queueDropdownRef.current && !queueDropdownRef.current.contains(event.target) &&
@@ -171,7 +169,6 @@ export default function AuthenticatedLayout({ children, header }) {
             document.removeEventListener("mousedown", handleClickOutside);
         };
     }, [isQueueVisible]);
-
     useEffect(() => {
         function handleClickOutside(event) {
             if (notificacionesDropdownRef.current && !notificacionesDropdownRef.current.contains(event.target) &&
@@ -189,7 +186,6 @@ export default function AuthenticatedLayout({ children, header }) {
             document.removeEventListener("mousedown", handleClickOutside);
         };
     }, [isNotificacionesVisible]);
-
     const fetchNotifications = useCallback(async () => {
         if (usuario) {
             try {
@@ -205,13 +201,11 @@ export default function AuthenticatedLayout({ children, header }) {
             }
         }
     }, [usuario]);
-
     useEffect(() => {
         fetchNotifications();
         const intervalId = setInterval(fetchNotifications, 60000);
         return () => clearInterval(intervalId);
     }, [fetchNotifications]);
-
     const markNotificationAsRead = useCallback(async (notificationId) => {
         try {
             const response = await fetch(route('notificaciones.marcarComoLeida', notificationId), {
@@ -261,8 +255,6 @@ export default function AuthenticatedLayout({ children, header }) {
             console.error('Error in request to mark all as read:', error);
         }
     }, []);
-
-
     const [seekValue, setSeekValue] = useState(tiempoActual);
     const isSeekingRef = useRef(false);
     useEffect(() => {
@@ -342,7 +334,6 @@ export default function AuthenticatedLayout({ children, header }) {
         }
         return RepeatIcon;
     }, [looping, loopingOne]);
-
     const loopButtonTitle = useMemo(() => {
         if (loopingOne) {
             return "Repetir una canción";
@@ -481,6 +472,65 @@ export default function AuthenticatedLayout({ children, header }) {
                         </div>
                     )}
                     <div className="md:hidden flex items-center">
+                        {usuario && (
+                            <div className="relative mr-2">
+                                <button
+                                    ref={notificacionesButtonRef}
+                                    onClick={() => {
+                                        setIsNotificacionesVisible(!isNotificacionesVisible);
+                                        if (!isNotificacionesVisible) {
+                                            fetchNotifications();
+                                        }
+                                    }}
+                                    className="p-1 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none transition duration-150 ease-in-out"
+                                    aria-label="Notificaciones"
+                                >
+                                    <BellIcon className="h-6 w-6" />
+                                    {unreadNotificacionesCount > 0 && (
+                                        <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
+                                            {unreadNotificacionesCount}
+                                        </span>
+                                    )}
+                                </button>
+                                {isNotificacionesVisible && (
+                                    <div
+                                        ref={notificacionesDropdownRef}
+                                        className="absolute top-full right-0 mt-2 w-72 max-h-96 overflow-y-auto bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 p-2"
+                                    >
+                                        <h4 className="text-sm font-semibold text-gray-300 px-2 pb-2 border-b border-slate-700">Notificaciones</h4>
+                                        {notificaciones.length === 0 ? (
+                                            <p className="text-gray-400 text-sm p-2">No tienes notificaciones.</p>
+                                        ) : (
+                                            <ul className="divide-y divide-slate-700">
+                                                {notificaciones.map((notification) => (
+                                                    <li
+                                                        key={notification.id}
+                                                        className={`p-2 text-sm ${!notification.leido ? 'bg-blue-900/30' : 'hover:bg-slate-700/50'} cursor-pointer transition-colors rounded-md`}
+                                                        onClick={() => markNotificationAsRead(notification.id)}
+                                                    >
+                                                        <p className="font-medium text-blue-300">{notification.titulo}</p>
+                                                        <p
+                                                            className="text-gray-300"
+                                                            dangerouslySetInnerHTML={{ __html: notification.mensaje }}
+                                                        >
+                                                        </p>
+                                                        <p className="text-xs text-gray-500 mt-1">{new Date(notification.created_at).toLocaleString()}</p>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                        {unreadNotificacionesCount > 0 && (
+                                            <button
+                                                onClick={markAllNotificationsAsRead}
+                                                className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+                                            >
+                                                Marcar todas como leídas
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <button onClick={() => setShowingMobileMenu(!showingMobileMenu)} className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none transition duration-150 ease-in-out">
                             <Bars3Icon className="h-6 w-6" />
                         </button>
@@ -509,58 +559,6 @@ export default function AuthenticatedLayout({ children, header }) {
                                     />
                                     <span className="text-base font-medium">{usuario.name}</span>
                                 </Link>
-                                <div className="relative mt-3">
-                                    <button
-                                        onClick={() => {
-                                            setIsNotificacionesVisible(!isNotificacionesVisible);
-                                            if (!isNotificacionesVisible) {
-                                                fetchNotifications();
-                                            }
-                                        }}
-                                        className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50 flex items-center space-x-2"
-                                        aria-label="Notificaciones"
-                                    >
-                                        <BellIcon className="h-5 w-5" />
-                                        <span>Notificaciones</span>
-                                        {unreadNotificacionesCount > 0 && (
-                                            <span className="ml-auto inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
-                                                {unreadNotificacionesCount}
-                                            </span>
-                                        )}
-                                    </button>
-                                    {isNotificacionesVisible && (
-                                        <div
-                                            className="mt-2 w-full max-h-60 overflow-y-auto bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 p-2"
-                                        >
-                                            <h4 className="text-sm font-semibold text-gray-300 px-2 pb-2 border-b border-slate-700">Notificaciones</h4>
-                                            {notificaciones.length === 0 ? (
-                                                <p className="text-gray-400 text-sm p-2">No tienes notificaciones.</p>
-                                            ) : (
-                                                <ul className="divide-y divide-slate-700">
-                                                    {notificaciones.map((notification) => (
-                                                        <li
-                                                            key={notification.id}
-                                                            className={`p-2 text-sm ${!notification.leido ? 'bg-blue-900/30' : 'hover:bg-slate-700/50'} cursor-pointer transition-colors rounded-md`}
-                                                            onClick={() => markNotificationAsRead(notification.id)}
-                                                        >
-                                                            <p className="font-medium text-blue-300">{notification.titulo}</p>
-                                                            <p className="text-gray-300">{notification.mensaje}</p>
-                                                            <p className="text-xs text-gray-500 mt-1">{new Date(notification.created_at).toLocaleString()}</p>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            )}
-                                            {unreadNotificacionesCount > 0 && (
-                                                <button
-                                                    onClick={markAllNotificationsAsRead}
-                                                    className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-slate-900"
-                                                >
-                                                    Marcar todas como leídas
-                                                </button>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
                             </div>
                         ) : (
                             <div className="px-4 pb-3 border-b border-gray-700/50 mb-3">
@@ -596,7 +594,8 @@ text-gray-500 font-semibold px-2 mb-1">Tus Contenidos</h5>
                                     <MusicalNoteIcon className="h-5 w-5" />
                                     <span>Subir canción</span>
                                 </Link>
-                                <Link href={route('lanzamiento.crear')} method="get" className="block px-3 py-2 rounded-md text-base font-medium text-gray-300
+                                <Link href={route('lanzamiento.crear')}
+                                    method="get" className="block px-3 py-2 rounded-md text-base font-medium text-gray-300
 hover:text-white hover:bg-gray-700/50 flex items-center space-x-2">
                                     <ArrowUpOnSquareIcon className="h-5 w-5" />
                                     <span>Subir lanzamiento</span>
@@ -607,7 +606,8 @@ hover:text-white hover:bg-gray-700/50 flex items-center space-x-2">
                         {usuario && (
                             <div className="space-y-1 px-2">
                                 <h5 className="text-xs uppercase text-gray-500 font-semibold px-2 mb-1">Sesión</h5>
-                                <button onClick={() => { router.post(route('logout'));
+                                <button onClick={() => {
+                                    router.post(route('logout'));
                                 }} className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white hover:bg-gray-700/50 flex items-center space-x-2">
                                     <ArrowRightOnRectangleIcon className="h-5 w-5" />
                                     <span>Cerrar sesión</span>
@@ -662,13 +662,10 @@ hover:text-white hover:bg-gray-700/50 flex items-center space-x-2">
                         <div className="flex items-center space-x-2 flex-1 min-w-0 md:flex-initial
 md:w-1/4
 lg:w-1/3 md:space-x-3">
-                            <PlayerImagenItem url={currentTrackImageUrl} titulo={cancionActual?.titulo ||
-                                ''} className="w-10 h-10 md:w-12 md:h-12" />
+                            <PlayerImagenItem url={currentTrackImageUrl} titulo={cancionActual?.titulo || ''} className="w-10 h-10 md:w-12 md:h-12" />
                             <div className="overflow-hidden hidden sm:block">
-                                <p className="text-sm font-medium text-blue-400 truncate" title={cancionActual?.titulo ||
-                                    'Ninguna Canción'}>
-                                    {cancionActual?.titulo ||
-                                        'Ninguna Canción'}
+                                <p className="text-sm font-medium text-blue-400 truncate" title={cancionActual?.titulo || 'Ninguna Canción'}>
+                                    {cancionActual?.titulo || 'Ninguna Canción'}
                                 </p>
                                 <p className="text-xs text-gray-400 truncate hidden md:block" title={currentTrackArtist}>{currentTrackArtist}</p>
                             </div>
@@ -678,12 +675,9 @@ lg:w-1/3 md:space-x-3">
                             <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4">
                                 <button
                                     onClick={toggleAleatorio}
-                                    title={aleatorio ?
-                                        "Desactivar aleatorio" : "Activar aleatorio"}
-                                    aria-label={aleatorio ?
-                                        "Desactivar aleatorio" : "Activar aleatorio"}
-                                    className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${aleatorio ?
-                                        'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'} ${isPlayerActionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    title={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"}
+                                    aria-label={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"}
+                                    className={`p-1 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 inline-flex ${aleatorio ? 'text-blue-500 hover:text-blue-400' : 'text-gray-400 hover:text-blue-400'} ${isPlayerActionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     disabled={isPlayerActionDisabled}
                                 >
                                     <ShuffleIcon className="h-5 w-5" />
@@ -693,8 +687,7 @@ lg:w-1/3 md:space-x-3">
                                     onClick={anteriorCancion}
                                     disabled={isPlayerActionDisabled}
                                     aria-label="Canción anterior"
-                                    className={`text-gray-400 hover:text-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1 ${isPlayerActionDisabled ?
-                                        'opacity-50 cursor-not-allowed' : ''}`}
+                                    className={`text-gray-400 hover:text-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1 ${isPlayerActionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     <PreviousIcon className="h-5 w-5" />
                                 </button>
@@ -702,28 +695,23 @@ lg:w-1/3 md:space-x-3">
                                 <button
                                     onClick={togglePlayPause}
                                     disabled={isPlayerActionDisabled}
-                                    aria-label={Reproduciendo ?
-                                        "Pausar" : "Reproducir"}
-                                    className={`bg-blue-600 hover:bg-blue-500 rounded-full text-white transition-colors shadow-lg flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-900 ${isPlayerActionDisabled ?
-                                        'opacity-50 cursor-not-allowed' : ''}`}
+                                    aria-label={Reproduciendo ? "Pausar" : "Reproducir"}
+                                    className={`bg-blue-600 hover:bg-blue-500 rounded-full text-white transition-colors shadow-lg flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-900 ${isPlayerActionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
-                                    {cargando ?
-                                        (
-                                            <LoadingIcon className="h-5 w-5 sm:h-6 sm:w-6 animate-spin" />
-                                        ) : Reproduciendo ?
-                                            (
-                                                <PauseIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-                                            ) : (
-                                                <PlayIcon className="h-5 w-5 sm:h-6 sm:w-6" />
-                                            )}
+                                    {cargando ? (
+                                        <LoadingIcon className="h-5 w-5 sm:h-6 sm:w-6 animate-spin" />
+                                    ) : Reproduciendo ? (
+                                        <PauseIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+                                    ) : (
+                                        <PlayIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+                                    )}
                                 </button>
 
                                 <button
                                     onClick={siguienteCancion}
                                     disabled={isPlayerActionDisabled}
                                     aria-label="Siguiente canción"
-                                    className={`text-gray-400 hover:text-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1 ${isPlayerActionDisabled ?
-                                        'opacity-50 cursor-not-allowed' : ''}`}
+                                    className={`text-gray-400 hover:text-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 p-1 ${isPlayerActionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     <NextIcon className="h-5 w-5" />
                                 </button>
@@ -751,8 +739,7 @@ lg:w-1/3 md:space-x-3">
                                     onTouchEnd={commitSeek}
                                     disabled={!cancionActual || !duration || isPlayerActionDisabled}
                                     aria-label="Progreso de la canción"
-                                    className={`w-full h-1.5 rounded-lg appearance-none cursor-pointer range-progress-gradient ${isPlayerActionDisabled ?
-                                        'opacity-50 cursor-not-allowed' : ''}`}
+                                    className={`w-full h-1.5 rounded-lg appearance-none cursor-pointer range-progress-gradient ${isPlayerActionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     style={progressBarStyle}
                                 />
                                 <span className="text-xs text-gray-500 font-mono w-10 text-left">{formatTime(duration)}</span>
@@ -777,8 +764,7 @@ focus:ring-offset-slate-900 ${isPlayerActionDisabled ? 'opacity-50 cursor-not-al
                                     value={volumen}
                                     onChange={handleVolumeChange}
                                     aria-label="Control de volumen"
-                                    className={`w-20 h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer range-sm accent-blue-500 hover:accent-blue-400 ${isPlayerActionDisabled ?
-                                        'opacity-50 cursor-not-allowed' : ''}`}
+                                    className={`w-20 h-1.5 bg-gray-600 rounded-lg appearance-none cursor-pointer range-sm accent-blue-500 hover:accent-blue-400 ${isPlayerActionDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     disabled={isPlayerActionDisabled}
                                 />
                             </div>
@@ -803,27 +789,24 @@ focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900
                                     <h4 className="text-sm font-semibold text-gray-300 px-2 pb-2 border-b border-slate-700">Cola de Reproducción</h4>
                                     {queue.length === 0 && cancionActual ? (
                                         <p className="text-gray-400 text-sm p-2">La cola está vacía. Reproduciendo solo la canción actual.</p>
-                                    ) : queue.length === 0 ?
-                                        (
-                                            <p className="text-gray-400 text-sm p-2">La cola está vacía.</p>
-                                        ) : (
-                                            <ul className="divide-y divide-slate-700">
-                                                {queue.map((song, index) => (
-                                                    <li key={song.id || index} className={`flex items-center p-2 text-sm ${index === cancionActualIndex ? 'bg-blue-900/50 text-blue-300' : 'hover:bg-slate-700/50'} cursor-pointer transition-colors rounded-md group`} onClick={() => handlePlayFromQueueClick(index)}>
-                                                        <PlayerImagenItem url={obtenerUrlImagenLayout(song)} titulo={song.titulo} className="w-8 h-8
-mr-2" isQueueItem={true} />
-                                                        <div className="flex-grow overflow-hidden">
-                                                            <p className="font-medium truncate">{song.titulo}</p>
-                                                            <p className="text-xs text-gray-400 truncate">{song.artista ||
-                                                                'Artista Desconocido'}</p>
-                                                        </div>
-                                                        {index === cancionActualIndex && Reproduciendo && (
-                                                            <MusicalNoteIcon className="h-4 w-4 ml-2 text-blue-400 animate-pulse" />
-                                                        )}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        )}
+                                    ) : queue.length === 0 ? (
+                                        <p className="text-gray-400 text-sm p-2">La cola está vacía.</p>
+                                    ) : (
+                                        <ul className="divide-y divide-slate-700">
+                                            {queue.map((song, index) => (
+                                                <li key={song.id || index} className={`flex items-center p-2 text-sm ${index === cancionActualIndex ? 'bg-blue-900/50 text-blue-300' : 'hover:bg-slate-700/50'} cursor-pointer transition-colors rounded-md group`} onClick={() => handlePlayFromQueueClick(index)}>
+                                                    <PlayerImagenItem url={obtenerUrlImagenLayout(song)} titulo={song.titulo} className="w-8 h-8 mr-2" isQueueItem={true} />
+                                                    <div className="flex-grow overflow-hidden">
+                                                        <p className="font-medium truncate">{song.titulo}</p>
+                                                        <p className="text-xs text-gray-400 truncate">{song.artista || 'Artista Desconocido'}</p>
+                                                    </div>
+                                                    {index === cancionActualIndex && Reproduciendo && (
+                                                        <MusicalNoteIcon className="h-4 w-4 ml-2 text-blue-400 animate-pulse" />
+                                                    )}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
                                 </div>
                             )}
                         </div>
