@@ -6,7 +6,7 @@ import { PlayerContext } from '@/contexts/PlayerContext';
 import {
     UserIcon, MusicalNoteIcon, ArrowUpOnSquareIcon, ArrowRightOnRectangleIcon,
     ArrowsRightLeftIcon, QueueListIcon, XCircleIcon,
-    RadioIcon, Bars3Icon,
+    RadioIcon, Bars3Icon, BellIcon,
 } from '@heroicons/react/24/outline';
 import { ArrowPathIcon as LoadingIcon } from '@heroicons/react/20/solid';
 
@@ -298,7 +298,7 @@ export default function AuthenticatedLayout({ children, header }) {
                             <ApplicationLogo className="h-8 w-auto" />
                         </Link>
                     </div>
-                    <div className="hidden md:flex flex-grow items-center justify-center space-x-6"> {/* Reduced space-x from 12 to 6 */}
+                    <div className="hidden md:flex flex-grow items-center justify-center space-x-6">
                         <Link href={route('biblioteca')} className="text-sm hover:text-blue-400 transition-colors flex flex-col items-center group">
                             <CustomLinesIcon className="h-8 w-8 text-gray-300 group-hover:text-blue-400 transition-colors" />
                         </Link>
@@ -318,6 +318,12 @@ export default function AuthenticatedLayout({ children, header }) {
                     </div>
                     {usuario && (
                         <div className="hidden md:flex items-center">
+                            <button
+                                className="text-gray-300 hover:text-blue-400 p-2 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                aria-label="Notificaciones"
+                            >
+                                <BellIcon className="h-5 w-5" />
+                            </button>
                             <Dropdown>
                                 <Dropdown.Trigger>
                                     <button className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-gray-300 hover:text-blue-400 focus:outline-none transition ease-in-out duration-150">
@@ -349,6 +355,12 @@ export default function AuthenticatedLayout({ children, header }) {
                         </div>
                     )}
                     <div className="md:hidden flex items-center">
+                        <button
+                            className="text-gray-300 hover:text-blue-400 p-2 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            aria-label="Notificaciones"
+                        >
+                            <BellIcon className="h-5 w-5" />
+                        </button>
                         <button onClick={() => setShowingMobileMenu(!showingMobileMenu)} className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 focus:outline-none transition duration-150 ease-in-out">
                             <Bars3Icon className="h-6 w-6" />
                         </button>

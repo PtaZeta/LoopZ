@@ -1,13 +1,23 @@
-import React, { useState, useContext, memo, useEffect } from 'react';
+import React, { useState, useContext, memo, useEffect, useCallback } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import PropTypes from 'prop-types';
 import { PlayerContext } from '@/contexts/PlayerContext';
+import Notificacion from '@/Components/Notificacion';
+import ContextMenu from '@/Components/ContextMenu';
 import {
   PlayIcon,
   PauseIcon,
-  ArrowPathIcon as LoadingIconSolid
+  ArrowPathIcon as LoadingIconSolid,
+  EllipsisVerticalIcon,
+  ShareIcon,
+  QueueListIcon,
+  ArrowUpOnSquareIcon,
+  HeartIcon as HeartIconOutline,
+  MusicalNoteIcon
 } from '@heroicons/react/24/outline';
+import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
+
 
 const obtenerUrlImagen = (item, tipo) => {
   if (!item) return null;
@@ -111,14 +121,36 @@ const ResultadoCard = memo(({ objeto, tipo }) => {
 
   const showPlayButton = tipo === 'cancion' || (canciones.length > 0);
 
+  const isUserType = tipo === 'user';
+  const cardClasses = `
+    bg-gradient-to-b from-gray-800 to-gray-850 rounded-lg shadow-lg overflow-hidden
+    flex flex-col items-center text-center p-4 pb-0
+    transition duration-300 ease-in-out hover:from-gray-700 hover:to-gray-750 hover:shadow-xl w-full group
+  `;
+
+  const imageContainerClasses = `
+    relative w-full aspect-square mb-3 transform transition-transform duration-300 ease-in-out group-hover:scale-105
+    ${isUserType ? 'rounded-full' : 'rounded'}
+  `;
+
+  const imageClasses = `
+    absolute inset-0 w-full h-full object-cover
+    ${isUserType ? 'rounded-full' : 'rounded'}
+  `;
+
+  const placeholderClasses = `
+    absolute inset-0 w-full h-full bg-gray-750 flex items-center justify-center
+    ${isUserType ? 'rounded-full' : 'rounded'}
+  `;
+
   return (
-    <Link href={href} className="bg-gradient-to-b from-gray-800 to-gray-850 rounded-lg shadow-lg overflow-hidden flex flex-col items-center text-center p-4 pb-0 transition duration-300 ease-in-out hover:from-gray-700 hover:to-gray-750 hover:shadow-xl w-full group">
-      <div className={`relative w-full ${tipo==='user'?'w-24 h-24 aspect-square rounded-full':'aspect-square'} mb-3 transform transition-transform duration-300 ease-in-out group-hover:scale-105`}>
+    <Link href={href} className={cardClasses}>
+      <div className={imageContainerClasses}>
         <ImagenConPlaceholder
           src={imageUrl}
           alt={title}
-          claseImagen={`absolute inset-0 w-full h-full object-cover ${tipo==='user'?'rounded-full':'rounded'}`}
-          clasePlaceholder={`absolute inset-0 w-full h-full bg-gray-750 flex items-center justify-center ${tipo==='user'?'rounded-full':'rounded'}`}
+          claseImagen={imageClasses}
+          clasePlaceholder={placeholderClasses}
         />
         {showPlayButton && (
           <button
@@ -135,15 +167,9 @@ const ResultadoCard = memo(({ objeto, tipo }) => {
         )}
       </div>
       <p className="text-sm font-semibold text-gray-100 group-hover:text-white group-hover:underline line-clamp-2" title={title}>{title}</p>
-      {tipo === 'user' ? (
-        <p className="text-xs text-gray-400 mt-1 truncate w-full">
-            Perfil
-        </p>
-      ) : (
-        <p className="text-xs text-gray-400 mt-1 truncate w-full">
-          {(objeto.usuarios?.map(u => u.name).join(', ') || objeto.artista) || 'Desconocido'}
-        </p>
-      )}
+      <p className="text-xs text-gray-400 mt-1 truncate w-full">
+        {getTipoNombreMayuscula(tipo)}
+      </p>
     </Link>
   );
 });
@@ -153,7 +179,7 @@ ResultadoCard.propTypes = {
     tipo: PropTypes.string.isRequired,
 };
 
-const CancionListaItem = ({ cancion }) => {
+const CancionListaItem = ({ cancion, openContextMenu, openContextMenuMobile, isMobile, auth, likeProcessing, manejarCancionLoopzToggle }) => {
   const {
     cargarColaYIniciar,
     Reproduciendo,
@@ -175,7 +201,10 @@ const CancionListaItem = ({ cancion }) => {
   };
 
   return (
-    <div className="flex items-center py-2 px-2 hover:bg-gray-700 rounded-md transition duration-150 ease-in-out group">
+    <div
+      className="flex items-center py-2 px-2 hover:bg-gray-700 rounded-md transition duration-150 ease-in-out group relative"
+      onContextMenu={!isMobile ? (e) => openContextMenu(e, cancion) : undefined}
+    >
       <button
         onClick={handlePlay}
         className={`flex-shrink-0 p-1 ${isThis ? 'text-blue-500' : 'text-gray-400 hover:text-blue-400'}`}
@@ -200,24 +229,72 @@ const CancionListaItem = ({ cancion }) => {
         <p className="text-gray-400 text-xs truncate">{(cancion.usuarios?.map(u => u.name).join(', ') || cancion.artista) || 'Desconocido'}</p>
       </Link>
       {cancion.duracion && <span className="ml-2 text-gray-400 text-xs">{formatearDuracion(cancion.duracion)}</span>}
+
+      {auth.user && (
+          <button
+              onClick={() => manejarCancionLoopzToggle(cancion.id, cancion.is_in_user_loopz)}
+              disabled={likeProcessing === cancion.id}
+              className={`p-1 text-gray-400 hover:text-purple-400 focus:outline-none flex-shrink-0 ml-auto ${likeProcessing === cancion.id ? 'cursor-wait' : ''}`}
+              title={cancion.is_in_user_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ"}
+          >
+              {likeProcessing === cancion.id ? <LoadingIconSolid className="h-5 w-5 animate-spin text-purple-400" /> :
+                  (cancion.is_in_user_loopz ? (<HeartIconSolid className="h-5 w-5 text-purple-500" />) : (<HeartIconOutline className="h-5 w-5" />))
+              }
+          </button>
+      )}
+
+      {isMobile && (
+        <button
+            onClick={(e) => openContextMenuMobile(e, cancion)}
+            className="p-1 text-gray-400 hover:text-gray-200 focus:outline-none flex-shrink-0 ml-1"
+            title="Opciones"
+        >
+            <EllipsisVerticalIcon className="h-5 w-5" />
+        </button>
+      )}
     </div>
   );
 };
 
 CancionListaItem.propTypes = {
     cancion: PropTypes.object.isRequired,
+    openContextMenu: PropTypes.func.isRequired,
+    openContextMenuMobile: PropTypes.func.isRequired,
+    isMobile: PropTypes.bool.isRequired,
+    auth: PropTypes.object.isRequired,
+    likeProcessing: PropTypes.string,
+    manejarCancionLoopzToggle: PropTypes.func.isRequired,
 };
 
-// MODIFICACIÓN: Aquí se pasan los nuevos props
-export default function SearchIndex({ searchQuery, results, principal, principalKey, relatedContent, relatedSongs }) {
+export default function SearchIndex({ searchQuery, results, principal, principalKey, relatedContent, relatedSongs, auth }) {
   const {
     cargarColaYIniciar,
     Reproduciendo,
     play,
     pause,
     sourceId,
-    cargando
+    cargando,
+    añadirSiguiente = () => {},
   } = useContext(PlayerContext);
+
+  const page = usePage();
+  const [cancionesState, setCancionesState] = useState(relatedSongs || []);
+  const [likeProcessing, setLikeProcessing] = useState(null);
+  const [mostrarToast, setMostrarToast] = useState(false);
+  const [mensajeToast, setMensajeToast] = useState('');
+  const [contextMenu, setContextMenu] = useState({
+      show: false,
+      x: 0,
+      y: 0,
+      song: null,
+  });
+  const isMobile = window.innerWidth <= 768;
+
+
+  useEffect(() => {
+    setCancionesState(relatedSongs || []);
+  }, [relatedSongs]);
+
 
   const principalSourceKey = `search-principal-${principalKey}-${principal?.id}`;
   const isPrincipalPlayingOrLoading = sourceId === principalSourceKey;
@@ -241,87 +318,283 @@ export default function SearchIndex({ searchQuery, results, principal, principal
 
   const showPrincipalPlayButton = principal && (principalKey === 'cancion' || (principal.canciones && principal.canciones.length > 0));
 
-  // Las secciones a renderizar
   const sectionsToRender = [];
 
-  // 1. La sección de canciones relacionadas (unificada)
-  if (relatedSongs && relatedSongs.length > 0) {
+  const copiarAlPortapapeles = useCallback((texto, mensaje = 'Guardado en el portapapeles') => {
+    navigator.clipboard.writeText(texto).then(() => {
+        setMensajeToast(mensaje);
+        setMostrarToast(true);
+        setTimeout(() => { setMostrarToast(false); }, 3000);
+    }).catch(err => {
+        console.error('Error al copiar:', err);
+        setMensajeToast('Error al copiar');
+        setMostrarToast(true);
+        setTimeout(() => { setMostrarToast(false); }, 3000);
+    });
+  }, []);
+
+  const closeContextMenu = useCallback(() => {
+      setContextMenu({ ...contextMenu, show: false, song: null });
+  }, [contextMenu]);
+
+  const manejarCancionLoopzToggle = useCallback((songId, isInLoopz) => {
+    if (!songId || likeProcessing === songId) return;
+    setLikeProcessing(songId);
+
+    setCancionesState(prevCanciones => {
+        if (!prevCanciones) return prevCanciones;
+        const newCanciones = [...prevCanciones];
+        const songIndex = newCanciones.findIndex(c => c.id === songId);
+
+        if (songIndex !== -1) {
+            newCanciones[songIndex] = {
+                ...newCanciones[songIndex],
+                is_in_user_loopz: !isInLoopz
+            };
+        }
+        return newCanciones;
+    });
+
+    router.post(route('cancion.loopz', { cancion: songId }), {}, {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: (page) => {
+            if (page.props.flash?.song_loopz_status) {
+                setMensajeToast(page.props.flash.song_loopz_status);
+                setMostrarToast(true);
+            }
+            if (page.props.relatedSongs && Array.isArray(page.props.relatedSongs)) {
+                setCancionesState(page.props.relatedSongs);
+            }
+            if (contextMenu.show && contextMenu.song?.id === songId) {
+                closeContextMenu();
+            }
+        },
+        onError: (errors) => {
+            setCancionesState(prevCanciones => {
+                if (!prevCanciones) return prevCanciones;
+                const newCanciones = [...prevCanciones];
+                const songIndex = newCanciones.findIndex(c => c.id === songId);
+                if (songIndex !== -1) {
+                    newCanciones[songIndex] = { ...newCanciones[songIndex], is_in_user_loopz: isInLoopz };
+                }
+                return newCanciones;
+            });
+            setMensajeToast(errors.message || 'Error al actualizar LoopZ.');
+            setMostrarToast(true);
+        },
+        onFinish: () => {
+            setLikeProcessing(null);
+        },
+    });
+  }, [likeProcessing, contextMenu.show, contextMenu.song, closeContextMenu]);
+
+  const manejarToggleCancion = useCallback((cancionId, playlistId) => {
+    if (!cancionId || !playlistId) return;
+    router.post(
+        route('playlist.toggleCancion', {
+            playlist: playlistId,
+            cancion: cancionId
+        }),
+        {},
+        {
+            preserveScroll: true,
+            onSuccess: (page) => {
+                closeContextMenu();
+                setMensajeToast(page.props.flash?.message || 'Canción actualizada en la playlist.');
+                setMostrarToast(true);
+                setTimeout(() => { setMostrarToast(false); }, 3000);
+                router.reload({ only: ['auth'] });
+            },
+            onError: (errors) => {
+                setMensajeToast(errors.message || 'Error al actualizar la canción en la playlist.');
+                setMostrarToast(true);
+                setTimeout(() => { setMostrarToast(false); }, 3000);
+            }
+        }
+    );
+  }, [closeContextMenu]);
+
+  const openContextMenu = useCallback((event, song) => {
+      event.preventDefault();
+      setContextMenu({
+          show: true,
+          x: event.pageX,
+          y: event.pageY,
+          song: song,
+      });
+  }, []);
+
+  const openContextMenuMobile = useCallback((event, song) => {
+      event.stopPropagation();
+      const rect = event.currentTarget.getBoundingClientRect();
+      setContextMenu({
+          show: true,
+          x: rect.left + window.scrollX + rect.width / 2,
+          y: rect.bottom + window.scrollY + 10,
+          song: song,
+      });
+  }, []);
+
+  const handleAddToQueueNext = useCallback(() => {
+    if (contextMenu.song && añadirSiguiente) {
+        añadirSiguiente(contextMenu.song);
+        closeContextMenu();
+        setMensajeToast(`"${contextMenu.song.titulo}" añadido a la cola.`);
+        setMostrarToast(true);
+        setTimeout(() => { setMostrarToast(false); }, 3000);
+    }
+  }, [contextMenu.song, añadirSiguiente, closeContextMenu]);
+
+  const handleCompartirCancion = useCallback(() => {
+    if (contextMenu.song) {
+        const songUrl = route('canciones.show', contextMenu.song.id);
+        copiarAlPortapapeles(songUrl, 'URL de canción copiada');
+        closeContextMenu();
+    }
+  }, [contextMenu.song, copiarAlPortapapeles, closeContextMenu]);
+
+  const getContextMenuOptions = useCallback(() => {
+      if (!contextMenu.song) return [];
+      const options = [];
+      options.push({
+          label: "Ver canción",
+          icon: <MusicalNoteIcon className="h-5 w-5" />,
+          action: () => {
+              router.visit(route('canciones.show', contextMenu.song.id));
+              closeContextMenu();
+          },
+      });
+
+      options.push({
+          label: contextMenu.song.is_in_user_loopz ? "Quitar LoopZ" : "Añadir LoopZ",
+          action: () => manejarCancionLoopzToggle(contextMenu.song.id, contextMenu.song.is_in_user_loopz),
+          icon: contextMenu.song.is_in_user_loopz ? <HeartIconSolid className="h-5 w-5 text-purple-500" /> : <HeartIconOutline className="h-5 w-5" />,
+          disabled: likeProcessing === contextMenu.song.id,
+      });
+
+      options.push({
+          label: "Añadir a la cola",
+          action: handleAddToQueueNext,
+          icon: <QueueListIcon className="h-5 w-5" />,
+          disabled: !añadirSiguiente,
+      });
+
+      if (auth.user) {
+          options.push({
+              label: "Añadir a playlist",
+              icon: <ArrowUpOnSquareIcon className="h-5 w-5" />,
+              submenu: 'userPlaylists',
+          });
+      }
+
+      options.push({
+          label: "Compartir",
+          icon: <ShareIcon className="h-5 w-5" />,
+          action: handleCompartirCancion,
+      });
+
+      return options;
+  }, [
+      contextMenu.song,
+      manejarCancionLoopzToggle,
+      likeProcessing,
+      handleAddToQueueNext,
+      handleCompartirCancion,
+      añadirSiguiente,
+      auth.user,
+      closeContextMenu
+  ]);
+
+  if (cancionesState && cancionesState.length > 0) {
       sectionsToRender.push({
           key: 'all_related_songs',
-          label: `Canciones`, // Etiqueta genérica para todas las canciones
-          items: relatedSongs,
+          label: `Canciones`,
+          items: cancionesState,
           type: 'cancion'
       });
   }
 
-  // 2. Las otras secciones relacionadas (artistas, playlists, etc.)
-  // Mapeamos las claves de relatedContent a sus etiquetas deseables
   const relatedSectionLabels = {
       'artistas_relacionados': 'Artistas relacionados',
       'playlists_del_artista': 'Playlists del artista',
       'albumes_del_artista': 'Álbumes del artista',
       'eps_del_artista': 'EPs del artista',
       'singles_del_artista': 'Singles del artista',
-      'mas_de_estos_artistas': `Más de estos artistas`, // La etiqueta exacta se puede construir en Laravel si es dinámica
+      'mas_de_estos_artistas': 'Más de estos artistas',
       'artistas_de_la_cancion': 'Artistas de la canción',
       'contenedores_del_artista': 'Álbumes y Playlists del artista',
   };
 
   Object.keys(relatedContent).forEach(key => {
       if (relatedContent[key] && relatedContent[key].length > 0) {
-          let itemType;
-          if (key.includes('artistas')) itemType = 'user';
-          else if (key.includes('playlists')) itemType = 'playlist';
-          else if (key.includes('albumes')) itemType = 'album';
-          else if (key.includes('eps')) itemType = 'ep';
-          else if (key.includes('singles')) itemType = 'single';
-          else {
-            // Intenta deducir el tipo del primer elemento si existe
-            itemType = relatedContent[key][0]?.tipo || 'album'; // Default a album o lo que sea más común
-          }
+          let sectionItemType;
+          if (key.includes('artistas')) sectionItemType = 'user';
+          else if (key.includes('canciones')) sectionItemType = 'cancion';
+          else sectionItemType = relatedContent[key][0]?.tipo || 'album';
+
           sectionsToRender.push({
               key: `related_${key}`,
-              label: relatedSectionLabels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), // Formatear la clave
+              label: relatedSectionLabels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
               items: relatedContent[key],
-              type: itemType
+              type: sectionItemType
           });
       }
   });
 
 
-  // 3. Resultados generales de la búsqueda (lo que no es el principal ni relacionado)
-  // Añadir solo si no hay resultados relacionados o si queremos que aparezcan DESPUÉS
-  // Asegúrate de no duplicar tipos que ya estén en relatedSongs o otherRelatedSections
   const displayedTypes = new Set(sectionsToRender.map(s => s.type));
-  if (relatedSongs && relatedSongs.length > 0) displayedTypes.add('cancion'); // Asegurar que 'cancion' se considere mostrada
+  if (cancionesState && cancionesState.length > 0) displayedTypes.add('cancion');
 
-  ['users', 'playlists', 'eps', 'singles', 'albumes'] // Canciones ya se manejaron
+  ['users', 'playlists', 'eps', 'singles', 'albumes']
     .forEach(key => {
       if (results[key] && results[key].length > 0) {
-        // Evitar añadir la sección si el tipo ya está cubierto por relatedContent o relatedSongs
-        if (!displayedTypes.has(key.slice(0, -1))) { // 'users' -> 'user'
+        if (!displayedTypes.has(key.slice(0, -1))) {
             sectionsToRender.push({
                 key: `general_${key}`,
                 label: `Más ${getTipoNombreMayuscula(key.slice(0, -1)).toLowerCase()}s de tu búsqueda`,
                 items: results[key],
-                type: key.slice(0, -1) // 'users' -> 'user', etc.
+                type: key.slice(0, -1)
             });
         }
       }
     });
 
-  // Si no hay principal y no hay otros resultados relevantes, mostrar mensaje
   const noResultsFound = !principal && sectionsToRender.every(s => s.items.length === 0);
 
   return (
     <AuthenticatedLayout>
       <Head title={`Resultados: "${searchQuery}"`} />
+
+      <div className="relative z-[9999]">
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          show={contextMenu.show}
+          onClose={closeContextMenu}
+          options={getContextMenuOptions()}
+          userPlaylists={(auth.user?.playlists || []).map(p => ({
+              id: p.id,
+              name: p.nombre,
+              action: () => manejarToggleCancion(contextMenu.song?.id, p.id),
+              canciones: p.canciones || [],
+              imagen: p.imagen,
+          }))}
+          currentSong={contextMenu.song}
+        />
+      </div>
+
+      <Notificacion
+          mostrar={mostrarToast}
+          mensaje={mensajeToast}
+          tipo="success"
+      />
+
       <div className="container mx-auto px-4 py-6">
         <h1 className="text-2xl text-white mb-6">
           Resultados para <span className="text-green-400">"{searchQuery}"</span>
         </h1>
 
-        {/* Sección del resultado principal */}
         {principal && (
           <div className="relative mb-8 bg-gray-800 rounded-lg p-6 flex flex-col md:flex-row items-center shadow-lg">
             <Link
@@ -367,18 +640,28 @@ export default function SearchIndex({ searchQuery, results, principal, principal
           </div>
         )}
 
-        {/* Renderizado de las secciones (primero canciones relacionadas, luego otras relacionadas, luego generales) */}
         {sectionsToRender.map((section, index) => (
           section.items.length > 0 && (
             <section key={section.key || `section-${index}`} className="mb-8">
               <h2 className="text-white text-xl font-semibold mb-4">{section.label}</h2>
               {section.type === 'cancion' ? (
                 <div className="flex flex-col gap-2">
-                  {section.items.map(c => <CancionListaItem key={c.id} cancion={c} />)}
+                  {section.items.map(c => (
+                    <CancionListaItem
+                      key={c.id}
+                      cancion={c}
+                      openContextMenu={openContextMenu}
+                      openContextMenuMobile={openContextMenuMobile}
+                      isMobile={isMobile}
+                      auth={auth}
+                      likeProcessing={likeProcessing}
+                      manejarCancionLoopzToggle={manejarCancionLoopzToggle}
+                    />
+                  ))}
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                  {section.items.map(o => <ResultadoCard key={`${section.type}-${o.id}`} objeto={o} tipo={section.type} />)}
+                  {section.items.map(o => <ResultadoCard key={`${o.tipo || 'desconocido'}-${o.id}`} objeto={o} tipo={o.tipo || section.type} />)}
                 </div>
               )}
             </section>
@@ -405,6 +688,7 @@ SearchIndex.propTypes = {
   }),
   principal: PropTypes.object,
   principalKey: PropTypes.string,
-  relatedContent: PropTypes.object, // Ahora contiene no-canciones
-  relatedSongs: PropTypes.array, // Nueva prop para todas las canciones relacionadas
+  relatedContent: PropTypes.object,
+  relatedSongs: PropTypes.array,
+  auth: PropTypes.object.isRequired,
 };
