@@ -440,9 +440,6 @@ export default function SearchIndex({ searchQuery, results, principal, principal
     if (contextMenu.song && añadirSiguiente) {
         añadirSiguiente(contextMenu.song);
         closeContextMenu();
-        setMensajeToast(`"${contextMenu.song.titulo}" añadido a la cola.`);
-        setMostrarToast(true);
-        setTimeout(() => { setMostrarToast(false); }, 3000);
     }
   }, [contextMenu.song, añadirSiguiente, closeContextMenu]);
 

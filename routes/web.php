@@ -5,6 +5,7 @@ use App\Http\Controllers\CancionController;
 use App\Http\Controllers\ContenedorController;
 use App\Http\Controllers\EPController;
 use App\Http\Controllers\GeneroController;
+use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecomendacionController;
 use App\Http\Controllers\ReproduccionController;
@@ -131,7 +132,9 @@ Route::middleware('auth')->group(function () {
         ->name('playlist.toggleCancion');
 
     Route::post('/profile/{id}/seguir', [ProfileController::class, 'seguirUsuario'])->name('profile.seguirUsuario');
-
+    Route::get('/notificaciones', [NotificacionController::class, 'index'])->name('notificaciones.index');
+    Route::post('/notificaciones/{id}/marcar-leida', [NotificacionController::class, 'marcarComoLeida'])->name('notificaciones.marcarComoLeida');
+    Route::post('/notificaciones/marcar-todas-leidas', [NotificacionController::class, 'marcarTodasComoLeidas'])->name('notificaciones.marcarTodasComoLeidas');
 });
 
 Route::get('/spotify-login', function () {

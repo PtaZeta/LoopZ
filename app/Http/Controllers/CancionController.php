@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Cancion;
 use App\Models\Genero;
 use App\Models\Licencia;
+use App\Models\Notificacion;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -72,127 +73,141 @@ class CancionController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $rules = [
-            'titulo' => 'required|string|max:255',
-            'genero' => 'nullable|array',
-            'genero.*' => 'exists:generos,nombre',
-            'publico' => 'required|boolean',
-            'archivo' => 'required|file|mimes:mp3,wav|max:102400',
-            'foto' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
-            'licencia_id' => 'required|integer|exists:licencias,id',
-            'userIds' => 'nullable|array',
-            'userIds.*' => 'integer|exists:users,id',
-            'remix' => 'required|boolean',
-            'cancion_original_id'  => 'nullable|integer|exists:canciones,id',
-        ];
-        $validated = $request->validate($rules);
+        {
+            $rules = [
+                'titulo' => 'required|string|max:255',
+                'genero' => 'nullable|array',
+                'genero.*' => 'exists:generos,nombre',
+                'publico' => 'required|boolean',
+                'archivo' => 'required|file|mimes:mp3,wav|max:102400',
+                'foto' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
+                'licencia_id' => 'required|integer|exists:licencias,id',
+                'userIds' => 'nullable|array',
+                'userIds.*' => 'integer|exists:users,id',
+                'remix' => 'required|boolean',
+                'cancion_original_id' => 'nullable|integer|exists:canciones,id',
+            ];
+            $validated = $request->validate($rules);
 
-        if ($validated['remix'] && !is_null($validated['cancion_original_id'])) {
-            $existe = Cancion::join('licencias', 'canciones.licencia_id', '=', 'licencias.id')
-                ->where('canciones.id', $validated['cancion_original_id'])
-                ->where('licencias.id', 2)
-                ->exists();
+            if ($validated['remix'] && !is_null($validated['cancion_original_id'])) {
+                $existe = Cancion::join('licencias', 'canciones.licencia_id', '=', 'licencias.id')
+                    ->where('canciones.id', $validated['cancion_original_id'])
+                    ->where('licencias.id', 2)
+                    ->exists();
 
-            if (! $existe) {
-                return redirect()->back()
-                    ->withErrors(['cancion_original_id' =>
-                        'La obra original no existe o no tiene licencia CC BY 4.0.'])
-                    ->withInput();
-            }
-        }
-
-        $cancion = new Cancion();
-        $cancion->titulo = $validated['titulo'];
-        $cancion->publico = $validated['publico'];
-        $cancion->licencia_id = $validated['licencia_id'];
-        $cancion->remix = $validated['remix'];
-        $cancion->cancion_original_id = $validated['cancion_original_id'] ?? null;
-
-        if ($request->hasFile('archivo') && $request->file('archivo')->isValid()) {
-            $archivoAudio = $request->file('archivo');
-            $extension = $archivoAudio->getClientOriginalExtension();
-            $nombre = Str::uuid() . "_song.{$extension}";
-
-            try {
-                $getID3 = new getID3;
-                $infoAudio = $getID3->analyze($archivoAudio->getRealPath());
-                $cancion->duracion = isset($infoAudio['playtime_seconds'])
-                    ? floor($infoAudio['playtime_seconds'])
-                    : 0;
-            } catch (\Exception $e) {
-                $cancion->duracion = 0;
-            }
-
-            try {
-                $path = Storage::disk('s3')
-                    ->putFileAs('canciones', $archivoAudio, $nombre, 'public');
-                if (! $path) {
-                    throw new \Exception('putFileAs devolvió false');
+                if (! $existe) {
+                    return redirect()->back()
+                        ->withErrors(['cancion_original_id' =>
+                            'La obra original no existe o no tiene licencia CC BY 4.0.'])
+                        ->withInput();
                 }
-                $cancion->archivo_url = Storage::disk('s3')->url($path);
-            } catch (\Exception $e) {
-                Log::error('Error subiendo audio a S3', [
-                    'error'  => $e->getMessage(),
-                    'bucket' => config('filesystems.disks.s3.bucket'),
-                    'region' => config('filesystems.disks.s3.region'),
-                ]);
+            }
+
+            $cancion = new Cancion();
+            $cancion->titulo = $validated['titulo'];
+            $cancion->publico = $validated['publico'];
+            $cancion->licencia_id = $validated['licencia_id'];
+            $cancion->remix = $validated['remix'];
+            $cancion->cancion_original_id = $validated['cancion_original_id'] ?? null;
+
+            if ($request->hasFile('archivo') && $request->file('archivo')->isValid()) {
+                $archivoAudio = $request->file('archivo');
+                $extension = $archivoAudio->getClientOriginalExtension();
+                $nombre = Str::uuid() . "_song.{$extension}";
+
+                try {
+                    $getID3 = new getID3;
+                    $infoAudio = $getID3->analyze($archivoAudio->getRealPath());
+                    $cancion->duracion = isset($infoAudio['playtime_seconds'])
+                        ? floor($infoAudio['playtime_seconds'])
+                        : 0;
+                } catch (\Exception $e) {
+                    $cancion->duracion = 0;
+                }
+
+                try {
+                    $path = Storage::disk('s3')
+                        ->putFileAs('canciones', $archivoAudio, $nombre, 'public');
+                    if (! $path) {
+                        throw new \Exception('putFileAs devolvió false');
+                    }
+                    $cancion->archivo_url = Storage::disk('s3')->url($path);
+                } catch (\Exception $e) {
+                    Log::error('Error subiendo audio a S3', [
+                        'error' => $e->getMessage(),
+                        'bucket' => config('filesystems.disks.s3.bucket'),
+                        'region' => config('filesystems.disks.s3.region'),
+                    ]);
+                    return redirect()->back()
+                        ->withErrors(['archivo' => 'No se pudo subir el audio al bucket S3.'])
+                        ->withInput();
+                }
+            } else {
                 return redirect()->back()
-                    ->withErrors(['archivo' => 'No se pudo subir el audio al bucket S3.'])
+                    ->withErrors(['archivo' => 'Archivo de audio inválido o no presente.'])
                     ->withInput();
             }
-        } else {
-            return redirect()->back()
-                ->withErrors(['archivo' => 'Archivo de audio inválido o no presente.'])
-                ->withInput();
-        }
 
-        if ($request->hasFile('foto') && $request->file('foto')->isValid()) {
-            $archivoFoto = $request->file('foto');
-            $extFoto     = $archivoFoto->getClientOriginalExtension();
-            $nombreFoto  = Str::uuid() . "_pic.{$extFoto}";
-            try {
-                $pathFoto    = Storage::disk('s3')
-                    ->putFileAs('imagenes', $archivoFoto, $nombreFoto, 'public');
-                $cancion->foto_url = $pathFoto
-                    ? Storage::disk('s3')->url($pathFoto)
-                    : null;
-            } catch (\Exception $e) {
-                Log::error('Error subiendo imagen a S3', [
-                    'error' => $e->getMessage(),
-                    'bucket' => config('filesystems.disks.s3.bucket'),
-                    'region' => config('filesystems.disks.s3.region'),
-                ]);
-                // No se detiene la ejecución si la foto no se sube, solo se registra el error.
-                $cancion->foto_url = null;
+            if ($request->hasFile('foto') && $request->file('foto')->isValid()) {
+                $archivoFoto = $request->file('foto');
+                $extFoto = $archivoFoto->getClientOriginalExtension();
+                $nombreFoto = Str::uuid() . "_pic.{$extFoto}";
+                try {
+                    $pathFoto = Storage::disk('s3')
+                        ->putFileAs('imagenes', $archivoFoto, $nombreFoto, 'public');
+                    $cancion->foto_url = $pathFoto
+                        ? Storage::disk('s3')->url($pathFoto)
+                        : null;
+                } catch (\Exception $e) {
+                    Log::error('Error subiendo imagen a S3', [
+                        'error' => $e->getMessage(),
+                        'bucket' => config('filesystems.disks.s3.bucket'),
+                        'region' => config('filesystems.disks.s3.region'),
+                    ]);
+                    $cancion->foto_url = null;
+                }
             }
-        }
 
-        $cancion->save();
+            $cancion->save();
 
-        if (!empty($validated['genero'])) {
-            $ids = Genero::whereIn('nombre', $validated['genero'])->pluck('id');
-            $cancion->generos()->attach($ids);
-        }
-
-        $idCreador       = Auth::id();
-        $colaboradores   = $validated['userIds'] ?? [];
-        $usuariosAsociar = [];
-
-        if ($idCreador) {
-            $usuariosAsociar[$idCreador] = ['propietario' => true];
-        }
-        foreach (array_unique($colaboradores) as $uid) {
-            if ((int) $uid !== $idCreador) {
-                $usuariosAsociar[(int) $uid] = ['propietario' => false];
+            if (!empty($validated['genero'])) {
+                $ids = Genero::whereIn('nombre', $validated['genero'])->pluck('id');
+                $cancion->generos()->attach($ids);
             }
+
+            $idCreador = Auth::id();
+            $colaboradores = $validated['userIds'] ?? [];
+            $usuariosAsociar = [];
+
+            if ($idCreador) {
+                $usuariosAsociar[$idCreador] = ['propietario' => true];
+            }
+            foreach (array_unique($colaboradores) as $uid) {
+                if ((int) $uid !== $idCreador) {
+                    $usuariosAsociar[(int) $uid] = ['propietario' => false];
+                }
+            }
+            if (!empty($usuariosAsociar) && method_exists($cancion, 'usuarios')) {
+                $cancion->usuarios()->attach($usuariosAsociar);
+            }
+
+            $creador = Auth::user();
+            $seguidores = $creador->seguidores;
+
+            if ($cancion->publico) {
+                foreach ($seguidores as $seguidor) {
+                    Notificacion::create([
+                        'user_id' => $seguidor->id,
+                        'titulo' => 'Nuevo lanzamiento de ' . $creador->name,
+                        'mensaje' => $creador->name . ' ha subido una nueva canción: ' . $cancion->titulo,
+                    ]);
+                }
+            }
+
+            return redirect()->route('profile.show', $creador->id);
         }
-        if (!empty($usuariosAsociar) && method_exists($cancion, 'usuarios')) {
-            $cancion->usuarios()->attach($usuariosAsociar);
-        }
-        $usuario = Auth::user();
-        return redirect()->route('profile.show', $usuario->id);
-    }
+
+
         public function show($id)
         {
             try {
@@ -202,8 +217,7 @@ class CancionController extends Controller
                     },
                     'licencia',
                     'generos',
-                    // Ensure cancionOriginal loads its photo_url (it usually does by default)
-                    'cancionOriginal' // This will load all attributes of the original song
+                    'cancionOriginal'
                 ])->findOrFail($id);
 
                 $cancion->usuarios_mapeados = $cancion->usuarios->map(function($u) {

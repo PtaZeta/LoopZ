@@ -6,6 +6,7 @@ use App\Http\Requests\StoreContenedorRequest;
 use App\Http\Requests\UpdateContenedorRequest;
 use App\Models\Contenedor;
 use App\Models\Cancion;
+use App\Models\Notificacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -191,6 +192,21 @@ class ContenedorController extends Controller
                 $contenedor->usuarios()->attach($usuariosASincronizar);
             }
         }
+
+
+            $creador = Auth::user();
+            $seguidores = $creador->seguidores;
+
+            if ($contenedor->publico) {
+                foreach ($seguidores as $seguidor) {
+                    Notificacion::create([
+                        'user_id' => $seguidor->id,
+                        'titulo' => 'Nuevo lanzamiento de ' . $creador->name,
+                        'mensaje' => $creador->name . ' ha subido un nuevo ' . $contenedor->tipo . ': ' . $contenedor->nombre,
+                    ]);
+                }
+            }
+
 
         return redirect()->route('biblioteca')->with('success', 'Lanzamiento creado exitosamente.');
     }
