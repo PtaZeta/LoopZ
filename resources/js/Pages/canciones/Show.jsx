@@ -80,7 +80,7 @@ export default function Mostrar() {
             router.delete(route('canciones.destroy', cancion.id), {
                 preserveScroll: true,
                 onSuccess: () => {
-                    router.visit(route('dashboard'));
+                    router.visit(route('welcome'));
                 },
                 onError: (errors) => {
                     console.error('Error al eliminar la canción:', errors);
@@ -143,10 +143,7 @@ export default function Mostrar() {
     ];
 
     return (
-        <AuthenticatedLayout
-            user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Detalles de Canción</h2>}
-        >
+        <AuthenticatedLayout>
             <Head title={cancion.titulo || 'Detalles de Canción'} />
 
             <div aria-live="polite" aria-atomic="true" className="sr-only">
@@ -273,7 +270,7 @@ export default function Mostrar() {
                                     onClick={(e) => {
                                         e.preventDefault();
                                         if (window.history.length > 2) window.history.back();
-                                        else router.visit(route('dashboard') || '/');
+                                        else router.visit(route('welcome') || '/');
                                     }}
                                     className="inline-flex items-center justify-center w-auto px-4 py-2 sm:px-8 sm:py-4 border border-slate-600 rounded-full font-semibold text-xs text-gray-300 uppercase tracking-wider shadow-lg bg-slate-700/40 hover:bg-slate-700/60 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-25 transition ease-in-out duration-150"
                                     aria-label="Volver a la página anterior o al inicio"

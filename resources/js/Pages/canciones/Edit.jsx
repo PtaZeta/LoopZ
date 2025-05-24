@@ -172,13 +172,10 @@ export default function Edit({ auth, cancion, generos: todosLosGeneros, generosS
     };
 
     return (
-        <AuthenticatedLayout
-            user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-200 leading-tight">Editar Canción: {cancion.titulo}</h2>}
-        >
+        <AuthenticatedLayout>
             <Head title={`Editar ${cancion.titulo}`} />
 
-            <div className="py-12">
+            <div className="py-12 pt-20">
                 <div className="mx-auto max-w-4xl sm:px-6 lg:px-8">
                     <div className="overflow-hidden bg-gray-800 shadow-sm sm:rounded-lg">
                         <div className="p-6 md:p-8 text-gray-100">

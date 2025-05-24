@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import PropTypes from 'prop-types';
 import debounce from 'lodash.debounce';
+import Notificacion from '@/Components/Notificacion';
 import { PlayerContext } from '@/contexts/PlayerContext';
 import {
     ArrowUpOnSquareIcon,
@@ -17,7 +18,9 @@ import {
     ArrowsRightLeftIcon as ShuffleIcon,
     QueueListIcon,
     UserIcon,
-    ChevronRightIcon
+    ChevronRightIcon,
+    EllipsisVerticalIcon,
+    ShareIcon
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import { ArrowPathIcon as LoadingIcon } from '@heroicons/react/20/solid';
@@ -114,7 +117,8 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         añadirSiguiente = () => { },
         queue: playerQueue = [],
         cancionActualIndex
-    } = playerContextValue || {};
+    } = playerContextValue ||
+    {};
 
     const [contenedor, setContenedor] = useState(contenedorInicial);
     const [isLiked, setIsLiked] = useState(contenedorInicial?.is_liked_by_user || false);
@@ -132,7 +136,34 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         y: 0,
         song: null,
     });
+    const [mostrarToast, setMostrarToast] = useState(false);
+    const [mensajeToast, setMensajeToast] = useState('');
+    const [containerContextMenu, setContainerContextMenu] = useState({
+        show: false,
+        x: 0,
+        y: 0,
+    });
+    const copiarAlPortapapeles = useCallback((texto, mensaje = 'Guardado en el portapapeles') => {
+        navigator.clipboard.writeText(texto).then(() => {
+            setMensajeToast(mensaje);
+            setMostrarToast(true);
+
+            setTimeout(() => {
+                setMostrarToast(false);
+            }, 5000);
+        }).catch(err => {
+            console.error('Error al copiar:', err);
+            setMensajeToast('Error al copiar');
+            setMostrarToast(true);
+
+            setTimeout(() => {
+                setMostrarToast(false);
+            }, 5000);
+        });
+    }, []);
     const contextMenuTimer = useRef(null);
+    const isMobile = window.innerWidth <= 768;
+
 
     const urlImagenContenedor = contenedor?.imagen || obtenerUrlImagen(contenedor);
     const tipoContenedor = contenedor?.tipo || 'album';
@@ -254,7 +285,6 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             },
         });
     };
-
     const manejarToggleCancion = (cancionId, playlistId) => {
         if (!cancionId || !playlistId) return;
         router.post(
@@ -273,8 +303,8 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         );
     };
 
-
     const manejarAnadirCancion = (idCancion) => {
+        console.log(idCancion);
         if (anadiendoCancionId === idCancion || !contenedor?.id) return;
         setAnadiendoCancionId(idCancion);
         const nombreRutaAdd = `${rutaBase}.canciones.add`;
@@ -353,6 +383,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                     setContenedor(page.props.contenedor);
                 }
                 setIsLiked(page.props.contenedor?.is_liked_by_user || false);
+
 
                 if (page.props.resultadosBusqueda && Array.isArray(page.props.resultadosBusqueda)) {
                     page.props.resultadosBusqueda.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
@@ -479,6 +510,17 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             song: song,
         });
     }, []);
+
+    const openContextMenuMobile = useCallback((event, song) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        setContextMenu({
+            show: true,
+            x: rect.left + window.scrollX,
+            y: rect.bottom + window.scrollY,
+            song: song,
+        });
+    }, []);
+
     const closeContextMenu = useCallback(() => {
         if (contextMenuTimer.current) {
             clearTimeout(contextMenuTimer.current);
@@ -486,6 +528,11 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         }
         setContextMenu({ ...contextMenu, show: false, song: null });
     }, [contextMenu]);
+
+    const closeContainerContextMenu = useCallback(() => {
+        setContainerContextMenu({ ...containerContextMenu, show: false });
+    }, [containerContextMenu]);
+
     const startCloseTimer = useCallback(() => {
         contextMenuTimer.current = setTimeout(closeContextMenu, 100);
     }, [closeContextMenu]);
@@ -507,6 +554,48 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             closeContextMenu();
         }
     }, [closeContextMenu]);
+
+    const handleCompartirCancion = useCallback(() => {
+        if (contextMenu.song) {
+            const songUrl = route('canciones.show', contextMenu.song.id);
+            copiarAlPortapapeles(songUrl, 'URL de canción copiada');
+            closeContextMenu();
+        }
+    }, [contextMenu.song, copiarAlPortapapeles, closeContextMenu]);
+
+    const openContainerContextMenu = useCallback((event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        setContainerContextMenu({
+            show: true,
+            x: rect.left + window.scrollX,
+            y: rect.bottom + window.scrollY,
+        });
+    }, []);
+
+    const handleCompartirContenedor = useCallback(() => {
+        if (contenedor) {
+            const containerUrl = route(`${rutaBase}.show`, contenedor.id);
+            copiarAlPortapapeles(containerUrl, `URL de ${tipoNombreMayuscula} copiada`);
+            closeContainerContextMenu();
+        }
+    }, [contenedor, rutaBase, tipoNombreMayuscula, copiarAlPortapapeles, closeContainerContextMenu]);
+
+    const handleEditContainer = useCallback(() => {
+        if (contenedor?.can?.edit && contenedor?.id && rutaBase) {
+            router.visit(route(`${rutaBase}.edit`, contenedor.id));
+            closeContainerContextMenu();
+        }
+    }, [contenedor, rutaBase, closeContainerContextMenu]);
+
+    const handleDeleteContainer = useCallback(() => {
+        if (contenedor?.can?.delete && contenedor?.id && rutaBase) {
+            router.delete(route(`${rutaBase}.destroy`, contenedor.id), {
+                onSuccess: () => closeContainerContextMenu(),
+                onFinish: () => closeContainerContextMenu(),
+            });
+        }
+    }, [contenedor, rutaBase, closeContainerContextMenu]);
+
     const getContextMenuOptions = useCallback(() => {
         if (!contextMenu.song) return [];
         const options = [];
@@ -514,8 +603,8 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             label: "Ver cancion",
             icon: <MusicalNoteIcon className="h-5 w-5" />,
             action: () => {
-            router.visit(route('canciones.show', contextMenu.song.id));
-            closeContextMenu();
+                router.visit(route('canciones.show', contextMenu.song.id));
+                closeContextMenu();
             },
         });
 
@@ -536,13 +625,16 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             icon: <QueueListIcon className="h-5 w-5" />,
             disabled: !añadirSiguiente,
         });
-
         options.push({
             label: "Añadir a playlist",
             icon: <ArrowUpOnSquareIcon className="h-5 w-5" />,
             submenu: 'userPlaylists',
         });
-
+        options.push({
+            label: "Compartir",
+            icon: <ShareIcon className="h-5 w-5" />,
+            action: handleCompartirCancion,
+        });
         if (contenedor?.can?.edit && contextMenu.song.pivot?.id) {
             options.push({
                 label: `Quitar de ${tipoNombreMayuscula}`,
@@ -558,6 +650,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         manejarCancionLoopzToggle,
         likeProcessing,
         handleAddToQueueNext,
+        handleCompartirCancion,
         contenedor?.can?.edit,
         tipoNombreMayuscula,
         manejarEliminarCancion,
@@ -566,10 +659,44 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         handleViewArtist
     ]);
 
+    const getContainerContextMenuOptions = useCallback(() => {
+        const options = [];
+        if (contenedor?.can?.edit) {
+            options.push({
+                label: `Editar ${tipoNombreMayuscula}`,
+                icon: <PencilIcon className="h-5 w-5" />,
+                action: handleEditContainer,
+            });
+        }
+        options.push({
+            label: `Compartir ${tipoNombreMayuscula}`,
+            icon: <ShareIcon className="h-5 w-5" />,
+            action: handleCompartirContenedor,
+        });
+        if (contenedor?.can?.delete) {
+            options.push({
+                label: `Eliminar ${tipoNombreMayuscula}`,
+                icon: <TrashIcon className="h-5 w-5" />,
+                action: handleDeleteContainer,
+            });
+        }
+        return options;
+    }, [contenedor, tipoNombreMayuscula, handleCompartirContenedor, handleEditContainer]);
+
+
     return (
         <AuthenticatedLayout user={auth.user}>
             <Head title={contenedor?.nombre || `Detalles de ${tipoNombreMayuscula}`} />
-
+            <style dangerouslySetInnerHTML={{ __html: `
+                @keyframes fadeSlideIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                @keyframes fadeSlideOut {
+                    from { opacity: 1; transform: translateY(0); }
+                    to { opacity: 0; transform: translateY(10px); }
+                }
+            ` }} />
             <ContextMenu
                 x={contextMenu.x}
                 y={contextMenu.y}
@@ -577,26 +704,36 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                 onClose={closeContextMenu}
                 options={getContextMenuOptions()}
                 userPlaylists={(auth.user?.playlists || []).map(p => ({
-                    id: p.id,
-                    name: p.nombre,
-                    imagen: p.imagen,
-                    canciones: p.canciones || [],
-                    action: () => manejarToggleCancion(contextMenu.song?.id, p.id),
-                }))}
+                id: p.id,
+                name: p.nombre,
+                imagen: p.imagen,
+                canciones: p.canciones || [],
+                action: () => manejarToggleCancion(contextMenu.song?.id, p.id),
+            }))}
                 currentSong={contextMenu.song}
+            />
+
+            <ContextMenu
+                x={containerContextMenu.x}
+                y={containerContextMenu.y}
+                show={containerContextMenu.show}
+                onClose={closeContainerContextMenu}
+                options={getContainerContextMenuOptions()}
+                isContainerMenu={true}
             />
 
             <div className="py-12">
                 <div className="mx-auto max-w-6xl sm:px-6 lg:px-8">
                     <div className="md:flex md:items-end md:space-x-8 p-6 md:p-10 bg-transparent">
                         <div className="flex-shrink-0 w-48 h-48 lg:w-64 lg:h-64 mb-6 md:mb-0 mx-auto md:mx-0 shadow-2xl rounded-lg overflow-hidden border-4 border-purple-800/50">
-                        {urlImagenContenedor ? (
-                                <img src={urlImagenContenedor} alt={`Cover de ${contenedor?.nombre}`} className="w-full h-full object-cover" />
-                            ) : (
-                                <div className="w-full h-full bg-slate-800 flex items-center justify-center text-purple-500">
-                                    <MusicalNoteIcon className="h-24 w-24" />
-                                </div>
-                            )}
+                            {urlImagenContenedor ?
+                                (
+                                    <img src={urlImagenContenedor} alt={`Cover de ${contenedor?.nombre}`} className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full bg-slate-800 flex items-center justify-center text-purple-500">
+                                        <MusicalNoteIcon className="h-24 w-24" />
+                                    </div>
+                                )}
 
                         </div>
                         <div className="flex-grow text-center md:text-left">
@@ -644,6 +781,13 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                     </button>
                                 )}
                                 <button
+                                    onClick={openContainerContextMenu}
+                                    className="p-3 border border-slate-600 rounded-full text-gray-300 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+                                    title="Opciones del contenedor"
+                                >
+                                    <EllipsisVerticalIcon className="h-6 w-6" />
+                                </button>
+                                <button
                                     onClick={() => window.history.back()}
                                     className="inline-flex items-center px-4 py-2 border border-slate-600 rounded-full font-semibold text-xs text-gray-300 uppercase tracking-widest shadow-sm hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-25 transition ease-in-out duration-150"
                                 >
@@ -657,61 +801,72 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                         <h3 className="text-xl font-semibold mb-4 text-gray-100">
                             Canciones en est{tipoContenedor === 'playlist' ? 'a' : 'e'} {tipoNombreMayuscula} ({contenedor?.canciones?.length || 0})
                         </h3>
-                        {contenedor?.canciones && contenedor.canciones.length > 0 ? (
-                            <ul className="space-y-2">
-                                {contenedor.canciones.map((cancion, index) => (
-                                    <li
-                                        key={cancion.pivot?.id ?? `fallback-${cancion.id}`}
-                                        className={`p-2 bg-slate-700/60 rounded-md flex items-center space-x-3 hover:bg-purple-900/30 transition-colors duration-150 group cursor-pointer ${cancionActual?.id === cancion.id && (Reproduciendo || isPlayerLoading) ? 'bg-purple-800/50 border border-purple-500' : ''}`}
-                                        onContextMenu={(e) => openContextMenu(e, cancion)}
-                                        onDoubleClick={() => handleSongPlay(cancion, 'container')}
-                                    >
-                                        <button
-                                            onClick={() => handleSongPlay(cancion, 'container')}
-                                            className="flex-shrink-0 text-gray-400 hover:text-blue-400 p-1 disabled:opacity-50 disabled:cursor-wait"
-                                            title={cancionActual?.id === cancion.id && Reproduciendo ? `Pausar ${cancion.titulo}` : `Reproducir ${cancion.titulo}`}
-                                            disabled={isPlayerLoading && cancionActual?.id === cancion.id}
+                        {contenedor?.canciones && contenedor.canciones.length > 0 ?
+                            (
+                                <ul className="space-y-2">
+                                    {contenedor.canciones.map((cancion, index) => (
+                                        <li
+                                            key={cancion.pivot?.id ?? `fallback-${cancion.id}`}
+                                            className={`p-2 bg-slate-700/60 rounded-md flex items-center space-x-3 hover:bg-purple-900/30 transition-colors duration-150 group cursor-pointer ${cancionActual?.id === cancion.id && (Reproduciendo || isPlayerLoading)
+                                                ? 'bg-purple-800/50 border border-purple-500' : ''}`}
+                                            onContextMenu={!isMobile ? (e) => openContextMenu(e, cancion) : undefined}
+                                            onDoubleClick={() => handleSongPlay(cancion, 'container')}
                                         >
-                                            {isPlayerLoading && cancionActual?.id === cancion.id ? <LoadingIcon className="h-5 w-5 animate-spin text-blue-500" /> :
-                                                (Reproduciendo && cancionActual?.id === cancion.id) ? <PauseIcon className="h-5 w-5 text-blue-500" /> :
-                                                    <PlayIcon className="h-5 w-5" />
-                                            }
-                                        </button>
-                                        <ImagenItem url={obtenerUrlImagen(cancion)} titulo={cancion.titulo} className="w-10 h-10" iconoFallback={<MusicalNoteIcon className="h-5 w-5" />} />
-                                        <div className="flex-grow truncate">
-                                            <span className="text-gray-200 block truncate" title={cancion.titulo}>{cancion.titulo}</span>
-                                            <span className="text-gray-400 text-xs block truncate">
-                                                {cancion.usuarios && Array.isArray(cancion.usuarios)
-                                                    && cancion.usuarios.length > 0
-                                                    ? cancion.usuarios.map((u, idx) => (
-                                                        <React.Fragment key={u.id}>
-                                                            <Link href={route('profile.show', u.id)} className="hover:underline">{u.name}</Link>
-                                                            {idx < cancion.usuarios.length - 1
-                                                                && ', '}
-                                                        </React.Fragment>
-                                                    ))
-                                                    : cancion.artista || 'Artista Desconocido'
+                                            <button
+                                                onClick={() => handleSongPlay(cancion, 'container')}
+                                                className="flex-shrink-0 text-gray-400 hover:text-blue-400 p-1 disabled:opacity-50 disabled:cursor-wait"
+                                                title={cancionActual?.id === cancion.id && Reproduciendo ? `Pausar ${cancion.titulo}` : `Reproducir ${cancion.titulo}`}
+                                                disabled={isPlayerLoading && cancionActual?.id === cancion.id}
+                                            >
+                                                {isPlayerLoading && cancionActual?.id === cancion.id ? <LoadingIcon className="h-5 w-5 animate-spin text-blue-500" /> :
+                                                    (Reproduciendo && cancionActual?.id === cancion.id) ? <PauseIcon className="h-5 w-5 text-blue-500" /> :
+                                                        <PlayIcon className="h-5 w-5" />
                                                 }
-                                            </span>
-                                        </div>
-                                        <span className="text-gray-400 text-xs pr-2 hidden sm:inline">{formatearDuracion(cancion.duracion)}</span>
-                                        <button
-                                            onClick={() => manejarCancionLoopzToggle(cancion.id, cancion.is_in_user_loopz)}
-                                            disabled={likeProcessing === cancion.id}
-                                            className={`p-1 text-gray-400 hover:text-purple-400 focus:outline-none flex-shrink-0 ${likeProcessing === cancion.id ? 'cursor-wait' : ''}`}
-                                            title={cancion.is_in_user_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ"}
-                                        >
-                                            {likeProcessing ===
-                                                cancion.id ? <LoadingIcon className="h-5 w-5 animate-spin text-purple-400" /> :
-                                                (cancion.is_in_user_loopz ? (<HeartIconSolid className="h-5 w-5 text-purple-500" />) : (<HeartIconOutline className="h-5 w-5" />))
-                                            }
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p className="text-gray-400 italic">Est{tipoContenedor === 'playlist' ? 'a' : 'e'} {tipoNombreMayuscula} aún no tiene canciones.</p>
-                        )}
+                                            </button>
+                                            <ImagenItem url={obtenerUrlImagen(cancion)} titulo={cancion.titulo} className="w-10 h-10" iconoFallback={<MusicalNoteIcon className="h-5 w-5" />} />
+                                            <div className="flex-grow truncate">
+                                                <span className="text-gray-200 block truncate" title={cancion.titulo}>{cancion.titulo}</span>
+                                                <span className="text-gray-400 text-xs block truncate">
+                                                    {cancion.usuarios && Array.isArray(cancion.usuarios)
+                                                        && cancion.usuarios.length > 0
+                                                        ? cancion.usuarios.map((u, idx) => (
+                                                            <React.Fragment key={u.id}>
+                                                                <Link href={route('profile.show', u.id)} className="hover:underline">{u.name}</Link>
+                                                                {idx < cancion.usuarios.length - 1
+                                                                    && ', '}
+                                                            </React.Fragment>
+                                                        ))
+                                                        : cancion.artista || 'Artista Desconocido'
+                                                    }
+                                                </span>
+                                            </div>
+                                            <span className="text-gray-400 text-xs pr-2 hidden sm:inline">{formatearDuracion(cancion.duracion)}</span>
+                                            <button
+                                                onClick={() => manejarCancionLoopzToggle(cancion.id, cancion.is_in_user_loopz)}
+                                                disabled={likeProcessing === cancion.id}
+                                                className={`p-1 text-gray-400 hover:text-purple-400 focus:outline-none flex-shrink-0 ${likeProcessing === cancion.id ? 'cursor-wait' : ''}`}
+                                                title={cancion.is_in_user_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ"}
+                                            >
+                                                {likeProcessing ===
+                                                    cancion.id ? <LoadingIcon className="h-5 w-5 animate-spin text-purple-400" /> :
+                                                    (cancion.is_in_user_loopz ? (<HeartIconSolid className="h-5 w-5 text-purple-500" />) : (<HeartIconOutline className="h-5 w-5" />))
+                                                }
+                                            </button>
+                                            {isMobile && (
+                                                <button
+                                                    onClick={(e) => openContextMenuMobile(e, cancion)}
+                                                    className="p-1 text-gray-400 hover:text-gray-200 focus:outline-none"
+                                                    title="Opciones"
+                                                >
+                                                    <EllipsisVerticalIcon className="h-5 w-5" />
+                                                </button>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-gray-400 italic">Est{tipoContenedor === 'playlist' ? 'a' : 'e'} {tipoNombreMayuscula} aún no tiene canciones.</p>
+                            )}
                     </div>
 
                     {contenedor?.can?.edit && (
@@ -741,7 +896,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                             <li
                                                 key={c.id}
                                                 className="flex items-center justify-between p-2 hover:bg-blue-900/30 rounded space-x-3 group cursor-pointer"
-                                                onContextMenu={(e) => openContextMenu(e, c)}
+                                                onContextMenu={!isMobile ? (e) => openContextMenu(e, c) : undefined}
                                                 onDoubleClick={() => handleSongPlay(c, 'search')}
                                             >
                                                 <div className="flex items-center space-x-3 flex-grow overflow-hidden">
@@ -781,6 +936,15 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                                     >
                                                         {anadiendoCancionId === c.id ? '...' : 'Añadir'}
                                                     </button>
+                                                    {isMobile && (
+                                                        <button
+                                                            onClick={(e) => openContextMenuMobile(e, c)}
+                                                            className="p-1 text-gray-400 hover:text-gray-200 focus:outline-none"
+                                                            title="Opciones"
+                                                        >
+                                                            <EllipsisVerticalIcon className="h-5 w-5" />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </li>
                                         ))}
@@ -791,6 +955,11 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                     )}
                 </div>
             </div>
+            <Notificacion
+                mostrar={mostrarToast}
+                mensaje={mensajeToast}
+                tipo="success"
+            />
         </AuthenticatedLayout>
     );
 }

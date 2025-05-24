@@ -627,6 +627,27 @@ public function show(Request $peticion, $id)
                          ->with($eliminado ? 'success' : 'error', $mensaje);
     }
 
+    public function toggleCancion(Request $request, $playlistId, $songId)
+    {
+        $user = $request->user();
+
+        $playlist = Contenedor::where('id', $playlistId)
+            ->where('tipo', 'playlist')
+            ->whereHas('usuarios', fn($q) => $q->where('users.id', $user->id))
+            ->firstOrFail();
+
+        $cancion = Cancion::findOrFail($songId);
+
+        if ($playlist->canciones()->where('cancion_id', $cancion->id)->exists()) {
+            $playlist->canciones()->detach($cancion);
+        } else {
+            $playlist->canciones()->attach($cancion);
+        }
+
+        return back();
+    }
+
+
     public function toggleLoopz(Request $request, Contenedor $contenedor)
     {
         $user = Auth::user();

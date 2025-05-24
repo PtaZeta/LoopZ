@@ -22,14 +22,7 @@ export default function Canciones({ auth, canciones, success: mensajeExitoSesion
     };
 
     return (
-        <AuthenticatedLayout
-            user={auth.user}
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-200">
-                    Canciones
-                </h2>
-            }
-        >
+        <AuthenticatedLayout>
             <Head title="Canciones" />
 
             <div className="py-12">

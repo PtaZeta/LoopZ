@@ -124,7 +124,7 @@ export default function PlaylistComunidad({ auth, genero, playlists, canciones, 
                                 <div key={cancion.id} className="bg-gray-800 rounded-lg shadow-lg overflow-hidden group transition-all transform hover:-translate-y-1 hover:shadow-xl">
                                     <div className="relative w-full h-32 sm:h-48 bg-gray-700 flex items-center justify-center text-gray-500">
                                         <ImagenConPlaceholder
-                                            src={cancion.foto_perfil}
+                                            src={cancion.foto_url}
                                             alt={`Portada de ${cancion.titulo}`}
                                             claseImagen="w-full h-full object-cover"
                                             clasePlaceholder="w-full h-full bg-gray-700 flex items-center justify-center text-gray-500"
