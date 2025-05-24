@@ -214,12 +214,9 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
     const urlImagenActual = obtenerUrlImagen(contenedor);
 
     return (
-        <AuthenticatedLayout
-            user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-200 leading-tight">Editar EP: {contenedor.nombre}</h2>}
-        >
+        <AuthenticatedLayout>
             <Head title={`Editar ${contenedor.nombre}`} />
-            <div className="py-12 min-h-screen">
+            <div className="py-12 pt-20 min-h-screen">
                 <div className="max-w-2xl mx-auto sm:px-6 lg:px-8">
                     {recentlySuccessful && mensajeExitoSesion && (
                         <div className="mb-4 p-4 bg-green-900 border border-green-700 text-green-200 rounded-md shadow-sm" role="alert">

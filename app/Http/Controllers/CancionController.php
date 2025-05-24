@@ -478,19 +478,13 @@ class CancionController extends Controller
         if (!$url) return null;
         try {
             $path = parse_url($url, PHP_URL_PATH) ?: '';
-            // For S3 URLs, the path usually starts with a bucket name, then the key.
-            // We need to remove any leading slashes that might be present
-            // from parse_url and also the base S3 URL part if present.
             $bucket = config('filesystems.disks.s3.bucket');
             $s3BasePath = '/' . $bucket . '/';
 
-            // Remove bucket name and leading slash if present in the path
             if (Str::startsWith($path, $s3BasePath)) {
                 $relativePath = Str::after($path, $s3BasePath);
                 return ltrim($relativePath, '/');
             }
-            // Fallback for paths that might not include the bucket in the URL path (e.g., if using custom domains)
-            // This part assumes that 'canciones/' or 'imagenes/' are direct prefixes in the S3 key.
             $path = ltrim($path, '/');
             if (Str::startsWith($path, 'canciones/') || Str::startsWith($path, 'imagenes/')) {
                 return $path;

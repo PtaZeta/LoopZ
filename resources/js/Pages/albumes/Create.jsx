@@ -147,10 +147,7 @@ export default function CrearAlbum({ auth }) {
     }, []);
 
     return (
-        <AuthenticatedLayout
-            user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-200 leading-tight">Crear Nueva Album</h2>}
-        >
+        <AuthenticatedLayout>
             <Head title="Crear Album" />
 
             <div className="py-12">

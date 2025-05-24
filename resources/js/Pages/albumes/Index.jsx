@@ -35,14 +35,7 @@ export default function AlbumIndex() {
     };
 
     return (
-        <AuthenticatedLayout
-            user={auth.user}
-            header={
-                <h2 className="font-semibold text-xl text-gray-200 leading-tight">
-                    Albumes
-                </h2>
-            }
-        >
+        <AuthenticatedLayout>
             <Head title="Albumes" />
 
             <div className="py-12">

@@ -186,7 +186,7 @@ export const PlayerProvider = ({ children }) => {
         if (colaActual.length === 0) return;
         limpiarErrores();
 
-        if (loopingOne) {
+        if (loopingOne || (looping && colaActual.length === 1)) {
             seek(0);
             if (!Reproduciendo) {
                 play();
