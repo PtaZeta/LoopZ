@@ -1,16 +1,22 @@
 FROM node:18-alpine
+
+# Establece el directorio de trabajo dentro del contenedor
 WORKDIR /app
-# No necesitas package.json para este script simple si no tiene dependencias npm explícitas.
-# Si 'icy' y 'cors' son dependencias, asegúrate de que un package.json con ellas exista en la raíz del contexto (tu proyecto LoopZ)
-# o añade un paso RUN npm install si las tienes en un package.json en /app.
-# Asumiendo que icy y cors son dependencias, podrías tener un package.json en la raíz
-# y copiarlo. Si no, necesitarás un package.json en /app y copiarlo.
 
-# Vamos a asumir que necesitas instalar las dependencias
-COPY package.json .
-RUN npm install
+# Copia los archivos package.json y package-lock.json desde la raíz de tu proyecto LoopZ
+# a /app dentro del contenedor.
+# Esto asume que package.json (con 'icy' y 'cors' como dependencias) está en ~/laravel/LoopZ/
+COPY package*.json ./
 
-# Copia tu archivo CJS
+# Instala las dependencias de Node.js
+RUN npm install --omit=dev
+
+# Copia tu script de servidor Node.js
+# La ruta 'resources/js/hooks/icy-server.cjs' es relativa a la raíz de tu proyecto LoopZ (el contexto de build)
 COPY resources/js/hooks/icy-server.cjs ./icy-server.cjs
+
+# Expone el puerto que tu aplicación Node.js usará
 EXPOSE 3001
+
+# Comando para iniciar tu aplicación Node.js
 CMD ["node", "icy-server.cjs"]

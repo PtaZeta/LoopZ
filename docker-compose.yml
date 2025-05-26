@@ -9,11 +9,15 @@ services:
     ports:
       - "9000:9000"
     depends_on:
-      - db
-      - meilisearch
-      - icy-api
+      db:
+        condition: service_healthy
+      meilisearch:
+        condition: service_started
+      icy-api:
+        condition: service_started
     env_file:
       - .env
+    command: php-fpm
 
   nginx:
     image: nginx:stable-alpine
@@ -51,9 +55,11 @@ services:
     volumes:
       - 'pg_data:/var/lib/postgresql/data'
     healthcheck:
-      test: ["CMD", "pg_isready", "-q", "-d", "${DB_DATABASE}", "-U", "${DB_USERNAME}"]
-      retries: 3
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"]
+      interval: 5s
       timeout: 5s
+      retries: 5
+      start_period: 10s
 
   meilisearch:
     image: 'getmeili/meilisearch:v1.6'

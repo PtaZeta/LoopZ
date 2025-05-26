@@ -18,6 +18,8 @@ RUN apt update && apt install -y \
     npm \
     git \
     curl \
+    procps \
+    grep \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /etc/apt/keyrings/

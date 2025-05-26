@@ -69,4 +69,6 @@ app.get('/metadata', (req, res) => {
 });
 
 const PUERTO = process.env.PORT || 3001;
-app.listen(PUERTO, () => {});
+app.listen(PUERTO, () => {
+    console.log(`Servidor Icy-server escuchando en el puerto ${PUERTO}`);
+});

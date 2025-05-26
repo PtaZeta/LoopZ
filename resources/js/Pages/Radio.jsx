@@ -142,7 +142,7 @@ export default function Radio() {
       try {
         setLetraCancion(null)
         setBuscandoLetra(true)
-        const res = await axios.get('http://localhost:3001/metadata', {
+        const res = await axios.get('/icy-api/metadata', {
           params: { url: emisoraSeleccionada.url_resolved }
         })
 
