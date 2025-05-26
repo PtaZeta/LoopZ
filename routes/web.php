@@ -22,6 +22,9 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 Route::get('/', function () {
+    if (!Auth::check()) {
+        return Inertia::render('Guest');
+    }
     $cancionesAleatorias = Cancion::inRandomOrder()->limit(8)->with('generos')->get();
     $artistasPopulares = [];
     $generos = Genero::all();

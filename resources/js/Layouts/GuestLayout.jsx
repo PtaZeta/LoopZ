@@ -1,10 +1,12 @@
+// GuestLayout.jsx
 import { Link } from '@inertiajs/react';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 
 export default function GuestLayout({ children }) {
     return (
+        // Asegúrate de que este div NO tenga 'overflow-hidden' aquí si quieres que Guest.jsx lo controle
         <div className="flex min-h-screen flex-col items-center bg-gradient-to-b from-gray-900 to-black text-gray-300 font-sans pt-6 sm:pt-0">
-            <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md shadow-lg text-white">
+            <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md text-white">
                 <div className="container mx-auto px-6 py-3 flex justify-between items-center">
                     <Link href="/" className="text-2xl font-bold text-blue-500 hover:text-blue-400 transition-colors">
                         <ApplicationLogo className="h-8 w-auto" />
@@ -26,7 +28,8 @@ export default function GuestLayout({ children }) {
                 </div>
             </header>
 
-            <main className="pt-20 w-full">
+            {/* Mantenemos el ajuste del padding-top aquí */}
+            <main className="pt-16 w-full">
                 {children}
             </main>
         </div>
