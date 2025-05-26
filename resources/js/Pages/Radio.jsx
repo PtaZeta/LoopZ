@@ -66,59 +66,55 @@ export default function Radio() {
   }, [])
 
   const buscarEmisoras = async () => {
-    try {
-      let url = ''
-      const baseUrl = 'https://de1.api.radio-browser.info/json/stations/search'
-      const params = new URLSearchParams()
-      params.append('hidebroken', 'true')
-      params.append('order', 'votes')
-      params.append('reverse', 'true')
-      params.append('limit', '50')
+  try {
+    let url = ''
+    const baseUrl = 'https://de1.api.radio-browser.info/json/stations/search'
+    const params = new URLSearchParams()
+    params.append('hidebroken', 'true')
+    params.append('order', 'votes')
+    params.append('reverse', 'true')
+    params.append('limit', '50')
 
-      let hasFilters = false
-      if (genero) {
-        params.append('tag', genero)
-        hasFilters = true
-      }
-      if (pais) {
-        params.append('countrycode', pais)
-        hasFilters = true
-      }
+    let hasFilters = false
+    if (genero) {
+      params.append('tag', genero)
+      hasFilters = true
+    }
+    if (pais) {
+      params.append('countrycode', pais)
+      hasFilters = true
+    }
 
-      if (!hasFilters) {
-        url = 'https://de1.api.radio-browser.info/json/stations/search?limit=10&hidebroken=true&order=votes&reverse=true'
-      } else {
-        url = `${baseUrl}?${params.toString()}`
-      }
+    if (!hasFilters) {
+      url = 'https://de1.api.radio-browser.info/json/stations/search?limit=10&hidebroken=true&order=votes&reverse=true'
+    } else {
+      url = `${baseUrl}?${params.toString()}`
+    }
 
-      const res = await axios.get(url)
-      const ordenadas = [...res.data].sort((a, b) => b.votes - a.votes)
-      setEmisoras(ordenadas)
+    const res = await axios.get(url)
+    const ordenadas = [...res.data].sort((a, b) => b.votes - a.votes)
+    setEmisoras(ordenadas)
 
-      if (ordenadas.length > 0) {
-        // When searching, select the first one by default but don't force a full queue load
-        // The user will explicitly play it via the dropdown or another button
-        setEmisoraSeleccionada(ordenadas[0])
-        // Remove this line to avoid automatically loading the whole list when searching
-        // cargarColaYIniciar(canciones, { iniciar: 0 })
-      } else {
-        setEmisoraSeleccionada(null)
-        cargarColaYIniciar([], { iniciar: 0 })
-      }
-    } catch (err) {
-      console.error(err)
-      setEmisoras([])
+    if (ordenadas.length > 0) {
+      const primeraEmisora = ordenadas[0]
+      setEmisoraSeleccionada(primeraEmisora)
+      reproducirRadio(primeraEmisora)
+    } else {
       setEmisoraSeleccionada(null)
       cargarColaYIniciar([], { iniciar: 0 })
     }
+  } catch (err) {
+    console.error(err)
+    setEmisoras([])
+    setEmisoraSeleccionada(null)
+    cargarColaYIniciar([], { iniciar: 0 })
   }
+}
 
   const reproducirRadio = emisora => {
     if (!emisora?.url_resolved) return
     setEmisoraSeleccionada(emisora)
 
-    // *** MODIFICACIÓN CLAVE AQUÍ ***
-    // Create a queue with ONLY the selected radio station
     const singleStationQueue = [{
       id: emisora.stationuuid,
       titulo: emisora.name,
@@ -127,14 +123,13 @@ export default function Radio() {
       cover: emisora.favicon || '',
       extra: emisora,
     }];
-    // Load this single-station queue and start playing it
     cargarColaYIniciar(singleStationQueue, { iniciar: 0 });
-    // *** FIN MODIFICACIÓN ***
   }
 
   useEffect(() => {
     buscarEmisoras()
   }, [genero, pais])
+
 
   useEffect(() => {
     if (!emisoraSeleccionada?.url_resolved) {
