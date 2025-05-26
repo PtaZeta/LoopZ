@@ -8,15 +8,13 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Arr; // Para trabajar con arrays
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class SearchController extends Controller
 {
     public function index(Request $request)
     {
         $query = $request->input('query', '');
-
         $limitCanciones = 10;
         $limitOtros = 6;
 
@@ -27,163 +25,143 @@ class SearchController extends Controller
         $singleIds = Contenedor::search($query)->where('tipo', 'single')->keys();
         $albumIds = Contenedor::search($query)->where('tipo', 'album')->keys();
 
-        $allCanciones = Cancion::whereIn('id', $cancionIds)->with('usuarios')->limit($limitCanciones)->get();
-        $allUsers = User::whereIn('id', $userIds)->limit($limitOtros)->get();
-        $allPlaylists = Contenedor::whereIn('id', $playlistIds)->with('usuarios', 'canciones.usuarios')->limit($limitOtros)->get();
-        $allEps = Contenedor::whereIn('id', $epIds)->with('usuarios', 'canciones.usuarios')->limit($limitOtros)->get();
-        $allSingles = Contenedor::whereIn('id', $singleIds)->with('usuarios', 'canciones.usuarios')->limit($limitOtros)->get();
-        $allAlbumes = Contenedor::whereIn('id', $albumIds)->with('usuarios', 'canciones.usuarios')->limit($limitOtros)->get();
+        $allCanciones = Cancion::whereIn('id', $cancionIds)
+            ->with('usuarios')
+            ->limit($limitCanciones)
+            ->get()
+            ->map(function ($cancion) use ($query) {
+                $cancion->match_score = $this->calculateMatchScore($cancion->titulo, $query);
+                return $cancion;
+            })
+            ->sortByDesc('match_score');
 
-        $principal = null;
+        $allUsers = User::whereIn('id', $userIds)
+            ->limit($limitOtros)
+            ->get()
+            ->map(function ($user) use ($query) {
+                $user->match_score = $this->calculateMatchScore($user->name, $query);
+                return $user;
+            })
+            ->sortByDesc('match_score');
+
+        $allPlaylists = Contenedor::whereIn('id', $playlistIds)
+            ->with('usuarios', 'canciones.usuarios')
+            ->limit($limitOtros)
+            ->get()
+            ->map(function ($contenedor) use ($query) {
+                $contenedor->match_score = $this->calculateMatchScore($contenedor->nombre, $query);
+                return $contenedor;
+            })
+            ->sortByDesc('match_score');
+
+        $allEps = Contenedor::whereIn('id', $epIds)
+            ->with('usuarios', 'canciones.usuarios')
+            ->limit($limitOtros)
+            ->get()
+            ->map(function ($contenedor) use ($query) {
+                $contenedor->match_score = $this->calculateMatchScore($contenedor->nombre, $query);
+                return $contenedor;
+            })
+            ->sortByDesc('match_score');
+
+        $allSingles = Contenedor::whereIn('id', $singleIds)
+            ->with('usuarios', 'canciones.usuarios')
+            ->limit($limitOtros)
+            ->get()
+            ->map(function ($contenedor) use ($query) {
+                $contenedor->match_score = $this->calculateMatchScore($contenedor->nombre, $query);
+                return $contenedor;
+            })
+            ->sortByDesc('match_score');
+
+        $allAlbumes = Contenedor::whereIn('id', $albumIds)
+            ->with('usuarios', 'canciones.usuarios')
+            ->limit($limitOtros)
+            ->get()
+            ->map(function ($contenedor) use ($query) {
+                $contenedor->match_score = $this->calculateMatchScore($contenedor->nombre, $query);
+                return $contenedor;
+            })
+            ->sortByDesc('match_score');
+
         $principalItem = null;
         $principalKey = null;
 
         if ($query) {
-            $userPrincipal = $allUsers->firstWhere('name', 'LIKE', $query);
-            if ($userPrincipal) {
-                $principalItem = $userPrincipal;
-                $principalKey = 'user';
-            }
-            if (!$principalItem) {
-                $cancionPrincipal = $allCanciones->firstWhere('titulo', 'LIKE', $query);
-                if ($cancionPrincipal) {
-                    $principalItem = $cancionPrincipal;
-                    $principalKey = 'cancion';
-                }
-            }
-            if (!$principalItem) {
-                $playlistPrincipal = $allPlaylists->firstWhere('nombre', 'LIKE', $query);
-                if ($playlistPrincipal) {
-                    $principalItem = $playlistPrincipal;
-                    $principalKey = 'playlist';
-                }
-            }
-            if (!$principalItem) {
-                $albumPrincipal = $allAlbumes->firstWhere('nombre', 'LIKE', $query);
-                if ($albumPrincipal) {
-                    $principalItem = $albumPrincipal;
-                    $principalKey = 'album';
-                }
-            }
-            if (!$principalItem) {
-                $epPrincipal = $allEps->firstWhere('nombre', 'LIKE', $query);
-                if ($epPrincipal) {
-                    $principalItem = $epPrincipal;
-                    $principalKey = 'ep';
-                }
-            }
-            if (!$principalItem) {
-                $singlePrincipal = $allSingles->firstWhere('nombre', 'LIKE', $query);
-                if ($singlePrincipal) {
-                    $principalItem = $singlePrincipal;
-                    $principalKey = 'single';
-                }
-            }
-        }
+            $principalItem = $this->findFirstExactOrBestMatch([
+                ['items' => $allUsers, 'key' => 'name', 'type' => 'user'],
+                ['items' => $allCanciones, 'key' => 'titulo', 'type' => 'cancion'],
+                ['items' => $allPlaylists, 'key' => 'nombre', 'type' => 'playlist'],
+                ['items' => $allAlbumes, 'key' => 'nombre', 'type' => 'album'],
+                ['items' => $allEps, 'key' => 'nombre', 'type' => 'ep'],
+                ['items' => $allSingles, 'key' => 'nombre', 'type' => 'single'],
+            ], $query);
 
-        if (!$principalItem) {
-             if ($allUsers->isNotEmpty()) { $principalItem = $allUsers->first(); $principalKey = 'user'; }
-             else if ($allCanciones->isNotEmpty()) { $principalItem = $allCanciones->first(); $principalKey = 'cancion'; }
-             else if ($allPlaylists->isNotEmpty()) { $principalItem = $allPlaylists->first(); $principalKey = 'playlist'; }
-             else if ($allAlbumes->isNotEmpty()) { $principalItem = $allAlbumes->first(); $principalKey = 'album'; }
-             else if ($allEps->isNotEmpty()) { $principalItem = $allEps->first(); $principalKey = 'ep'; }
-             else if ($allSingles->isNotEmpty()) { $principalItem = $allSingles->first(); $principalKey = 'single'; }
+            if (!$principalItem) {
+                $principalItem =
+                    $allUsers->first() ?:
+                    $allCanciones->first() ?:
+                    $allPlaylists->first() ?:
+                    $allAlbumes->first() ?:
+                    $allEps->first() ?:
+                    $allSingles->first();
+                $principalKey = $principalItem ? class_basename(get_class($principalItem)) : null;
+            } else {
+                $principalKey = $principalItem['type'];
+                $principalItem = $principalItem['item'];
+            }
         }
 
         $relatedContent = [
             'canciones' => collect(),
         ];
+
         $otherRelatedSections = [];
 
         if ($principalItem) {
             switch ($principalKey) {
                 case 'user':
-                    $relatedContent['canciones'] = $relatedContent['canciones']->concat(
-                        $principalItem->perteneceCanciones()->with('usuarios')->limit($limitCanciones)->get()
-                    );
+                    $relatedContent['canciones'] = $principalItem->perteneceCanciones()
+                        ->with('usuarios')
+                        ->limit($limitCanciones)
+                        ->get()
+                        ->map(fn($c) => $this->addMatchScore($c, $query, 'titulo'));
+
                     $otherRelatedSections['playlists_del_artista'] = $principalItem->perteneceContenedores()
-                                                                       ->where('tipo', 'playlist')
-                                                                       ->with('usuarios')
-                                                                       ->limit($limitOtros)->get();
+                        ->where('tipo', 'playlist')
+                        ->with('usuarios')
+                        ->limit($limitOtros)
+                        ->get();
+
                     $otherRelatedSections['albumes_del_artista'] = $principalItem->perteneceContenedores()
-                                                                      ->where('tipo', 'album')
-                                                                      ->with('usuarios')
-                                                                      ->limit($limitOtros)->get();
-                    $otherRelatedSections['eps_del_artista'] = $principalItem->perteneceContenedores()
-                                                                  ->where('tipo', 'ep')
-                                                                  ->with('usuarios')
-                                                                  ->limit($limitOtros)->get();
-                    $otherRelatedSections['singles_del_artista'] = $principalItem->perteneceContenedores()
-                                                                      ->where('tipo', 'single')
-                                                                      ->with('usuarios')
-                                                                      ->limit($limitOtros)->get();
+                        ->where('tipo', 'album')
+                        ->with('usuarios')
+                        ->limit($limitOtros)
+                        ->get();
+
                     break;
 
                 case 'playlist':
                 case 'album':
                 case 'ep':
                 case 'single':
-                    $relatedContent['canciones'] = $relatedContent['canciones']->concat(
-                        $principalItem->canciones()->with('usuarios')->limit($limitCanciones)->get()
-                    );
+                    $relatedContent['canciones'] = $principalItem->canciones()
+                        ->with('usuarios')
+                        ->limit($limitCanciones)
+                        ->get()
+                        ->map(fn($c) => $this->addMatchScore($c, $query, 'titulo'));
 
                     $artists = $principalItem->usuarios;
                     if ($artists->isNotEmpty()) {
                         $otherRelatedSections['artistas_relacionados'] = $artists->take($limitOtros);
-
-                        $otherContainers = Contenedor::whereHas('usuarios', function ($q) use ($artists) {
-                            $q->whereIn('users.id', $artists->pluck('id'));
-                        })
-                        ->where('id', '!=', $principalItem->id)
-                        ->whereIn('tipo', ['album', 'playlist', 'ep', 'single'])
-                        ->with('usuarios')
-                        ->inRandomOrder()
-                        ->limit($limitOtros)
-                        ->get();
-                        if($otherContainers->isNotEmpty()) {
-                            $otherRelatedSections['mas_de_estos_artistas'] = $otherContainers;
-                        }
                     }
 
-                    $generoPredominante = $principalItem->generoPredominante();
-                    if ($generoPredominante && $generoPredominante !== 'Sin género') {
-                        $relatedContent['canciones'] = $relatedContent['canciones']->concat(
-                            Cancion::whereHas('generos', function ($q) use ($generoPredominante) {
-                                $q->where('nombre', $generoPredominante);
-                            })
-                            ->where('id', '!=', $principalItem->id)
-                            ->with('usuarios')
-                            ->inRandomOrder()
-                            ->limit($limitCanciones)
-                            ->get()
-                        );
-                    }
                     break;
 
                 case 'cancion':
                     $songArtists = $principalItem->usuarios;
                     if ($songArtists->isNotEmpty()) {
                         $otherRelatedSections['artistas_de_la_cancion'] = $songArtists->take($limitOtros);
-
-                        $relatedContent['canciones'] = $relatedContent['canciones']->concat(
-                            Cancion::whereHas('usuarios', function ($q) use ($songArtists) {
-                                $q->whereIn('users.id', $songArtists->pluck('id'));
-                            })
-                            ->where('id', '!=', $principalItem->id)
-                            ->with('usuarios')
-                            ->inRandomOrder()
-                            ->limit($limitCanciones)
-                            ->get()
-                        );
-
-                        $otherRelatedSections['contenedores_del_artista'] = Contenedor::whereHas('usuarios', function ($q) use ($songArtists) {
-                            $q->whereIn('users.id', $songArtists->pluck('id'));
-                        })
-                        ->whereIn('tipo', ['album', 'playlist', 'ep', 'single'])
-                        ->with('usuarios')
-                        ->inRandomOrder()
-                        ->limit($limitOtros)
-                        ->get();
                     }
 
                     $generosCancion = $principalItem->generos->pluck('nombre');
@@ -197,23 +175,28 @@ class SearchController extends Controller
                             ->inRandomOrder()
                             ->limit($limitCanciones)
                             ->get()
+                            ->map(fn($c) => $this->addMatchScore($c, $query, 'titulo'))
                         );
                     }
+
                     break;
             }
+
+            $relatedContent['canciones'] = $relatedContent['canciones']
+                ->unique('id')
+                ->sortByDesc('match_score')
+                ->take($limitCanciones);
         }
 
-        $relatedContent['canciones'] = $relatedContent['canciones']->unique('id')->take($limitCanciones);
-
-
         $loopzSongIds = [];
-        if ($usuario = Auth::user()) {
-            $loopzContainer = $usuario->perteneceContenedores()
-                                      ->where('tipo', 'loopz')
-                                      ->with('canciones:id')
-                                      ->first();
+        if (Auth::check()) {
+            $loopzContainer = Auth::user()->perteneceContenedores()
+                ->where('tipo', 'loopz')
+                ->with('canciones:id')
+                ->first();
+
             if ($loopzContainer && $loopzContainer->canciones) {
-                 $loopzSongIds = $loopzContainer->canciones->pluck('id')->toArray();
+                $loopzSongIds = $loopzContainer->canciones->pluck('id')->toArray();
             }
         }
 
@@ -224,30 +207,46 @@ class SearchController extends Controller
         $allAlbumes->each(fn($a) => $a->canciones->each(fn($c) => $c->is_in_user_loopz = in_array($c->id, $loopzSongIds)));
         $relatedContent['canciones']->each(fn($c) => $c->is_in_user_loopz = in_array($c->id, $loopzSongIds));
 
-
         $results = [
-            'canciones' => $allCanciones->filter(fn($item) => !($principalKey === 'cancion' && $item->id === $principalItem->id))->values()->take($limitCanciones),
-            'users'     => $allUsers->filter(fn($item) => !($principalKey === 'user' && $item->id === $principalItem->id))->values()->take($limitOtros),
-            'playlists' => $allPlaylists->filter(fn($item) => !($principalKey === 'playlist' && $item->id === $principalItem->id))->values()->take($limitOtros),
-            'eps'       => $allEps->filter(fn($item) => !($principalKey === 'ep' && $item->id === $principalItem->id))->values()->take($limitOtros),
-            'singles'   => $allSingles->filter(fn($item) => !($principalKey === 'single' && $item->id === $principalItem->id))->values()->take($limitOtros),
-            'albumes'   => $allAlbumes->filter(fn($item) => !($principalKey === 'album' && $item->id === $principalItem->id))->values()->take($limitOtros),
+            'canciones' => $allCanciones
+                ->filter(fn($item) => !($principalItem && $item->id === $principalItem->id))
+                ->values()
+                ->take($limitCanciones),
+            'users' => $allUsers
+                ->filter(fn($item) => !($principalItem && $item->id === $principalItem->id))
+                ->values()
+                ->take($limitOtros),
+            'playlists' => $allPlaylists
+                ->filter(fn($item) => !($principalItem && $item->id === $principalItem->id))
+                ->values()
+                ->take($limitOtros),
+            'eps' => $allEps
+                ->filter(fn($item) => !($principalItem && $item->id === $principalItem->id))
+                ->values()
+                ->take($limitOtros),
+            'singles' => $allSingles
+                ->filter(fn($item) => !($principalItem && $item->id === $principalItem->id))
+                ->values()
+                ->take($limitOtros),
+            'albumes' => $allAlbumes
+                ->filter(fn($item) => !($principalItem && $item->id === $principalItem->id))
+                ->values()
+                ->take($limitOtros),
         ];
 
         $usuarioPlaylistsAñadir = Auth::user();
-
-        $userPlaylists = $usuarioPlaylistsAñadir->perteneceContenedores()
-            ->where('tipo', 'playlist')
-            ->with('canciones:id')
-            ->select('id', 'nombre', 'imagen')
-            ->get();
-
-        $userPlaylists->each(function ($playlist) {
-            if ($playlist->imagen && !filter_var($playlist->imagen, FILTER_VALIDATE_URL)) {
-                $playlist->imagen = Storage::disk('s3')->url($playlist->imagen);
-            }
-        });
-
+        $userPlaylists = $usuarioPlaylistsAñadir
+            ? $usuarioPlaylistsAñadir->perteneceContenedores()
+                ->where('tipo', 'playlist')
+                ->select('id', 'nombre', 'imagen')
+                ->get()
+                ->map(function ($playlist) {
+                    if ($playlist->imagen && !Str::startsWith($playlist->imagen, 'http')) {
+                        $playlist->imagen = \Storage::disk('s3')->url($playlist->imagen);
+                    }
+                    return $playlist;
+                })
+            : collect();
 
         return Inertia::render('Search/Index', [
             'searchQuery' => $query,
@@ -257,20 +256,65 @@ class SearchController extends Controller
             'relatedContent' => $otherRelatedSections,
             'relatedSongs' => $relatedContent['canciones'],
             'filters' => [],
-        'auth' => [
-            'user' => $usuarioPlaylistsAñadir ? [
-                'id' => $usuarioPlaylistsAñadir->id,
-                'name' => $usuarioPlaylistsAñadir->name,
-                'playlists' => $userPlaylists->map(function ($p) {
-                    return [
-                        'id' => $p->id,
-                        'nombre' => $p->nombre,
-                        'imagen' => $p->imagen,
-                        'canciones' => $p->canciones,
-                    ];
-                }),
-            ] : null,
-        ],
+            'auth' => $usuarioPlaylistsAñadir
+                ? [
+                    'user' => [
+                        'id' => $usuarioPlaylistsAñadir->id,
+                        'name' => $usuarioPlaylistsAñadir->name,
+                        'playlists' => $userPlaylists->map(function ($p) {
+                            return [
+                                'id' => $p->id,
+                                'nombre' => $p->nombre,
+                                'imagen' => $p->imagen,
+                                'canciones' => $p->canciones,
+                            ];
+                        }),
+                    ],
+                ]
+                : null,
         ]);
+    }
+
+    private function calculateMatchScore(string $text, string $query): int
+    {
+        $text = strtolower($text);
+        $query = strtolower($query);
+
+        if ($text === $query) return 100;
+        if (str_starts_with($text, $query)) return 80;
+        if (str_contains($text, " $query ") ||
+            str_starts_with($text, "$query ") ||
+            str_ends_with($text, " $query")
+        ) return 60;
+        if (str_contains($text, $query)) return 40;
+        if (similar_text($text, $query, $percent)) {
+            return (int) $percent;
+        }
+        return 0;
+    }
+
+    private function findFirstExactOrBestMatch(array $candidates, string $query): ?array
+    {
+        foreach ($candidates as $candidate) {
+            $exact = $candidate['items']->firstWhere($candidate['key'], $query);
+            if ($exact) {
+                return ['item' => $exact, 'type' => $candidate['type']];
+            }
+        }
+
+        foreach ($candidates as $candidate) {
+            $best = $candidate['items']->sortByDesc('match_score')->first();
+            if ($best) {
+                return ['item' => $best, 'type' => $candidate['type']];
+            }
+        }
+
+        return null;
+    }
+
+    private function addMatchScore($model, string $query, string $field)
+    {
+        $model->match_score = $this->calculateMatchScore($model->{$field}, $query);
+        return $model;
     }
 }
