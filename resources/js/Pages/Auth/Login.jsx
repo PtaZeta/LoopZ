@@ -24,10 +24,9 @@ export default function Login({ status, canResetPassword }) {
     return (
         <GuestLayout>
             <Head title="Log in" />
-
-            <div className="max-w-md mx-auto p-6 bg-gray-900 rounded-md shadow-lg text-white">
+            <div className="max-w-xl w-full mx-auto p-8 bg-gray-900 rounded-md shadow-lg text-white mt-8 my-auto">
                 <div className="flex justify-center mb-8">
-                    <Link href="/" className="text-2xl font-bold text-blue-500 hover:text-blue-400 transition-colors">
+                    <Link href="/" className="text-3xl md:text-4xl font-bold text-blue-500 hover:text-blue-400 transition-colors">
                         LoopZ
                     </Link>
                 </div>
@@ -83,7 +82,7 @@ export default function Login({ status, canResetPassword }) {
                                 }
                             />
                             <span className="ms-2 text-sm text-gray-500">
-                                Remember me
+                                Recuérdame
                             </span>
                         </label>
                     </div>

@@ -210,39 +210,56 @@ class CancionController extends Controller
 
 
         public function show($id)
-        {
-            try {
-                $cancion = Cancion::with([
-                    'usuarios' => function ($query) {
-                        $query->withPivot('propietario');
-                    },
-                    'licencia',
-                    'generos',
-                    'cancionOriginal'
-                ])->findOrFail($id);
-
-                $cancion->usuarios_mapeados = $cancion->usuarios->map(function($u) {
-                    return [
-                        'id' => $u->id,
-                        'name' => $u->name,
-                        'email' => $u->email,
-                        'es_propietario' => (bool) $u->pivot->propietario
-                    ];
-                })->all();
-                unset($cancion->usuarios);
-
-                $cancion->generos_mapeados = $cancion->generos->map(function($g) {
-                    return $g->nombre;
-                })->implode(', ');
-                unset($cancion->generos);
-
-                return Inertia::render('canciones/Show', [
-                    'cancion' => $cancion
-                ]);
-            } catch (ModelNotFoundException $e) {
-                return redirect()->route('welcome')->with('error', 'Canción no encontrada.');
+{
+    try {
+        $cancion = Cancion::with([
+            'usuarios' => function ($query) {
+                $query->withPivot('propietario');
+            },
+            'licencia',
+            'generos',
+            'cancionOriginal.usuarios' => function ($query) {
+                $query->withPivot('propietario');
             }
+        ])->findOrFail($id);
+
+        // Mapear usuarios de la canción actual
+        $cancion->usuarios_mapeados = $cancion->usuarios->map(function($u) {
+            return [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'es_propietario' => (bool) $u->pivot->propietario
+            ];
+        })->all();
+        unset($cancion->usuarios);
+
+        // Mapear géneros
+        $cancion->generos_mapeados = $cancion->generos->map(function($g) {
+            return $g->nombre;
+        })->implode(', ');
+        unset($cancion->generos);
+
+        // Si hay una canción original, también mapeamos sus usuarios
+        if ($cancion->cancionOriginal) {
+            $cancion->cancionOriginal->usuarios_mapeados = $cancion->cancionOriginal->usuarios->map(function($u) {
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'email' => $u->email,
+                    'es_propietario' => (bool) $u->pivot->propietario
+                ];
+            })->all();
+            unset($cancion->cancionOriginal->usuarios);
         }
+
+        return Inertia::render('canciones/Show', [
+            'cancion' => $cancion
+        ]);
+    } catch (ModelNotFoundException $e) {
+        return redirect()->route('welcome')->with('error', 'Canción no encontrada.');
+    }
+}
 
     public function edit($id)
     {

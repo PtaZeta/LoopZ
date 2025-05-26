@@ -14,40 +14,35 @@ export default function Guest() {
         return initialIndex;
     });
     const [imageOpacity, setImageOpacity] = useState(1);
-    const [nextImageIndex, setNextImageIndex] = useState(0); // Para precargar la siguiente imagen y tenerla lista
+    const [nextImageIndex, setNextImageIndex] = useState(0);
 
     useEffect(() => {
-        // Pre-carga todas las imágenes para evitar parpadeos
         images.forEach(src => {
             const img = new Image();
             img.src = src;
         });
 
-        // Inicializa el índice de la siguiente imagen
         setNextImageIndex((currentImageIndex + 1) % images.length);
 
-        const transitionDuration = 2000; // 2 segundos para el fundido (más suave)
-        const displayDuration = 13000; // 13 segundos que la imagen está visible antes de empezar a fundirse
-        const totalDuration = displayDuration + transitionDuration; // Total: 15 segundos
+        const transitionDuration = 2000;
+        const displayDuration = 13000;
+        const totalDuration = displayDuration + transitionDuration;
 
         const interval = setInterval(() => {
-            // Paso 1: Reducir la opacidad a 0 para iniciar el fundido de salida
             setImageOpacity(0);
 
-            // Paso 2: Cambiar la imagen *después* de que haya iniciado el fundido de salida
-            // Se hace un poco antes de que la opacidad llegue a 0 para que el cambio no sea visible
             setTimeout(() => {
                 setCurrentImageIndex(prevIndex => {
                     const newIndex = (prevIndex + 1) % images.length;
-                    setNextImageIndex((newIndex + 1) % images.length); // Actualiza la siguiente imagen
+                    setNextImageIndex((newIndex + 1) % images.length);
                     return newIndex;
                 });
-                setImageOpacity(1); // Paso 3: Aumentar la opacidad a 1 para el fundido de entrada de la nueva imagen
-            }, transitionDuration); // Cambia la imagen justo cuando el fundido de salida termina
+                setImageOpacity(1);
+            }, transitionDuration);
         }, totalDuration);
 
         return () => clearInterval(interval);
-    }, []); // El array de dependencias vacío asegura que se ejecute una sola vez al montar
+    }, []);
 
     return (
         <div className="flex flex-col min-h-screen bg-gradient-to-b from-gray-900 to-black text-gray-300 font-sans overflow-hidden">
@@ -55,21 +50,18 @@ export default function Guest() {
                 <meta itemProp="name" content="Descubre tu Próxima Obsesión Musical" />
                 <meta itemProp="description" content="Sumérgete en un universo de sonidos ilimitados. Crea tus playlists, sigue a tus artistas favoritos y haz que cada ritmo cuente." />
 
-                {/* Div principal de la imagen con la transición de opacidad */}
                 <div
-                    className="absolute inset-0 w-full h-full bg-cover bg-center overflow-hidden transition-opacity duration-[2000ms] ease-in-out" // Ajustada duración a 2000ms
+                    className="absolute inset-0 w-full h-full bg-cover bg-center overflow-hidden transition-opacity duration-[2000ms] ease-in-out"
                     style={{
                         backgroundImage: `url('${images[currentImageIndex]}')`,
                         opacity: imageOpacity
                     }}
                 ></div>
-                {/* Div auxiliar para precargar la siguiente imagen (opcional, pero mejora la fluidez) */}
                 <div
-                    className="hidden" // Escondido, solo para que el navegador lo cargue
+                    className="hidden"
                     style={{ backgroundImage: `url('${images[nextImageIndex]}')` }}
                 ></div>
 
-                {/* Overlay de oscuridad */}
                 <div className="absolute inset-0 bg-black opacity-60"></div>
 
                 <div className="relative z-10 px-6 md:px-12 max-w-4xl">

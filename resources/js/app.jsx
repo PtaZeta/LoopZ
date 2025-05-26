@@ -9,7 +9,7 @@ import { PlayerProvider } from '@/contexts/PlayerContext';
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 createInertiaApp({
-    title: (title) => `${appName} - ${title} `,
+    title: (title) => title ? `${appName} - ${title} ` : appName,
     resolve: (name) =>
         resolvePageComponent(
             `./Pages/${name}.jsx`,

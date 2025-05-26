@@ -286,7 +286,7 @@ export default function Create({ auth, generos, licencias }) {
                                     </div>
                                     {!data.remix ? (
                                         <div>
-                                            <InputLabel htmlFor="licencia_id" value="Licencia" className="text-gray-300" />
+                                            <InputLabel htmlFor="licencia_id" value="Licencia (no se podrá modificar luego)" className="text-gray-300" />
                                             <select
                                                 id="licencia_id"
                                                 name="licencia_id"
