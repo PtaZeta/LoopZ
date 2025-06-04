@@ -32,6 +32,7 @@
         "icy": "^2.1.0",
         "lodash.debounce": "^4.0.8",
         "lucide-react": "^0.503.0",
+        "react-router-dom": "^7.6.2",
         "react-window": "^1.8.11"
     }
 }

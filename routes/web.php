@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AlbumController;
+use App\Http\Controllers\Auth\CodigoVerificacionController;
 use App\Http\Controllers\CancionController;
 use App\Http\Controllers\ContenedorController;
 use App\Http\Controllers\EPController;
@@ -192,5 +193,11 @@ Route::get('/spotify-login', function () {
 });
 
 Route::get('/callback', [GeneroController::class, 'storeGenres']);
+Route::get('/verificar-codigo', function () {
+    return Inertia::render('Auth/VerifyCodeComponent');
+})->name('verificacion.aviso');
+
+Route::post('/verificar-codigo', [CodigoVerificacionController::class, 'verificarCodigoApi'])
+    ->name('verificacion.submit');
 
 require __DIR__.'/auth.php';

@@ -18,6 +18,8 @@ class User extends Authenticatable
         'password',
         'foto_perfil',
         'banner_perfil',
+        'codigo_verificacion',
+        'codigo_verificacion_expira_en',
     ];
 
     /**
@@ -37,6 +39,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'codigo_verificacion_expira_en' => 'datetime',
         ];
     }
 

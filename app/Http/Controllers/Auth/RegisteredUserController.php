@@ -11,25 +11,21 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
+use App\Notifications\CodigoVerificacionNotification;
 
 class RegisteredUserController extends Controller
 {
-    /**
-     * Display the registration view.
-     */
     public function create(): Response
     {
         return Inertia::render('Auth/Register');
     }
 
-    /**
-     * Handle an incoming registration request.
-     *
-     * @throws \Illuminate\Validation\ValidationException
-     */
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
@@ -50,27 +46,31 @@ class RegisteredUserController extends Controller
             $rutaBannerPerfil = $request->file('banner_perfil')->store('banner_perfil', 'public');
         }
 
-        $user = User::create([
+        $codigo = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $expiraEn = Carbon::now()->addMinutes(10);
+
+        Session::put('registration_data', [
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'foto_perfil' => $rutaFotoPerfil,
             'banner_perfil' => $rutaBannerPerfil,
+            'codigo_verificacion' => $codigo,
+            'codigo_verificacion_expira_en' => $expiraEn,
         ]);
 
-        $playlist = Contenedor::create([
-            'user_id' => $user->id,
-            'nombre' => 'LoopZs',
-            'descripcion' => '',
-            'tipo' => 'loopz',
-        ]);
+        $user = (object) Session::get('registration_data');
+        $user->name = $request->name;
+        $user->email = $request->email;
+        $user->password = Hash::make($request->password);
+        $user->codigo_verificacion = $codigo;
+        $user->codigo_verificacion_expira_en = $expiraEn;
 
-        $playlist->usuarios()->attach($user->id, ['propietario' => true]);
+        (new User([
+            'name' => $request->name,
+            'email' => $request->email,
+        ]))->notify(new CodigoVerificacionNotification($codigo));
 
-        event(new Registered($user));
-
-        Auth::login($user);
-
-        return redirect(route('welcome', absolute: false));
+        return redirect(route('verificacion.aviso', absolute: false));
     }
 }
