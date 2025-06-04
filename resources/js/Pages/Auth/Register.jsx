@@ -17,8 +17,17 @@ export default function Register() {
 
     const submit = (e) => {
         e.preventDefault();
+
         post(route('register'), {
-            onFinish: () => reset('password', 'password_confirmation', 'foto_perfil', 'banner_perfil'),
+            onSuccess: () => {
+                console.log('Registro exitoso. Se ha enviado un código de verificación.');
+            },
+            onFinish: () => {
+                reset('password', 'password_confirmation', 'foto_perfil', 'banner_perfil');
+            },
+            onError: (formErrors) => {
+                console.error('Errores en el registro:', formErrors);
+            }
         });
     };
 
@@ -35,17 +44,7 @@ export default function Register() {
         <GuestLayout>
             <Head title="Register" />
 
-            {/* AJUSTES APLICADOS DEL LOGIN:
-                - 'max-w-xl': Para un ancho generoso. Si necesitas más, prueba 'max-w-screen-md' o 'lg'.
-                - 'p-8': Aumentado el padding interno para que la caja se vea más grande.
-                - 'pt-8': Añade padding (espacio) justo en la parte superior interna del formulario, por encima del texto "LoopZ".
-                - 'mt-8': Margen superior para la posición general del formulario en la pantalla. Ajusta si es necesario.
-                - 'my-auto': Ayuda al centrado vertical, permitiendo que 'mt-' y 'pt-' lo posicionen.
-            */}
             <div className="max-w-xl w-full mx-auto p-8 bg-gray-900 rounded-md shadow-lg text-gray-300 mt-8 my-auto">
-                {/* AJUSTE: Mantenido el 'mb-8' para el espacio debajo del título "LoopZ"
-                           Ajustado el tamaño del texto para que coincida con el Login (text-3xl md:text-4xl)
-                */}
                 <div className="flex justify-center mb-8">
                     <Link href="/" className="text-3xl md:text-4xl font-bold text-blue-500 hover:text-blue-400 transition-colors">
                         LoopZ
@@ -117,7 +116,6 @@ export default function Register() {
                         <InputError message={errors.password_confirmation} className="mt-2 text-red-500" />
                     </div>
 
-                    {/* Las clases para los input de tipo 'file' ya están bien con el estilo de botón degradado */}
                     <div className="mb-4">
                         <InputLabel htmlFor="foto_perfil" value="Foto de perfil (Opcional)" className="text-gray-100 font-medium" />
                         <input
@@ -138,7 +136,7 @@ export default function Register() {
                         />
                         {data.foto_perfil && (
                             <p className="mt-1 text-sm text-gray-500">
-                                Selected: {data.foto_perfil.name}
+                                Seleccionado: {data.foto_perfil.name}
                             </p>
                         )}
                         <InputError message={errors.foto_perfil} className="mt-2 text-red-500" />
@@ -164,7 +162,7 @@ export default function Register() {
                         />
                         {data.banner_perfil && (
                             <p className="mt-1 text-sm text-gray-500">
-                                Selected: {data.banner_perfil.name}
+                                Seleccionado: {data.banner_perfil.name}
                             </p>
                         )}
                         <InputError message={errors.banner_perfil} className="mt-2 text-red-500" />
