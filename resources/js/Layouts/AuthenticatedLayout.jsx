@@ -7,61 +7,54 @@ import {
     UserIcon, MusicalNoteIcon, ArrowUpOnSquareIcon, ArrowRightOnRectangleIcon,
     ArrowsRightLeftIcon, QueueListIcon, XCircleIcon,
     RadioIcon, Bars3Icon, BellIcon,
+    PlayIcon as HeroPlayIcon,
+    PauseIcon as HeroPauseIcon,
+    BackwardIcon as HeroBackwardIcon,
+    ForwardIcon as HeroForwardIcon,
+    SpeakerWaveIcon as HeroVolumeIcon,
+    SpeakerXMarkIcon as HeroVolumeMuteIcon,
+    SpeakerWaveIcon as HeroVolumeLowIcon,
+    ArrowPathIcon as HeroRepeatIcon,
+    ArrowPathRoundedSquareIcon as HeroRepeatOneIcon,
 } from '@heroicons/react/24/outline';
 import { ArrowPathIcon as LoadingIcon } from '@heroicons/react/20/solid';
 
 
-const PlayIcon = (props) => (
-    <svg {...props} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M8 5V19L19 12L8 5Z" />
-    </svg>
-);
-const PauseIcon = (props) => (
-    <svg {...props} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M6 19H10V5H6V19ZM14 5V19H18V5H14Z" />
-    </svg>
-);
-const PreviousIcon = (props) => (
-    <svg {...props} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M6 6H8V18H6V6ZM9.5 12L18 18V6L9.5 12Z" />
-    </svg>
-);
-const NextIcon = (props) => (
-    <svg {...props} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M16 6H18V18H16V6ZM8 18V6L16.5 12L8 18Z" />
-    </svg>
-);
-const VolumeIcon = (props) => (
-    <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
-    </svg>
-);
-const VolumeLowIcon = (props) => (
-    <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 0 0 1.5 12c0 .898.121 1.768.348 2.595.341 1.24 1.518 1.905 2.66 1.905H6.44l4.5 4.5c.945.945 2.56.276 2.56-1.06V4.06Z" />
-    </svg>
-);
-const VolumeMuteIcon = (props) => (
-    <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75 19.5 12m0 0 2.25 2.25M19.5 12l2.25-2.25M17.25 9.75 19.5 12M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 0 0 1.5 12c0 .898.121 1.768.348 2.595.341 1.24 1.518 1.905 2.66 1.905H6.44l4.5 4.5c.945.945 2.56.276 2.56-1.06V4.06Z" />
-    </svg>
-);
+// Usa los iconos de Heroicons directamente
+const PlayIcon = (props) => <HeroPlayIcon {...props} />;
+const PauseIcon = (props) => <HeroPauseIcon {...props} />;
+const PreviousIcon = (props) => <HeroBackwardIcon {...props} />;
+const NextIcon = (props) => <HeroForwardIcon {...props} />;
+const VolumeIcon = (props) => <HeroVolumeIcon {...props} />;
+const VolumeLowIcon = (props) => <HeroVolumeLowIcon {...props} />;
+const VolumeMuteIcon = (props) => <HeroVolumeMuteIcon {...props} />;
 const ShuffleIcon = ArrowsRightLeftIcon;
 
-// Define the maximum number of notifications
+// Usa la imagen loop1.png o loop2.png de la carpeta public como RepeatIcon según si looping está activo
+const RepeatIcon = (props) => {
+    const { activo, ...rest } = props;
+    return (
+        <img
+            src={activo ? "/loop2.png" : "/loop1.png"}
+            alt="Repetir"
+            style={{ width: props?.className?.match(/h-(\d+)/) ? undefined : 20, height: props?.className?.match(/w-(\d+)/) ? undefined : 20 }}
+            className={props.className}
+        />
+    );
+};
+
+// Usa la imagen loop3.png de la carpeta public como RepeatOneIcon
+const RepeatOneIcon = (props) => (
+    <img
+        src="/loop3.png"
+        alt="Repetir una vez"
+        style={{ width: props?.className?.match(/h-(\d+)/) ? undefined : 20, height: props?.className?.match(/w-(\d+)/) ? undefined : 20 }}
+        className={props.className}
+    />
+);
+
 const MAX_NOTIFICATIONS_DISPLAY = 10;
 
-const RepeatIcon = (props) => (
-    <svg {...props} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M7 7H17V10L21 6L17 2V5H7C5.34 5 4 6.34 4 8V16H6V8C6 7.45 6.45 7 7 7ZM17 17H7V14L3 18L7 22V19H17C18.66 19 20 17.66 20 16V8H18V16C18 16.55 17.55 17 17 17Z" />
-    </svg>
-);
-const RepeatOneIcon = (props) => (
-    <svg {...props} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M7 7H17V10L21 6L17 2V5H7C5.34 5 4 6.34 4 8V16H6V8C6 7.45 6.45 7 7 7ZM17 17H7V14L3 18L7 22V19H17C18.66 19 20 17.66 20 16V8H18V16C18 16.55 17.55 17 17 17Z" />
-        <path d="M12 11V13L10 13V11L12 11Z" />
-    </svg>
-);
 const CustomLinesIcon = (props) => (
     <svg {...props} viewBox="0 0 24 24" fill="currentColor">
         <rect x="7" y="5" width="2" height="14" />
@@ -753,7 +746,11 @@ lg:w-1/3 md:space-x-3">
                                     className={loopButtonClassName}
                                     disabled={isPlayerActionDisabled}
                                 >
-                                    <LoopButtonIcon className="h-5 w-5" />
+                                    {
+                                        LoopButtonIcon === RepeatIcon
+                                            ? <RepeatIcon className="h-5 w-5" activo={looping || loopingOne} />
+                                            : <LoopButtonIcon className="h-5 w-5" />
+                                    }
                                 </button>
                             </div>
 
