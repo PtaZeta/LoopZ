@@ -32,7 +32,7 @@ export default function Radio() {
   useEffect(() => {
     const fetchOptions = async () => {
       try {
-        const genresRes = await axios.get('https://de1.api.radio-browser.info/json/tags')
+        const genresRes = await axios.get('https://fi1.api.radio-browser.info/json/tags')
         const sortedGenres = genresRes.data
           .filter(tag => tag.name && tag.stationcount > 0)
           .sort((a, b) => b.stationcount - a.stationcount)
@@ -41,7 +41,7 @@ export default function Radio() {
           .sort((a, b) => a.localeCompare(b))
         setAllGenres(sortedGenres)
 
-        const countriesRes = await axios.get('https://de1.api.radio-browser.info/json/countries')
+        const countriesRes = await axios.get('https://fi1.api.radio-browser.info/json/countries')
         const apiCountries = countriesRes.data
           .filter(country => country.name && country.stationcount > 0)
           .sort((a, b) => b.stationcount - a.stationcount)
@@ -68,7 +68,7 @@ export default function Radio() {
   const buscarEmisoras = async () => {
   try {
     let url = ''
-    const baseUrl = 'https://de1.api.radio-browser.info/json/stations/search'
+    const baseUrl = 'https://fi1.api.radio-browser.info/json/stations/search'
     const params = new URLSearchParams()
     params.append('hidebroken', 'true')
     params.append('order', 'votes')
@@ -86,7 +86,7 @@ export default function Radio() {
     }
 
     if (!hasFilters) {
-      url = 'https://de1.api.radio-browser.info/json/stations/search?limit=10&hidebroken=true&order=votes&reverse=true'
+      url = 'https://fi1.api.radio-browser.info/json/stations/search?limit=10&hidebroken=true&order=votes&reverse=true'
     } else {
       url = `${baseUrl}?${params.toString()}`
     }
@@ -142,7 +142,7 @@ export default function Radio() {
       try {
         setLetraCancion(null)
         setBuscandoLetra(true)
-        const res = await axios.get('/icy-api/metadata', {
+        const res = await axios.get('http://localhost:3001/metadata', {
           params: { url: emisoraSeleccionada.url_resolved }
         })
 
