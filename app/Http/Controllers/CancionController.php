@@ -229,7 +229,6 @@ class CancionController extends Controller
                 'es_propietario' => (bool) $u->pivot->propietario
             ];
         })->all();
-        unset($cancion->usuarios);
 
         $cancion->generos_mapeados = $cancion->generos->map(function($g) {
             return $g->nombre;

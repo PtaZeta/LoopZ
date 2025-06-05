@@ -141,7 +141,7 @@ return [
         'key' => env('MEILISEARCH_KEY'),
         'settings' => [
             'App\Models\Contenedor' => [
-                'filterableAttributes' => ['tipo'],
+                'filterableAttributes' => ['id'],
             ],
             'App\Models\Cancion' => [
                 'filterableAttributes' => ['id'],

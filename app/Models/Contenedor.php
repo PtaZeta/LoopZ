@@ -74,9 +74,9 @@ class Contenedor extends Model
         return $array;
     }
 
-    public function getScoutFilterableAttributes()
+    /*public function getScoutFilterableAttributes()
     {
         return ['tipo'];
-    }
+    }*/
 
 }

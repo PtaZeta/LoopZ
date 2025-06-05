@@ -57,7 +57,8 @@ const construirRuta = (tipo, id) => {
 
 const formatearDuracion = segundos => {
   if (typeof segundos !== 'number' || isNaN(segundos) || segundos < 0) return '0:00';
-  const m = Math.floor(segundos / 60), s = Math.floor(segundos % 60).toString().padStart(2, '0');
+  const m = Math.floor(segundos / 60);
+  const s = Math.floor(segundos % 60).toString().padStart(2, '0');
   return `${m}:${s}`;
 };
 
@@ -288,8 +289,13 @@ export default function SearchIndex({ searchQuery, results, principal, principal
       y: 0,
       song: null,
   });
-  const isMobile = window.innerWidth <= 768;
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     setCancionesState(relatedSongs || []);
@@ -363,9 +369,6 @@ export default function SearchIndex({ searchQuery, results, principal, principal
                 setMensajeToast(page.props.flash.song_loopz_status);
                 setMostrarToast(true);
             }
-            if (page.props.relatedSongs && Array.isArray(page.props.relatedSongs)) {
-                setCancionesState(page.props.relatedSongs);
-            }
             if (contextMenu.show && contextMenu.song?.id === songId) {
                 closeContextMenu();
             }
@@ -404,7 +407,7 @@ export default function SearchIndex({ searchQuery, results, principal, principal
                 setMensajeToast(page.props.flash?.message || 'Canción actualizada en la playlist.');
                 setMostrarToast(true);
                 setTimeout(() => { setMostrarToast(false); }, 3000);
-                router.reload({ only: ['auth'] });
+                router.reload({ only: ['auth.user.playlists'] });
             },
             onError: (errors) => {
                 setMensajeToast(errors.message || 'Error al actualizar la canción en la playlist.');
@@ -440,6 +443,9 @@ export default function SearchIndex({ searchQuery, results, principal, principal
     if (contextMenu.song && añadirSiguiente) {
         añadirSiguiente(contextMenu.song);
         closeContextMenu();
+        setMensajeToast('Canción añadida a la cola');
+        setMostrarToast(true);
+        setTimeout(() => { setMostrarToast(false); }, 3000);
     }
   }, [contextMenu.song, añadirSiguiente, closeContextMenu]);
 
@@ -464,7 +470,7 @@ export default function SearchIndex({ searchQuery, results, principal, principal
       });
 
       options.push({
-          label: contextMenu.song.is_in_user_loopz ? "Quitar LoopZ" : "Añadir LoopZ",
+          label: contextMenu.song.is_in_user_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ",
           action: () => manejarCancionLoopzToggle(contextMenu.song.id, contextMenu.song.is_in_user_loopz),
           icon: contextMenu.song.is_in_user_loopz ? <HeartIconSolid className="h-5 w-5 text-purple-500" /> : <HeartIconOutline className="h-5 w-5" />,
           disabled: likeProcessing === contextMenu.song.id,
@@ -549,7 +555,7 @@ export default function SearchIndex({ searchQuery, results, principal, principal
         if (!displayedTypes.has(key.slice(0, -1))) {
             sectionsToRender.push({
                 key: `general_${key}`,
-                label: `Más ${getTipoNombreMayuscula(key.slice(0, -1)).toLowerCase()}s de tu búsqueda`,
+                label: `Más ${getTipoNombreMayuscula(key.slice(0, -1)).toLowerCase()}${key.endsWith('s') ? 's' : ''} de tu búsqueda`,
                 items: results[key],
                 type: key.slice(0, -1)
             });

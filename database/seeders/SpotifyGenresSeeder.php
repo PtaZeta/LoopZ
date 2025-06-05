@@ -25,7 +25,7 @@ class SpotifyGenresSeeder extends Seeder
             $this->command->error("Error obteniendo token Spotify: HTTP {$status} - {$body}");
             return;
         }
-
+        $accessToken = $tokenResponse->json('access_token');
         $this->command->info("Access Token: {$accessToken}");
 
         $apiEndpoint = 'https://api.spotify.com/v1/recommendations/available-genre-seeds';
