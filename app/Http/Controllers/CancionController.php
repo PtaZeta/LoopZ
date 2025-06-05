@@ -24,30 +24,27 @@ class CancionController extends Controller
 {
     public function index()
     {
-        $usuarioAutenticado = Auth::user();
+        $usuario = Auth::user();
 
         $query = Cancion::with(['usuarios' => function ($query) {
             $query->withPivot('propietario');
         }])->latest();
 
-        if ($usuarioAutenticado) {
-            $query->where(function ($q) use ($usuarioAutenticado) {
-                $q->where('publico', true)
-                  ->orWhereHas('usuarios', function ($q2) use ($usuarioAutenticado) {
-                      $q2->where('user_id', $usuarioAutenticado->id);
-                  });
+        if ($usuario) {
+            $query->whereHas('usuarios', function ($q) use ($usuario) {
+                $q->where('user_id', $usuario->id);
             });
         } else {
-            $query->where('publico', true);
+            $query->whereRaw('1 = 0');
         }
 
         $canciones = $query->get();
 
-        $cancionesConPermisos = $canciones->map(function ($cancion) use ($usuarioAutenticado) {
-            if ($usuarioAutenticado && method_exists($usuarioAutenticado, 'can')) {
+        $cancionesConPermisos = $canciones->map(function ($cancion) use ($usuario) {
+            if ($usuario && method_exists($usuario, 'can')) {
                 $cancion->can = [
-                    'edit'   => $usuarioAutenticado->can('update', $cancion),
-                    'delete' => $usuarioAutenticado->can('delete', $cancion),
+                    'edit'   => $usuario->can('update', $cancion),
+                    'delete' => $usuario->can('delete', $cancion),
                 ];
             } else {
                 $cancion->can = [
@@ -62,6 +59,7 @@ class CancionController extends Controller
             'canciones' => $cancionesConPermisos,
         ]);
     }
+
 
     public function create()
     {
@@ -223,7 +221,6 @@ class CancionController extends Controller
             }
         ])->findOrFail($id);
 
-        // Mapear usuarios de la canción actual
         $cancion->usuarios_mapeados = $cancion->usuarios->map(function($u) {
             return [
                 'id' => $u->id,
@@ -234,13 +231,11 @@ class CancionController extends Controller
         })->all();
         unset($cancion->usuarios);
 
-        // Mapear géneros
         $cancion->generos_mapeados = $cancion->generos->map(function($g) {
             return $g->nombre;
         })->implode(', ');
         unset($cancion->generos);
 
-        // Si hay una canción original, también mapeamos sus usuarios
         if ($cancion->cancionOriginal) {
             $cancion->cancionOriginal->usuarios_mapeados = $cancion->cancionOriginal->usuarios->map(function($u) {
                 return [
@@ -298,144 +293,106 @@ class CancionController extends Controller
     }
 
     public function update(Request $request, $id)
-    {
-        try {
-            $cancion = Cancion::with(['usuarios' => fn($q) => $q->withPivot('propietario')])
-                               ->findOrFail($id);
+{
+    try {
+        $cancion = Cancion::with(['usuarios' => fn($q) => $q->withPivot('propietario')])
+                           ->findOrFail($id);
 
-            $this->authorize('update', $cancion);
+        $this->authorize('update', $cancion);
 
-            $validated = $request->validate([
-                'titulo' => 'required|string|max:255',
-                'genero' => 'nullable|array',
-                'genero.*' => 'string|max:255|exists:generos,nombre',
-                'publico' => 'required|boolean',
-                'archivo_nuevo' => 'nullable|file|mimes:mp3,wav|max:102400',
-                'foto_nueva' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
-                'eliminar_foto' => 'nullable|boolean',
-                'userIds' => 'nullable|array',
-                'userIds.*' => 'integer|exists:users,id',
-            ]);
+        $validated = $request->validate([
+            'titulo' => 'required|string|max:255',
+            'genero' => 'nullable|array',
+            'genero.*' => 'string|max:255|exists:generos,nombre',
+            'publico' => 'required|boolean',
+            'archivo' => 'nullable|file|mimes:mp3,wav|max:102400',
+            'foto' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
+            'eliminar_foto' => 'nullable|boolean',
+            'userIds' => 'nullable|array',
+            'userIds.*' => 'integer|exists:users,id',
+        ]);
 
-            $cancion->titulo = $validated['titulo'];
-            $cancion->publico = $validated['publico'];
+        $cancion->titulo = $validated['titulo'];
+        $cancion->publico = $validated['publico'];
 
-            if ($request->hasFile('archivo_nuevo')) {
-                $nuevoArchivoAudio = $request->file('archivo_nuevo');
-                $urlAudioAntiguo = $cancion->archivo_url;
-                $rutaAudioAntiguo = $this->getRelativePath($urlAudioAntiguo);
-
-                if ($rutaAudioAntiguo && Storage::disk('s3')->exists($rutaAudioAntiguo)) {
-                    Storage::disk('s3')->delete($rutaAudioAntiguo);
-                }
-
-                $extensionAudio = $nuevoArchivoAudio->getClientOriginalExtension();
-                $nombreAudio = Str::uuid() . "_song.{$extensionAudio}";
-
-                try {
-                    $getID3 = new getID3;
-                    $infoAudio = $getID3->analyze($nuevoArchivoAudio->getRealPath());
-                    $cancion->duracion = isset($infoAudio['playtime_seconds']) ? floor($infoAudio['playtime_seconds']) : ($cancion->duracion ?? 0);
-                } catch (\Exception $e) {
-                    $cancion->duracion = $cancion->duracion ?? 0;
-                }
-
-                try {
-                    $pathAudio = Storage::disk('s3')->putFileAs('canciones', $nuevoArchivoAudio, $nombreAudio, 'public');
-                    if ($pathAudio) {
-                        $cancion->archivo_url = Storage::disk('s3')->url($pathAudio);
-                    } else {
-                        throw new \Exception('putFileAs devolvió false');
-                    }
-                } catch (\Exception $e) {
-                    Log::error('Error actualizando audio en S3', [
-                        'error' => $e->getMessage(),
-                        'bucket' => config('filesystems.disks.s3.bucket'),
-                        'region' => config('filesystems.disks.s3.region'),
-                    ]);
-                    return back()->withErrors(['archivo_nuevo' => 'No se pudo guardar el nuevo archivo de audio en S3.'])->withInput();
-                }
+        if ($request->hasFile('archivo')) {
+            $nuevoArchivoAudio = $request->file('archivo');
+            $rutaAnterior = $this->getRelativePath($cancion->archivo_url);
+            if ($rutaAnterior && Storage::disk('s3')->exists($rutaAnterior)) {
+                Storage::disk('s3')->delete($rutaAnterior);
             }
-
-            $eliminarFoto = $request->boolean('eliminar_foto');
-            $urlFotoAntigua = $cancion->foto_url;
-            $rutaFotoAntigua = $this->getRelativePath($urlFotoAntigua);
-
-            if ($request->hasFile('foto_nueva')) {
-                $nuevoArchivoFoto = $request->file('foto_nueva');
-                if ($rutaFotoAntigua && Storage::disk('s3')->exists($rutaFotoAntigua)) {
-                    Storage::disk('s3')->delete($rutaFotoAntigua);
-                }
-
-                $extensionFoto = $nuevoArchivoFoto->getClientOriginalExtension();
-                $nombreFoto = Str::uuid() . "_pic.{$extensionFoto}";
-                try {
-                    $pathFoto = Storage::disk('s3')->putFileAs('imagenes', $nuevoArchivoFoto, $nombreFoto, 'public');
-                    if ($pathFoto) {
-                        $cancion->foto_url = Storage::disk('s3')->url($pathFoto);
-                    } else {
-                        throw new \Exception('putFileAs devolvió false');
-                    }
-                } catch (\Exception $e) {
-                    Log::error('Error actualizando imagen en S3', [
-                        'error' => $e->getMessage(),
-                        'bucket' => config('filesystems.disks.s3.bucket'),
-                        'region' => config('filesystems.disks.s3.region'),
-                    ]);
-                    return back()->withErrors(['foto_nueva' => 'No se pudo guardar la nueva foto en S3.'])->withInput();
-                }
-
-            } elseif ($eliminarFoto) {
-                if ($rutaFotoAntigua && Storage::disk('s3')->exists($rutaFotoAntigua)) {
-                    Storage::disk('s3')->delete($rutaFotoAntigua);
-                }
-                $cancion->foto_url = null;
+            $nombre = Str::uuid() . '_song.' . $nuevoArchivoAudio->getClientOriginalExtension();
+            $getID3 = new getID3;
+            try {
+                $info = $getID3->analyze($nuevoArchivoAudio->getRealPath());
+                $cancion->duracion = isset($info['playtime_seconds']) ? floor($info['playtime_seconds']) : $cancion->duracion;
+            } catch (\Exception $e) {
+                $cancion->duracion = $cancion->duracion ?? 0;
             }
-
-            $cancion->save();
-
-            $generoNombres = $validated['genero'] ?? [];
-            $generoIds = Genero::whereIn('nombre', $generoNombres)->pluck('id')->toArray();
-            $cancion->generos()->sync($generoIds);
-
-            if (method_exists($cancion, 'usuarios')) {
-                $propietario = $cancion->usuarios()->wherePivot('propietario', true)->first();
-                $propietarioId = $propietario ? $propietario->id : null;
-
-                if (!$propietarioId) {
-                    return Redirect::route('canciones.edit', $cancion->id)->with('error', 'Error: No se encontró propietario para esta canción.');
-                }
-
-                $idsUsuariosSincronizarInput = $request->input('userIds', []);
-                if (!is_array($idsUsuariosSincronizarInput)) {
-                    $idsUsuariosSincronizarInput = [];
-                }
-                $idsUsuariosSincronizar = array_map('intval', $idsUsuariosSincronizarInput);
-
-                if (!in_array($propietarioId, $idsUsuariosSincronizar)) {
-                    $idsUsuariosSincronizar[] = $propietarioId;
-                }
-
-                $idsUsuariosUnicos = array_unique($idsUsuariosSincronizar);
-
-                $usuariosParaSincronizar = [];
-                foreach ($idsUsuariosUnicos as $userId) {
-                    $esPropietario = ($userId === $propietarioId);
-                    $usuariosParaSincronizar[$userId] = ['propietario' => $esPropietario];
-                }
-
-                $cancion->usuarios()->sync($usuariosParaSincronizar);
+            $path = Storage::disk('s3')->putFileAs('canciones', $nuevoArchivoAudio, $nombre, ['visibility' => 'public']);
+            if (!$path) {
+                return back()->withErrors(['archivo' => 'No se pudo guardar el nuevo archivo de audio.'])->withInput();
             }
-
-            return Redirect::route('canciones.show', $cancion->id )->with('success', 'Canción actualizada exitosamente.');
-
-        } catch (ModelNotFoundException $e) {
-            return redirect()->route('canciones.show', $cancion->id)->with('error', 'Canción no encontrada.');
-        } catch (\Exception $e) {
-            Log::error("Error updating cancion ID {$id}: " . $e->getMessage() . " Stack trace: " . $e->getTraceAsString());
-             return Redirect::route('canciones.edit', $id)->with('error', 'Ocurrió un error al actualizar la canción: ' . $e->getMessage())->withInput();
+            $cancion->archivo_url = Storage::disk('s3')->url($path);
         }
+
+        $eliminarFoto = $request->boolean('eliminar_foto');
+        if ($request->hasFile('foto')) {
+            $nuevaFoto = $request->file('foto');
+            $rutaAnterior = $this->getRelativePath($cancion->foto_url);
+            if ($rutaAnterior && Storage::disk('s3')->exists($rutaAnterior)) {
+                Storage::disk('s3')->delete($rutaAnterior);
+            }
+            $nombre = Str::uuid() . '_pic.' . $nuevaFoto->getClientOriginalExtension();
+            $path = Storage::disk('s3')->putFileAs('imagenes', $nuevaFoto, $nombre, ['visibility' => 'public']);
+            if (!$path) {
+                return back()->withErrors(['foto' => 'No se pudo guardar la nueva imagen.'])->withInput();
+            }
+            $cancion->foto_url = Storage::disk('s3')->url($path);
+        } elseif ($eliminarFoto) {
+            $ruta = $this->getRelativePath($cancion->foto_url);
+            if ($ruta && Storage::disk('s3')->exists($ruta)) {
+                Storage::disk('s3')->delete($ruta);
+            }
+            $cancion->foto_url = null;
+        }
+
+        $cancion->save();
+
+        $generoNombres = $validated['genero'] ?? [];
+        $generoIds = Genero::whereIn('nombre', $generoNombres)->pluck('id')->toArray();
+        $cancion->generos()->sync($generoIds);
+
+        if (method_exists($cancion, 'usuarios')) {
+            $propietario = $cancion->usuarios()->wherePivot('propietario', true)->first();
+            $propietarioId = $propietario ? $propietario->id : null;
+
+            if (!$propietarioId) {
+                return Redirect::route('canciones.edit', $cancion->id)->with('error', 'No se encontró propietario.');
+            }
+
+            $ids = array_map('intval', $request->input('userIds', []));
+            if (!in_array($propietarioId, $ids)) {
+                $ids[] = $propietarioId;
+            }
+
+            $usuariosParaSincronizar = [];
+            foreach (array_unique($ids) as $uid) {
+                $usuariosParaSincronizar[$uid] = ['propietario' => $uid === $propietarioId];
+            }
+
+            $cancion->usuarios()->sync($usuariosParaSincronizar);
+        }
+
+        return Redirect::route('canciones.show', $cancion->id)->with('success', 'Canción actualizada exitosamente.');
+    } catch (ModelNotFoundException $e) {
+        return redirect()->route('canciones.index')->with('error', 'Canción no encontrada.');
+    } catch (\Exception $e) {
+        Log::error("Error al actualizar canción: " . $e->getMessage());
+        return Redirect::route('canciones.edit', $id)->with('error', 'Error al actualizar canción.')->withInput();
     }
+}
+
 
     public function destroy($id)
     {

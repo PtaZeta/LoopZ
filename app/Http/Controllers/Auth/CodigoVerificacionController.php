@@ -47,7 +47,7 @@ class CodigoVerificacionController extends Controller
             'password' => $registrationData['password'],
             'foto_perfil' => $registrationData['foto_perfil'],
             'banner_perfil' => $registrationData['banner_perfil'],
-            'email_verified_at' => now(), // Marca el email como verificado
+            'email_verified_at' => now(),
         ]);
 
         $playlist = Contenedor::create([

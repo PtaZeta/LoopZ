@@ -32,7 +32,7 @@ function obtenerClaveS3DesdeUrl($url, $nombreBucket) {
 
 class ProfileController extends Controller
 {
-    public function show($id): Response
+    public function show($id): \Inertia\Response
     {
         $usuario = User::findOrFail($id);
 
@@ -44,51 +44,58 @@ class ProfileController extends Controller
             $query->select('users.id', 'users.name', 'users.foto_perfil');
         };
 
-        $consultaCanciones = $usuario->perteneceCanciones()
+        $usuarioAuth = auth()->user();
+        $esCreador = $usuarioAuth && $usuarioAuth->id === $usuario->id; // Determina si el usuario autenticado es el dueño del perfil
+
+        // --- Lógica de privacidad para Canciones ---
+        $cancionesQuery = $usuario->perteneceCanciones()
             ->with([
                 'usuarios' => $withUsuariosCallback,
                 'contenedores:id,nombre'
-            ])
-            ->orderBy('pertenece_user.created_at', 'desc')
-            ->limit(10)
-            ->get();
+            ]);
 
-        $usuarioAuth = auth()->user();
+        // Si el usuario que ve el perfil NO es el creador, solo mostrar canciones públicas
+        if (!$esCreador) {
+            $cancionesQuery->where('canciones.publico', true); // Se usa la columna 'publico'
+        }
+
+        $consultaCanciones = $cancionesQuery->orderBy('pertenece_user.created_at', 'desc')->get();
+
         $loopzSongIds = $usuarioAuth ? $this->getLoopZUsuario($usuarioAuth) : [];
 
         $consultaCanciones->each(function ($cancion) use ($loopzSongIds) {
             $cancion->is_in_user_loopz = in_array($cancion->id, $loopzSongIds);
         });
 
-        $consultaPlaylists = $usuario->perteneceContenedores()
+        // --- Lógica de privacidad para Contenedores (Playlists, Álbumes, EPs, Singles) ---
+        $contenedoresBaseQuery = $usuario->perteneceContenedores()
+            ->with(['usuarios' => $withUsuariosCallback]);
+
+        // Si el usuario que ve el perfil NO es el creador, solo mostrar contenedores públicos
+        if (!$esCreador) {
+            $contenedoresBaseQuery->where('contenedores.publico', true); // Se usa la columna 'publico'
+        }
+
+        $consultaPlaylists = (clone $contenedoresBaseQuery)
             ->where('contenedores.tipo', 'playlist')
-            ->with(['usuarios' => $withUsuariosCallback])
             ->orderBy('pertenece_user.created_at', 'desc')
-            ->limit(10)
             ->get();
 
-        $consultaAlbumes = $usuario->perteneceContenedores()
+        $consultaAlbumes = (clone $contenedoresBaseQuery)
             ->where('contenedores.tipo', 'album')
-            ->with(['usuarios' => $withUsuariosCallback])
             ->orderBy('pertenece_user.created_at', 'desc')
-            ->limit(10)
             ->get();
 
-        $consultaEps = $usuario->perteneceContenedores()
+        $consultaEps = (clone $contenedoresBaseQuery)
             ->where('contenedores.tipo', 'ep')
-            ->with(['usuarios' => $withUsuariosCallback])
             ->orderBy('pertenece_user.created_at', 'desc')
-            ->limit(10)
             ->get();
 
-        $consultaSingles = $usuario->perteneceContenedores()
+        $consultaSingles = (clone $contenedoresBaseQuery)
             ->where('contenedores.tipo', 'single')
-            ->with(['usuarios' => $withUsuariosCallback])
             ->orderBy('pertenece_user.created_at', 'desc')
-            ->limit(10)
             ->get();
 
-        $esCreador = auth()->check() && auth()->user()->id === $usuario->id;
 
         if ($usuarioAuth) {
             $userPlaylists = $usuarioAuth->perteneceContenedores()
@@ -126,9 +133,9 @@ class ProfileController extends Controller
             'seguidores_count' => $usuario->seguidores()->count(),
             'seguidos_count' => $usuario->seguidos()->count(),
             'is_following' => $usuarioAuth ? $usuarioAuth->seguidos->contains($usuario->id) : false,
-
         ]);
     }
+
 
     public function edit(Request $request): Response
     {

@@ -26,11 +26,9 @@ class SpotifyGenresSeeder extends Seeder
             return;
         }
 
-        $accessToken = $tokenResponse->json('access_token');
         $this->command->info("Access Token: {$accessToken}");
 
         $apiEndpoint = 'https://api.spotify.com/v1/recommendations/available-genre-seeds';
-        $this->command->info("Llamando a: {$apiEndpoint}");
 
         $genresResponse = Http::withToken($accessToken)
             ->get($apiEndpoint);
@@ -69,8 +67,6 @@ class SpotifyGenresSeeder extends Seeder
                 ['nombre' => $nombre]
             );
         }
-
-        $this->command->info('Se han importado ' . count($genres) . ' géneros.');
     }
 
 }

@@ -1,3 +1,6 @@
+// Show.jsx (No se necesitan cambios funcionales para la visibilidad de privacidad)
+// Se mantiene tal cual porque el backend ya envía los datos filtrados.
+
 import React, { useState, useContext, useRef, useEffect, useCallback, useMemo } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, usePage, Link, router } from '@inertiajs/react';
@@ -587,6 +590,13 @@ export default function Index() {
     });
     const [mostrarToast, setMostrarToast] = useState(false);
     const [mensajeToast, setMensajeToast] = useState('');
+    const [mostrarTodasLasCanciones, setMostrarTodasLasCanciones] = useState(false);
+
+    const cancionesAMostrar = useMemo(() => {
+    if (mostrarTodasLasCanciones) return cancionesUsuario;
+        return cancionesUsuario.slice(0, 10);
+    }, [cancionesUsuario, mostrarTodasLasCanciones]);
+
 
     const copiarAlPortapapeles = useCallback((texto, mensaje = 'Guardado en el portapapeles') => {
             navigator.clipboard.writeText(texto).then(() => {
@@ -910,22 +920,33 @@ export default function Index() {
                     </div>
                     <div className="space-y-10">
                         <div>
-                            <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Canciones</h3>
-                            <ProfileCancionesList
-                                items={cancionesUsuario}
-                                tipoItem="cancion"
-                                nombreRuta={null}
-                                onPlayPauseSong={handlePlayPauseSingleSong}
-                                currentTrackId={cancionActual?.id}
-                                Reproduciendo={Reproduciendo}
-                                isPlayerLoading={isPlayerLoading}
-                                currentSourceId={sourceId}
-                                mainSourceId={userSongsSourceId}
-                                onToggleLoopz={handleToggleLoopzSong}
-                                likeProcessingSongId={likeProcessingSongId}
-                                onContextMenu={openContextMenu}
-                            />
-                        </div>
+    <div className="flex justify-between items-center">
+        <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Canciones</h3>
+        {cancionesUsuario.length > 10 && (
+            <button
+                onClick={() => setMostrarTodasLasCanciones(!mostrarTodasLasCanciones)}
+                className="inline-flex items-center text-sm font-medium text-indigo-400 hover:text-indigo-300 mr-6 focus:outline-none"
+            >
+                {mostrarTodasLasCanciones ? 'Mostrar menos' : 'Mostrar todas'}
+            </button>
+        )}
+    </div>
+
+    <ProfileCancionesList
+        items={cancionesAMostrar}
+        tipoItem="cancion"
+        nombreRuta={null}
+        onPlayPauseSong={handlePlayPauseSingleSong}
+        currentTrackId={cancionActual?.id}
+        Reproduciendo={Reproduciendo}
+        isPlayerLoading={isPlayerLoading}
+        currentSourceId={sourceId}
+        mainSourceId={userSongsSourceId}
+        onToggleLoopz={handleToggleLoopzSong}
+        likeProcessingSongId={likeProcessingSongId}
+        onContextMenu={openContextMenu}
+    />
+</div>
                         <div>
                             <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Playlists</h3>
                             <ProfileDisplayList items={playlistsUsuario} usuarioLogueadoId={usuarioLogueadoId} tipoPredeterminado="playlist" />
