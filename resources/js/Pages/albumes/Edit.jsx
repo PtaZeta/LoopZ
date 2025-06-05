@@ -401,12 +401,13 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
                                     <PrimaryButton disabled={processing} className="bg-gradient-to-r from-blue-500 to-pink-500 hover:from-blue-600 hover:to-pink-600">
                                         {processing ? 'Actualizando...' : 'Actualizar Album'}
                                     </PrimaryButton>
-                                    <Link
-                                        href={route('albumes.index')}
+                                    <button
+                                        type="button"
+                                        onClick={() => window.history.back()}
                                         className="inline-flex items-center px-4 py-2 bg-slate-600 border border-slate-500 rounded-md font-semibold text-xs text-gray-200 uppercase tracking-widest shadow-sm hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-800 disabled:opacity-25 transition ease-in-out duration-150"
                                     >
                                         Cancelar
-                                    </Link>
+                                    </button>
                                 </div>
                             </form>
                         </div>

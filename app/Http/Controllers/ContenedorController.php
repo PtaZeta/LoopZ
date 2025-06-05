@@ -487,8 +487,7 @@ public function show(Request $peticion, $id)
 
         $contenedor->delete();
 
-        $mensaje = ucfirst($this->getNombreTipo($tipoEsperado)) . ' eliminado exitosamente.';
-        return redirect()->route($rutaRedireccion)->with('success', $mensaje);
+        return redirect()->route('welcome');
     }
 
     public function buscarCanciones(Request $peticion, Contenedor $contenedor)

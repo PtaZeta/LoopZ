@@ -356,7 +356,7 @@ const CancionListItem = React.memo(({
         if (onContextMenu) {
             const buttonRect = e.currentTarget.getBoundingClientRect();
             onContextMenu({
-                preventDefault: () => {},
+                preventDefault: () => { },
                 pageX: buttonRect.right,
                 pageY: buttonRect.top + window.scrollY,
                 currentTarget: e.currentTarget
@@ -372,9 +372,8 @@ const CancionListItem = React.memo(({
 
     return (
         <li
-            className={`flex items-center space-x-3 p-2 transition duration-150 ease-in-out group rounded-md ${
-                isCurrentTrack ? 'bg-indigo-900/30' : 'hover:bg-gray-700/60'
-            } cursor-default`}
+            className={`flex items-center space-x-3 p-2 transition duration-150 ease-in-out group rounded-md ${isCurrentTrack ? 'bg-indigo-900/30' : 'hover:bg-gray-700/60'
+                } cursor-default`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
             onDoubleClick={handlePlayButtonClick}
@@ -454,7 +453,7 @@ const CancionListItem = React.memo(({
                         )
                     )}
                 </button>
-                                <button
+                <button
                     onClick={handleContextMenuMobile}
                     className="p-2 rounded-full transition-colors duration-150 ease-in-out text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-800 md:hidden"
                     title="Más opciones"
@@ -593,29 +592,29 @@ export default function Index() {
     const [mostrarTodasLasCanciones, setMostrarTodasLasCanciones] = useState(false);
 
     const cancionesAMostrar = useMemo(() => {
-    if (mostrarTodasLasCanciones) return cancionesUsuario;
+        if (mostrarTodasLasCanciones) return cancionesUsuario;
         return cancionesUsuario.slice(0, 10);
     }, [cancionesUsuario, mostrarTodasLasCanciones]);
 
 
     const copiarAlPortapapeles = useCallback((texto, mensaje = 'Guardado en el portapapeles') => {
-            navigator.clipboard.writeText(texto).then(() => {
-                setMensajeToast(mensaje);
-                setMostrarToast(true);
+        navigator.clipboard.writeText(texto).then(() => {
+            setMensajeToast(mensaje);
+            setMostrarToast(true);
 
-                setTimeout(() => {
-                    setMostrarToast(false);
-                }, 5000);
-            }).catch(err => {
-                console.error('Error al copiar:', err);
-                setMensajeToast('Error al copiar');
-                setMostrarToast(true);
+            setTimeout(() => {
+                setMostrarToast(false);
+            }, 5000);
+        }).catch(err => {
+            console.error('Error al copiar:', err);
+            setMensajeToast('Error al copiar');
+            setMostrarToast(true);
 
-                setTimeout(() => {
-                    setMostrarToast(false);
-                }, 5000);
-            });
-        }, []);
+            setTimeout(() => {
+                setMostrarToast(false);
+            }, 5000);
+        });
+    }, []);
     const contextMenuTimer = useRef(null);
     const openContextMenu = useCallback((event, song) => {
         event.preventDefault();
@@ -841,13 +840,18 @@ export default function Index() {
                     </div>
                     <div className="mt-72 sm:mt-96 px-4 sm:px-6">
                         <div className="flex justify-end mb-4">
-                            <Link
-                                href={route('profile.edit')}
-                                className="inline-flex items-center px-4 py-2 bg-transparent border border-gray-600 rounded-full font-semibold text-xs text-gray-200 uppercase tracking-widest hover:bg-gray-700 hover:text-white focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition ease-in-out duration-150"
-                            >
-                                Editar perfil
-                            </Link>
+                            {esCreador ? (
+                                <Link
+                                    href={route('profile.edit')}
+                                    className="inline-flex items-center px-4 py-2 bg-transparent border border-gray-600 rounded-full font-semibold text-xs text-gray-200 uppercase tracking-widest hover:bg-gray-700 hover:text-white focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition ease-in-out duration-150"
+                                >
+                                    Editar perfil
+                                </Link>
+                            ) : (
+                                <div className="hidden sm:block" style={{ width: '96px', height: '40px' }}></div>
+                            )}
                         </div>
+
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end">
                             <div className="flex flex-col items-start">
                                 <h3 className="text-3xl font-bold text-white">{usuario.name}</h3>
@@ -867,26 +871,29 @@ export default function Index() {
                                     </button>
                                 </div>
                             </div>
-                            {!esCreador && (
-                                <button
-                                    onClick={() => {
-                                        router.post(route('profile.seguirUsuario', usuario.id), {}, {
-                                            preserveScroll: true,
-                                            onSuccess: (page) => {
-                                                props.is_following = page.props.is_following;
-                                                props.seguidores_count = page.props.seguidores_count;
-                                            }
-                                        });
-                                    }}
-                                    className={`mt-4 sm:mt-0 px-6 py-2 rounded-full text-sm font-medium ${is_following
+                            <div className="flex items-center space-x-4 mt-4 sm:mt-0">
+                                {!esCreador ? (
+                                    <button
+                                        onClick={() => {
+                                            router.post(route('profile.seguirUsuario', usuario.id), {}, {
+                                                preserveScroll: true,
+                                                onSuccess: (page) => {
+                                                    props.is_following = page.props.is_following;
+                                                    props.seguidores_count = page.props.seguidores_count;
+                                                }
+                                            });
+                                        }}
+                                        className={`px-6 py-2 rounded-full text-sm font-medium ${is_following
                                             ? 'bg-gray-700 hover:bg-gray-600 text-white'
                                             : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                                        } transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-indigo-500`}
-                                >
-                                    {is_following ? 'Dejar de seguir' : 'Seguir'}
-                                </button>
-                            )}
-                            <div className="flex items-center space-x-4 mt-4 sm:mt-0">
+                                            } transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-indigo-500`}
+                                    >
+                                        {is_following ? 'Dejar de seguir' : 'Seguir'}
+                                    </button>
+                                ) : (
+                                    // Espacio reservado para mantener el layout cuando el botón no está
+                                    <div style={{ width: '96px', height: '40px' }} className="hidden sm:block"></div>
+                                )}
                                 {cancionesUsuario && cancionesUsuario.length > 0 && (
                                     <div className="flex items-center space-x-4">
                                         <button
@@ -906,9 +913,9 @@ export default function Index() {
                                             aria-label={aleatorio ?
                                                 "Desactivar modo aleatorio para canciones del usuario" : "Activar modo aleatorio para canciones del usuario"}
                                             className={`flex items-center justify-center p-3 border rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 transition duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed ${aleatorio
-                                                    ?
-                                                    'bg-indigo-500 text-white border-indigo-500 hover:bg-indigo-600 focus:ring-indigo-500'
-                                                    : 'bg-transparent text-gray-300 border-gray-600 hover:bg-gray-700 hover:text-white focus:ring-gray-500'
+                                                ?
+                                                'bg-indigo-500 text-white border-indigo-500 hover:bg-indigo-600 focus:ring-indigo-500'
+                                                : 'bg-transparent text-gray-300 border-gray-600 hover:bg-gray-700 hover:text-white focus:ring-gray-500'
                                                 }`}
                                         >
                                             <ShuffleIcon className="h-6 w-6" />
@@ -920,33 +927,33 @@ export default function Index() {
                     </div>
                     <div className="space-y-10">
                         <div>
-    <div className="flex justify-between items-center">
-        <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Canciones</h3>
-        {cancionesUsuario.length > 10 && (
-            <button
-                onClick={() => setMostrarTodasLasCanciones(!mostrarTodasLasCanciones)}
-                className="inline-flex items-center text-sm font-medium text-indigo-400 hover:text-indigo-300 mr-6 focus:outline-none"
-            >
-                {mostrarTodasLasCanciones ? 'Mostrar menos' : 'Mostrar todas'}
-            </button>
-        )}
-    </div>
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Canciones</h3>
+                                {cancionesUsuario.length > 10 && (
+                                    <button
+                                        onClick={() => setMostrarTodasLasCanciones(!mostrarTodasLasCanciones)}
+                                        className="inline-flex items-center text-sm font-medium text-indigo-400 hover:text-indigo-300 mr-6 focus:outline-none"
+                                    >
+                                        {mostrarTodasLasCanciones ? 'Mostrar menos' : 'Mostrar todas'}
+                                    </button>
+                                )}
+                            </div>
 
-    <ProfileCancionesList
-        items={cancionesAMostrar}
-        tipoItem="cancion"
-        nombreRuta={null}
-        onPlayPauseSong={handlePlayPauseSingleSong}
-        currentTrackId={cancionActual?.id}
-        Reproduciendo={Reproduciendo}
-        isPlayerLoading={isPlayerLoading}
-        currentSourceId={sourceId}
-        mainSourceId={userSongsSourceId}
-        onToggleLoopz={handleToggleLoopzSong}
-        likeProcessingSongId={likeProcessingSongId}
-        onContextMenu={openContextMenu}
-    />
-</div>
+                            <ProfileCancionesList
+                                items={cancionesAMostrar}
+                                tipoItem="cancion"
+                                nombreRuta={null}
+                                onPlayPauseSong={handlePlayPauseSingleSong}
+                                currentTrackId={cancionActual?.id}
+                                Reproduciendo={Reproduciendo}
+                                isPlayerLoading={isPlayerLoading}
+                                currentSourceId={sourceId}
+                                mainSourceId={userSongsSourceId}
+                                onToggleLoopz={handleToggleLoopzSong}
+                                likeProcessingSongId={likeProcessingSongId}
+                                onContextMenu={openContextMenu}
+                            />
+                        </div>
                         <div>
                             <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-5 px-4 sm:px-6">Playlists</h3>
                             <ProfileDisplayList items={playlistsUsuario} usuarioLogueadoId={usuarioLogueadoId} tipoPredeterminado="playlist" />
