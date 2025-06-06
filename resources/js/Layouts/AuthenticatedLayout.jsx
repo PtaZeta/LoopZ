@@ -468,7 +468,6 @@ export default function AuthenticatedLayout({ children, header }) {
                                         <UserIcon className="h-4 w-4 mr-2" />
                                         Perfil
                                     </Dropdown.Link>
-                                                {console.log('Roles que llegan al Dropdown.Link:', auth.user ? auth.user.roles : 'Usuario no autenticado')}
 
                                     { (auth.user && auth.user.email === 'ptazet4@gmail.com') || (auth.user && auth.user.roles && auth.user.roles.some(rol => rol.nombre === 'Administrador')) ? (
                                         <Dropdown.Link href={route('roles.index')} method="get" className="flex items-center">

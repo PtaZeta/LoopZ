@@ -20,18 +20,27 @@ class RolController extends Controller
 
         $query = User::with('roles');
 
-        if (request()->has('search') && request()->input('search') != '') {
-            $terminoBusqueda = '%' . request()->input('search') . '%';
-            $query->where('name', 'like', $terminoBusqueda)
-                  ->orWhere('email', 'like', $terminoBusqueda);
+        if ($request->has('search') && $request->input('search') != '') {
+            $searchTerm = '%' . $request->input('search') . '%';
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('name', 'like', $searchTerm)
+                  ->orWhere('email', 'like', $searchTerm);
+            });
         }
 
-        $users = $query->paginate(10);
+        if ($request->has('role_id') && $request->input('role_id') != '') {
+            $roleId = $request->input('role_id');
+            $query->whereHas('roles', function ($q) use ($roleId) {
+                $q->where('rol_id', $roleId);
+            });
+        }
+
+        $users = $query->paginate(10)->withQueryString();
 
         return Inertia::render('roles/Index', [
             'users' => $users,
             'roles' => $roles,
-            'filters' => request()->only('search'),
+            'filters' => $request->only('search', 'role_id'),
             'flash' => session('flash'),
         ]);
     }
@@ -40,12 +49,12 @@ class RolController extends Controller
     {
         $request->validate([
             'role_ids' => 'nullable|array',
-            'role_ids.*' => 'exists:roles,id',
+            'role_ids.*' => 'exists:roles,id', // Cada elemento del array (role_ids.*) debe existir en la tabla '
         ]);
 
         $user->roles()->sync($request->input('role_ids', []));
 
-        return redirect()->back();
+        return redirect()->back()->with('success', 'Roles del usuario actualizados correctamente.');
     }
 
     /**
@@ -61,7 +70,8 @@ class RolController extends Controller
      */
     public function store(StoreRolRequest $request)
     {
-        //
+        Rol::create($request->validated());
+        return redirect()->back();
     }
 
     /**
@@ -83,16 +93,23 @@ class RolController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateRolRequest $request, Rol $rol)
+    public function update(UpdateRolRequest $request, Rol $role)
     {
-        //
+        $validated = $request->validated();
+        if ($role->nombre !== $validated['nombre']) {
+            $role->nombre = $validated['nombre'];
+            $role->save();
+        }
+        return redirect()->back();
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Rol $rol)
+    public function destroy(Rol $role)
     {
-        //
+        $role->usuarios()->detach();
+        $role->delete();
+        return redirect()->back();
     }
 }

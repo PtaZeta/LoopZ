@@ -18,7 +18,7 @@ class ContenedorPolicy
         if ($contenedor->publico) {
             return true;
         }
-        return $user && method_exists($contenedor, 'usuarios') && $contenedor->usuarios->contains($user);
+        return $user && ($contenedor->usuarios->contains($user) || $user->roles()->where('nombre', 'Administrador')->exists());
     }
 
     public function create(User $user): bool
@@ -28,17 +28,17 @@ class ContenedorPolicy
 
     public function edit(User $user, Contenedor $contenedor): bool
     {
-        return method_exists($contenedor, 'usuarios') && $contenedor->usuarios->contains($user);
+        return $contenedor->usuarios->contains($user) || $user->roles()->where('nombre', 'Administrador')->exists();
     }
 
     public function update(User $user, Contenedor $contenedor): bool
     {
-        return method_exists($contenedor, 'usuarios') && $contenedor->usuarios->contains($user);
+        return $contenedor->usuarios->contains($user) || $user->roles()->where('nombre', 'Administrador')->exists();
     }
 
     public function delete(User $user, Contenedor $contenedor): bool
     {
-        return method_exists($contenedor, 'usuarios') && $contenedor->usuarios->contains($user);
+        return $contenedor->usuarios->contains($user) || $user->roles()->where('nombre', 'Administrador')->exists();
     }
 
     public function restore(User $user, Contenedor $contenedor): bool

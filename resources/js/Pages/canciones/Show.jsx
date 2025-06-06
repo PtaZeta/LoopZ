@@ -71,8 +71,10 @@ export default function Mostrar() {
         else cargarColaYIniciar([cancion], { iniciar: 0, clickDirecto: true });
     };
 
-    const canEdit = auth.user && cancion.usuarios_mapeados.some(
-        user => user.id === auth.user.id && user.es_propietario
+    // MODIFIED: canEdit now checks for 'Administrador' role
+    const canEdit = auth.user && (
+        cancion.usuarios_mapeados.some(user => user.id === auth.user.id && user.es_propietario) ||
+        auth.user.roles.some(role => role.nombre === 'Administrador')
     );
 
     const handleDelete = () => {
@@ -170,7 +172,6 @@ export default function Mostrar() {
                             </div>
                         </div>
 
-                        {/* Alineación a la izquierda en móvil */}
                         <div className="flex-grow text-left mt-6 md:mt-0">
                             <p className="text-sm font-bold uppercase tracking-widest text-purple-400 mb-1 sm:mb-2">Canción</p>
                             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold mb-4 sm:mb-5 text-white drop-shadow-lg leading-tight">
@@ -178,7 +179,6 @@ export default function Mostrar() {
                             </h1>
 
                             <div className="grid grid-cols-1 gap-y-3 sm:grid-cols-2 sm:gap-4 mb-6 sm:mb-8 text-sm text-gray-300">
-                                {/* Artistas */}
                                 <div className="bg-slate-700/50 p-3 sm:p-4 rounded-lg flex items-start gap-x-2 sm:gap-x-3 shadow-inner border border-slate-600">
                                     <UsersIcon className="h-5 w-5 sm:h-6 sm:w-6 text-purple-400 flex-shrink-0" aria-hidden="true" />
                                     <div>
@@ -186,38 +186,37 @@ export default function Mostrar() {
                                         <div className="text-purple-300 text-sm sm:text-base break-words">{artistas}</div>
                                     </div>
                                 </div>
-                                {/* Duración */}
                                 <div className="bg-slate-700/50 p-3 sm:p-4 rounded-lg flex items-start gap-x-2 sm:gap-x-3 shadow-inner border border-slate-600">
-                                    <ClockIcon className="h-5 w-5 sm:h-6 sm:w-6 text-slate-400 flex-shrink-0" aria-hidden="true" /> {/* Color ajustado */}
+                                    <ClockIcon className="h-5 w-5 sm:h-6 sm:w-6 text-slate-400 flex-shrink-0" aria-hidden="true" />
                                     <div>
                                         <p className="font-semibold text-gray-400 text-xs sm:text-sm">Duración</p>
-                                        <p className="text-slate-300 text-sm sm:text-base">{formatearDuracion(cancion.duracion)}</p> {/* Color ajustado */}
+                                        <p className="text-slate-300 text-sm sm:text-base">{formatearDuracion(cancion.duracion)}</p>
                                     </div>
                                 </div>
                                 {cancion.generos_mapeados && (
                                     <div className="bg-slate-700/50 p-3 sm:p-4 rounded-lg flex items-start gap-x-2 sm:gap-x-3 shadow-inner border border-slate-600">
-                                        <MusicalNoteIcon className="h-5 w-5 sm:h-6 sm:w-6 text-purple-400 flex-shrink-0" aria-hidden="true" /> {/* Color ajustado */}
+                                        <MusicalNoteIcon className="h-5 w-5 sm:h-6 sm:w-6 text-purple-400 flex-shrink-0" aria-hidden="true" />
                                         <div>
                                             <p className="font-semibold text-gray-400 text-xs sm:text-sm">Género</p>
-                                            <p className="text-purple-300 text-sm sm:text-base break-words">{cancion.generos_mapeados}</p> {/* Color ajustado */}
+                                            <p className="text-purple-300 text-sm sm:text-base break-words">{cancion.generos_mapeados}</p>
                                         </div>
                                     </div>
                                 )}
                                 {cancion.licencia && (
                                     <div className="bg-slate-700/50 p-3 sm:p-4 rounded-lg flex items-start gap-x-2 sm:gap-x-3 shadow-inner border border-slate-600">
-                                        <ScaleIcon className="h-5 w-5 sm:h-6 sm:w-6 text-slate-400 flex-shrink-0" aria-hidden="true" /> {/* Color ajustado */}
+                                        <ScaleIcon className="h-5 w-5 sm:h-6 sm:w-6 text-slate-400 flex-shrink-0" aria-hidden="true" />
                                         <div>
                                             <p className="font-semibold text-gray-400 text-xs sm:text-sm">Licencia</p>
-                                            <p className="text-slate-300 text-sm sm:text-base break-words">{cancion.licencia.nombre}</p> {/* Color ajustado */}
+                                            <p className="text-slate-300 text-sm sm:text-base break-words">{cancion.licencia.nombre}</p>
                                         </div>
                                     </div>
                                 )}
                                 {cancion.visualizaciones !== undefined && cancion.visualizaciones !== null && (
                                     <div className="bg-slate-700/50 p-3 sm:p-4 rounded-lg flex items-start gap-x-2 sm:gap-x-3 shadow-inner border border-slate-600">
-                                        <EyeIcon className="h-5 w-5 sm:h-6 sm:w-6 text-slate-400 flex-shrink-0" aria-hidden="true" /> {/* Color ajustado */}
+                                        <EyeIcon className="h-5 w-5 sm:h-6 sm:w-6 text-slate-400 flex-shrink-0" aria-hidden="true" />
                                         <div>
                                             <p className="font-semibold text-gray-400 text-xs sm:text-sm">Visualizaciones</p>
-                                            <p className="text-slate-300 text-sm sm:text-base">{cancion.visualizaciones.toLocaleString()}</p> {/* Color ajustado */}
+                                            <p className="text-slate-300 text-sm sm:text-base">{cancion.visualizaciones.toLocaleString()}</p>
                                         </div>
                                     </div>
                                 )}
@@ -250,7 +249,6 @@ export default function Mostrar() {
                                 </div>
                             )}
 
-                            {/* Alineación a la izquierda en móvil para los botones */}
                             <div className="flex flex-col sm:flex-row sm:flex-wrap items-center justify-start gap-4 mt-6 sm:mt-8">
                                 <button
                                     onClick={handlePlayPause}

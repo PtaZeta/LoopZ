@@ -87,7 +87,7 @@ Route::middleware('auth')->group(function () {
     })->name('radio');
 
     Route::get('/profile/{user}', [ProfileController::class, 'show'])->name('profile.show');
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::get('/profile/{id}/edit', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
@@ -132,9 +132,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/cancion/{cancion}/loopz', [CancionController::class, 'cancionloopz'])->name('cancion.loopz');
     Route::get('/genero/{genero}', [GeneroController::class, 'show'])->name('genero.show');
 
+Route::middleware(['auth', 'can:administrador'])->group(function () {
     Route::resource('roles', RolController::class);
     Route::put('/users/{user}/update-role', [RolController::class, 'updateRole'])->name('users.updateRole');
-
+});
     Route::get('/search', [SearchController::class, 'index'])->name('search.index');
     Route::post('/api/recomendaciones', [RecomendacionController::class, 'index']);
     Route::post('/playlist/{playlist}/{cancion}/toggle', [ContenedorController::class, 'toggleCancion'])

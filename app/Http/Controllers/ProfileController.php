@@ -137,9 +137,18 @@ class ProfileController extends Controller
     }
 
 
-    public function edit(Request $request): Response
+    public function edit($id, Request $request): Response
     {
+        // Obtener el usuario a editar
+        $usuario = User::findOrFail($id);
+
+        // Verificar si el usuario logueado es administrador o es el mismo usuario
+        if ($request->user()->id !== $usuario->id && !$request->user()->es_administrador) {
+            abort(403, 'No tienes permiso para editar este perfil.');
+        }
+
         return Inertia::render('Profile/Edit', [
+            'usuario' => $usuario->only(['id', 'name', 'email', 'foto_perfil', 'banner_perfil']),
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
             'auth' => [

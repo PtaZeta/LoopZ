@@ -559,7 +559,8 @@ export default function Index() {
         auth,
         seguidores_count,
         seguidos_count,
-        is_following
+        is_following,
+        es_administrador // <-- Añadir aquí
     } = props;
     const usuarioLogueadoId = auth?.user?.id ?? null;
     const esCreador = auth?.user?.id === usuario.id;
@@ -840,9 +841,9 @@ export default function Index() {
                     </div>
                     <div className="mt-72 sm:mt-96 px-4 sm:px-6">
                         <div className="flex justify-end mb-4">
-                            {esCreador ? (
+                            {(esCreador || es_administrador) ? ( // <-- Cambiar condición aquí
                                 <Link
-                                    href={route('profile.edit')}
+                                    href={route('profile.edit', usuario.id)}
                                     className="inline-flex items-center px-4 py-2 bg-transparent border border-gray-600 rounded-full font-semibold text-xs text-gray-200 uppercase tracking-widest hover:bg-gray-700 hover:text-white focus:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800 transition ease-in-out duration-150"
                                 >
                                     Editar perfil

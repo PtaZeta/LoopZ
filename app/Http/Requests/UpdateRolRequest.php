@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateRolRequest extends FormRequest
 {
@@ -11,7 +12,7 @@ class UpdateRolRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -21,8 +22,16 @@ class UpdateRolRequest extends FormRequest
      */
     public function rules(): array
     {
+        $rolId = $this->route('rol') ? $this->route('rol')->id : null;
+
         return [
-            //
+            'nombre' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('roles', 'nombre')->ignore($rolId),
+            ],
         ];
+
     }
 }
