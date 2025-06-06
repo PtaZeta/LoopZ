@@ -23,8 +23,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('codigo_verificacion');
-            $table->dropColumn('codigo_verificacion_expira_en');
+            $table->dropIfExists('codigo_verificacion');
+            $table->dropIfExists('codigo_verificacion_expira_en');
         });
     }
 };

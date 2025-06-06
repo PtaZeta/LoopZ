@@ -78,6 +78,11 @@ class User extends Authenticatable
         return $this->hasMany(Notificacion::class);
     }
 
+    public function roles()
+    {
+        return $this->belongsToMany(Rol::class, 'rol_user', 'user_id', 'rol_id');
+    }
+
     public function toSearchableArray(): array
     {
         $array = $this->toArray();

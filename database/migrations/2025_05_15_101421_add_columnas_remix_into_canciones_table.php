@@ -24,8 +24,8 @@ return new class extends Migration
     {
         Schema::table('canciones', function (Blueprint $table) {
             $table->dropForeign(['cancion_original_id']);
-            $table->dropColumn('remix');
-            $table->dropColumn('cancion_original_id');
+            $table->dropIfExists('remix');
+            $table->dropIfExists('cancion_original_id');
         });
     }
 };

@@ -10,6 +10,7 @@ use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecomendacionController;
 use App\Http\Controllers\ReproduccionController;
+use App\Http\Controllers\RolController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SingleController;
 use App\Models\Cancion;
@@ -130,6 +131,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/loopzs/{contenedor}/canciones/search', [ContenedorController::class, 'buscarCanciones'])->name('loopzs.canciones.search');
     Route::post('/cancion/{cancion}/loopz', [CancionController::class, 'cancionloopz'])->name('cancion.loopz');
     Route::get('/genero/{genero}', [GeneroController::class, 'show'])->name('genero.show');
+
+    Route::resource('roles', RolController::class);
+    Route::put('/users/{user}/update-role', [RolController::class, 'updateRole'])->name('users.updateRole');
 
     Route::get('/search', [SearchController::class, 'index'])->name('search.index');
     Route::post('/api/recomendaciones', [RecomendacionController::class, 'index']);

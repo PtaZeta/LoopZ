@@ -82,14 +82,13 @@ class DatabaseSeeder extends Seeder
         }
 
         foreach ($canciones->random(50) as $cancion_base) {
-            $bgColor = str_pad(dechex(mt_rand(0, 0xFFFFFF)), 6, '0', STR_PAD_LEFT); // Nuevo color para remixes
+            $bgColor = str_pad(dechex(mt_rand(0, 0xFFFFFF)), 6, '0', STR_PAD_LEFT);
             $textColor = "FFF";
 
             $remix = Cancion::create([
                 'titulo'                => $faker->sentence(rand(3, 7), true) . ' (Remix)',
                 'duracion'              => $cancion_base->duracion + rand(10,60),
                 'licencia_id'           => $cancion_base->licencia_id,
-                // Eliminamos "?text=" para foto_url de remix
                 'foto_url'              => "https://placehold.co/300x300/{$bgColor}/{$textColor}",
                 'archivo_url'           => "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-" . (($cancion_base->id % 16) + 1) . ".mp3",
                 'publico'               => true,
@@ -113,7 +112,6 @@ class DatabaseSeeder extends Seeder
                     'descripcion'   => $faker->sentence(rand(5, 15), true),
                     'publico'       => true,
                     'tipo'          => $tipo,
-                    // Eliminamos "?text=" para imagen de contenedor
                     'imagen'        => "https://placehold.co/400x400/{$bgColor}/{$textColor}",
                 ]);
                 $contenedor->canciones()->attach(
@@ -125,9 +123,9 @@ class DatabaseSeeder extends Seeder
                 foreach ($seguidores as $seguidor) {
                     $contenedor->usuarios()->attach($seguidor->id, ['propietario'=>false]);
                 }
-                if ($tipo === 'loopz') {
+                /*if ($tipo === 'loopz') {
                     $contenedor->loopzusuarios()->attach($usuarios->random(rand(5, 15))->pluck('id')->toArray());
-                }
+                }*/
             }
         }
 
@@ -136,5 +134,8 @@ class DatabaseSeeder extends Seeder
                 $canciones->random(rand(10, 30))->pluck('id')->toArray()
             );
         }
+        DB::table('roles')->insert([
+            'nombre' => 'Administrador',
+        ]);
     }
 }
