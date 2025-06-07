@@ -47,25 +47,21 @@ Route::get('/api/welcome-random', function () {
 
 Route::get('/biblioteca', function () {
     $usuario = Auth::user();
-
     $playlists = $usuario->perteneceContenedores()
         ->where(fn($q) => $q->where('tipo', 'playlist')->orWhere('tipo', 'loopz'))
         ->with(['usuarios' => fn($q) => $q->select('users.id', 'users.name')->withPivot('propietario')])
         ->orderBy('pertenece_user.created_at', 'desc')
         ->get()
         ->map(fn($item) => tap($item, fn($i) => $i->tipo = $i->tipo === 'loopz' ? 'loopz' : 'playlist'));
-
     $loopzs = $usuario->loopzContenedores()
         ->with(['usuarios' => fn($q) => $q->select('users.id', 'users.name')->withPivot('propietario')])
         ->orderBy('loopzs_contenedores.created_at', 'desc')
         ->get();
-
     $lanzamientos = $usuario->perteneceContenedores()
         ->whereIn('tipo', ['album', 'ep', 'single'])
         ->with(['usuarios' => fn($q) => $q->select('users.id', 'users.name')->withPivot('propietario')])
         ->orderBy('pertenece_user.created_at', 'desc')
         ->get();
-
     return Inertia::render('Biblioteca', [
         'playlists' => $playlists,
         'loopzContenedores' => $loopzs,
@@ -77,23 +73,20 @@ Route::inertia('/terms', 'Static/Terms')->name('terms');
 Route::inertia('/privacy', 'Static/Privacy')->name('privacy');
 Route::inertia('/contact', 'Static/Contact')->name('contact');
 
-
 Route::middleware('auth')->group(function () {
-
     Route::post('/canciones/{id}/incrementar-visualizacion', [CancionController::class, 'incrementarVisualizacion']);
-
     Route::get('/radio', function () {
         return Inertia::render('Radio');
     })->name('radio');
 
-    Route::get('/profile/{user}', [ProfileController::class, 'show'])->name('profile.show');
-    Route::get('/profile/{id}/edit', [ProfileController::class, 'edit'])->name('profile.edit');
+    // Perfil
+    Route::get('/profile/{id}', [ProfileController::class, 'show'])->name('profile.show');
+    Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::get('/canciones/buscar-originales', [CancionController::class, 'buscarCancionesOriginales'])->name('canciones.buscar-originales');
     Route::get('/usuarios/buscar', [CancionController::class, 'buscarUsuarios'])->name('usuarios.buscar');
-
     Route::resource('canciones', CancionController::class);
 
     Route::resource('playlists', ContenedorController::class);
@@ -118,7 +111,6 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/lanzamiento/crear', [ContenedorController::class, 'crearLanzamiento'])->name('lanzamiento.crear');
     Route::post('/lanzamiento', [ContenedorController::class, 'storeLanzamiento'])->name('lanzamiento.storeLanzamiento');
-
     Route::get('/lanzamientos/{contenedor}/canciones/search', [ContenedorController::class, 'buscarCanciones'])->name('lanzamientos.canciones.search');
     Route::post('/lanzamientos/{contenedor}/canciones', [ContenedorController::class, 'anadirCancion'])->name('lanzamientos.canciones.add');
     Route::delete('/lanzamientos/{contenedor}/canciones/{pivotId}', [ContenedorController::class, 'quitarCancionPorPivot'])->name('lanzamientos.canciones.remove');
@@ -132,53 +124,22 @@ Route::middleware('auth')->group(function () {
     Route::post('/cancion/{cancion}/loopz', [CancionController::class, 'cancionloopz'])->name('cancion.loopz');
     Route::get('/genero/{genero}', [GeneroController::class, 'show'])->name('genero.show');
 
-Route::middleware(['auth', 'can:administrador'])->group(function () {
-    Route::resource('roles', RolController::class);
-    Route::put('/users/{user}/update-role', [RolController::class, 'updateRole'])->name('users.updateRole');
-});
+    Route::middleware(['auth', 'can:administrador'])->group(function () {
+        Route::resource('roles', RolController::class);
+        Route::put('/users/{user}/update-role', [RolController::class, 'updateRole'])->name('users.updateRole');
+    });
+
     Route::get('/search', [SearchController::class, 'index'])->name('search.index');
     Route::post('/api/recomendaciones', [RecomendacionController::class, 'index']);
     Route::post('/playlist/{playlist}/{cancion}/toggle', [ContenedorController::class, 'toggleCancion'])
         ->name('playlist.toggleCancion');
 
     Route::post('/profile/{id}/seguir', [ProfileController::class, 'seguirUsuario'])->name('profile.seguirUsuario');
+
     Route::get('/notificaciones', [NotificacionController::class, 'index'])->name('notificaciones.index');
     Route::post('/notificaciones/{id}/marcar-leida', [NotificacionController::class, 'marcarComoLeida'])->name('notificaciones.marcarComoLeida');
     Route::post('/notificaciones/marcar-todas-leidas', [NotificacionController::class, 'marcarTodasComoLeidas'])->name('notificaciones.marcarTodasComoLeidas');
-    /*Route::post('/canciones/{id}/notificar-cien-visualizaciones', function ($id, Request $request) {
-        try {
-            $cancion = Cancion::find($id);
 
-            if (!$cancion) {
-                return response()->json(['message' => 'Canción no encontrada.'], 404);
-            }
-
-            $usuarios = $cancion->usuarios;
-
-            if ($usuarios->isEmpty()) {
-                return response()->json(['message' => 'No hay usuarios asociados a esta canción para notificar.'], 200);
-            }
-
-            $notificacionesCreadas = 0;
-            foreach ($usuarios as $usuario) {
-                Notificacion::create([
-                    'titulo' => '¡Felicidades!',
-                    'mensaje' => "Tu canción '{$cancion->titulo}' ha alcanzado las 10 visualizaciones. ¡Sigue así!", // Ajusta el mensaje si debe ser 100
-                    'leido' => false,
-                    'user_id' => $usuario->id,
-                ]);
-                $notificacionesCreadas++;
-            }
-
-            return response()->json([
-                'message' => 'Notificaciones enviadas exitosamente.',
-                'notificaciones_creadas' => $notificacionesCreadas
-            ], 200);
-
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'Error al procesar la notificación.', 'error' => $e->getMessage()], 500);
-        }
-    });*/
     Route::get('/sobrenosotros', function () {
         return Inertia::render('SobreNosotros');
     })->name('sobrenosotros');
@@ -197,7 +158,8 @@ Route::get('/spotify-login', function () {
     return redirect($url);
 });
 
-Route::get('/callback', [GeneroController::class, 'storeGenres']);
+Route::get('/callback', [\App\Http\Controllers\GeneroController::class, 'storeGenres']);
+
 Route::get('/verificar-codigo', function () {
     return Inertia::render('Auth/VerifyCodeComponent');
 })->name('verificacion.aviso');

@@ -10,8 +10,8 @@ export default function Guest() {
     ];
 
     const [currentImageIndex, setCurrentImageIndex] = useState(() => {
-        const initialIndex = Math.floor(Math.random() * images.length);
-        return initialIndex;
+        const valorInicial = Math.floor(Math.random() * images.length);
+        return valorInicial;
     });
     const [imageOpacity, setImageOpacity] = useState(1);
     const [nextImageIndex, setNextImageIndex] = useState(0);
@@ -32,10 +32,10 @@ export default function Guest() {
             setImageOpacity(0);
 
             setTimeout(() => {
-                setCurrentImageIndex(prevIndex => {
-                    const newIndex = (prevIndex + 1) % images.length;
-                    setNextImageIndex((newIndex + 1) % images.length);
-                    return newIndex;
+                setCurrentImageIndex(anteriorIndex => {
+                    const nuevoIndex = (anteriorIndex + 1) % images.length;
+                    setNextImageIndex((nuevoIndex + 1) % images.length);
+                    return nuevoIndex;
                 });
                 setImageOpacity(1);
             }, transitionDuration);

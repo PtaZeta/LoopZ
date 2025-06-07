@@ -136,7 +136,7 @@ export default function AuthenticatedLayout({ children, header }) {
         cancionActual, cancionActualIndex, Reproduciendo, tiempoActual, duration, volumen,
         aleatorio, looping, loopingOne, cargando, playerError, sourceId,
         play, pause, siguienteCancion, anteriorCancion,
-        seek, setVolumen, toggleAleatorio, toggleLoop,
+        busqueda, setVolumen, toggleAleatorio, toggleLoop,
         playCola, limpiarErrores, queue
     } = playerContextValue ||
     {};
@@ -275,8 +275,8 @@ export default function AuthenticatedLayout({ children, header }) {
     };
 
     const commitSeek = () => {
-        if (seek) {
-            seek(seekValue);
+        if (busqueda) {
+            busqueda(seekValue);
         }
         isSeekingRef.current = false;
     };
@@ -836,8 +836,6 @@ focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900
 mr-2" isQueueItem={true} />
                                                         <div className="flex-grow overflow-hidden">
                                                             <p className="font-medium truncate">{song.titulo}</p>
-                                                            <p className="text-xs text-gray-400 truncate">{song.artista ||
-                                                                'Artista Desconocido'}</p>
                                                         </div>
                                                         {index === cancionActualIndex && Reproduciendo && (
                                                             <MusicalNoteIcon className="h-4 w-4 ml-2 text-blue-400 animate-pulse" />

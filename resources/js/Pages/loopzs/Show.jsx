@@ -439,25 +439,25 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         if (Reproduciendo && isClickedSongCurrent) {
             pause();
         } else {
-            let queueToLoad = [];
-            let startIndex =
+            let cargarCola = [];
+            let inicioIndex =
                 0;
             let newSourceId = null;
 
             if (source === 'container' && contenedor?.canciones) {
-                queueToLoad = contenedor.canciones;
-                startIndex = queueToLoad.findIndex(s => s.id === song.id);
+                cargarCola = contenedor.canciones;
+                inicioIndex = cargarCola.findIndex(s => s.id === song.id);
                 newSourceId = contenedor.id;
             } else if (source === 'search' && resultadosBusqueda) {
-                queueToLoad = resultadosBusqueda;
-                startIndex = queueToLoad.findIndex(s => s.id === song.id);
+                cargarCola = resultadosBusqueda;
+                inicioIndex = cargarCola.findIndex(s => s.id === song.id);
                 newSourceId = 'search-results';
             } else {
                 return;
             }
 
-            if (startIndex !== -1) {
-                cargarColaYIniciar(queueToLoad, { iniciar: startIndex, id: newSourceId, clickDirecto: true });
+            if (inicioIndex !== -1) {
+                cargarColaYIniciar(cargarCola, { iniciar: inicioIndex, id: newSourceId, clickDirecto: true });
             } else {
             }
         }
