@@ -21,7 +21,6 @@ export default function Register() {
 
         post(route('register'), {
             onSuccess: () => {
-                console.log('Registro exitoso. Se ha enviado un código de verificación.');
             },
             onFinish: () => {
                 reset('password', 'password_confirmation', 'foto_perfil', 'banner_perfil');

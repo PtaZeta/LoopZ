@@ -8,7 +8,7 @@ const ImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, tipo = 
     const [errorCarga, setErrorCarga] = useState(false);
     const urlImagenCompleta = src;
     const handleImageError = () => { setErrorCarga(true); };
-    const PlaceholderContenido = () => (
+    const ContenidoPlaceholder = () => (
         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" />
         </svg>
@@ -19,7 +19,7 @@ const ImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, tipo = 
         <img key={claveUnica} src={urlImagenCompleta} alt={alt} className={claseImagen} onError={handleImageError} loading="lazy" />
     ) : (
         <div key={claveUnica} className={`${clasePlaceholder} flex items-center justify-center overflow-hidden`}>
-            <PlaceholderContenido />
+            <ContenidoPlaceholder />
         </div>
     );
 };
@@ -34,35 +34,35 @@ ImagenConPlaceholder.propTypes = {
     esStorage: PropTypes.bool,
 };
 
-const ListaUsuariosPlaylist = ({ tipo, usuarios: usuariosProp, usuarioLogueadoId }) => {
+const ListaUsuariosPlaylist = ({ tipo, usuarios: usuariosProp, idUsuarioLogueado }) => {
     const usuarios = Array.isArray(usuariosProp) ? usuariosProp : [];
     if (usuarios.length === 0) {
         const textoDefault = tipo === 'playlist' ? 'Sin colaboradores' : 'Artista desconocido';
         return <span className="text-xs text-gray-500 mt-1 truncate w-full">{textoDefault}</span>;
     }
-    const MAX_SHOWN = 1;
-    let displayOrder = [];
-    let owner = null;
-    let authUser = null;
+    const MAX_MOSTRADOS = 1;
+    let ordenVisualizacion = [];
+    let propietario = null;
+    let usuarioAutenticado = null;
     for (const u of usuarios) {
-        if (u.pivot?.propietario === true) { owner = u; }
-        if (u.id === usuarioLogueadoId) { authUser = u; }
-        if (owner && authUser) break;
+        if (u.pivot?.propietario === true) { propietario = u; }
+        if (u.id === idUsuarioLogueado) { usuarioAutenticado = u; }
+        if (propietario && usuarioAutenticado) break;
     }
-    const addedIds = new Set();
-    if (authUser) { displayOrder.push(authUser); addedIds.add(authUser.id); }
-    if (owner && !addedIds.has(owner.id)) {
-        if (!authUser) { displayOrder.unshift(owner); } else { displayOrder.push(owner); }
-        addedIds.add(owner.id);
+    const idsAnadidos = new Set();
+    if (usuarioAutenticado) { ordenVisualizacion.push(usuarioAutenticado); idsAnadidos.add(usuarioAutenticado.id); }
+    if (propietario && !idsAnadidos.has(propietario.id)) {
+        if (!usuarioAutenticado) { ordenVisualizacion.unshift(propietario); } else { ordenVisualizacion.push(propietario); }
+        idsAnadidos.add(propietario.id);
     }
-    usuarios.forEach(u => { if (!addedIds.has(u.id)) { displayOrder.push(u); addedIds.add(u.id); } });
-    if (displayOrder.length === 0) { displayOrder = [...usuarios]; }
-    const usuariosMostrados = displayOrder.slice(0, MAX_SHOWN);
-    const usuariosTooltip = displayOrder.slice(MAX_SHOWN);
+    usuarios.forEach(u => { if (!idsAnadidos.has(u.id)) { ordenVisualizacion.push(u); idsAnadidos.add(u.id); } });
+    if (ordenVisualizacion.length === 0) { ordenVisualizacion = [...usuarios]; }
+    const usuariosMostrados = ordenVisualizacion.slice(0, MAX_MOSTRADOS);
+    const usuariosTooltip = ordenVisualizacion.slice(MAX_MOSTRADOS);
     const textoMostrado = usuariosMostrados.map(u => u.name).join(', ');
     const numOcultos = usuariosTooltip.length;
-    const tipoCapitalizado = tipo ? tipo.charAt(0).toUpperCase() + tipo.slice(1) : 'Item';
-    const tituloCompleto = `${tipoCapitalizado} · ${displayOrder.map(u => u.name).join(', ')}`;
+    const tipoCapitalizado = tipo ? tipo.charAt(0).toUpperCase() + tipo.slice(1) : 'Elemento';
+    const tituloCompleto = `${tipoCapitalizado} · ${ordenVisualizacion.map(u => u.name).join(', ')}`;
     return (
         <div className="relative group mt-1 w-full">
             <p className="text-xs text-gray-400 truncate w-full cursor-default" title={tituloCompleto}>
@@ -85,10 +85,10 @@ const ListaUsuariosPlaylist = ({ tipo, usuarios: usuariosProp, usuarioLogueadoId
 ListaUsuariosPlaylist.propTypes = {
     tipo: PropTypes.string,
     usuarios: PropTypes.array,
-    usuarioLogueadoId: PropTypes.number.isRequired,
+    idUsuarioLogueado: PropTypes.number.isRequired,
 };
 
-const getResourceRouteBase = (tipo) => {
+const obtenerRutaBaseRecurso = (tipo) => {
     switch (tipo) {
         case 'album': return 'albumes';
         case 'playlist': return 'playlists';
@@ -99,55 +99,55 @@ const getResourceRouteBase = (tipo) => {
     }
 };
 
-const DisplayList = ({ items, usuarioLogueadoId, tipoPredeterminado = 'playlist' }) => {
-    const scrollContainerRef = useRef(null);
-    const [isHovering, setIsHovering] = useState(false);
-    const [canScrollLeft, setCanScrollLeft] = useState(false);
-    const [canScrollRight, setCanScrollRight] = useState(false);
-    const scrollAmount = 250;
-    const itemsArray = Array.isArray(items) ? items : [];
-    const cardWidthClass = 'w-40 sm:w-56';
-    const cardMinWidth = '10rem';
+const MostrarLista = ({ items, idUsuarioLogueado, tipoPredeterminado = 'playlist' }) => {
+    const contenedorDesplazamientoRef = useRef(null);
+    const [estaEnHover, setEstaEnHover] = useState(false);
+    const [puedeDesplazarseIzquierda, setPuedeDesplazarseIzquierda] = useState(false);
+    const [puedeDesplazarseDerecha, setPuedeDesplazarseDerecha] = useState(false);
+    const cantidadDesplazamiento = 250;
+    const arrayItems = Array.isArray(items) ? items : [];
+    const claseAnchoTarjeta = 'w-40 sm:w-56';
+    const anchoMinimoTarjeta = '10rem';
 
-    const updateScrollability = useCallback(() => {
-        const el = scrollContainerRef.current;
+    const actualizarDesplazamiento = useCallback(() => {
+        const el = contenedorDesplazamientoRef.current;
         if (el) {
-            setCanScrollLeft(el.scrollLeft > 0);
-            const maxScrollLeft = el.scrollWidth - el.clientWidth;
-            setCanScrollRight(el.scrollLeft < maxScrollLeft);
+            setPuedeDesplazarseIzquierda(el.scrollLeft > 0);
+            const maximoDesplazamientoIzquierda = el.scrollWidth - el.clientWidth;
+            setPuedeDesplazarseDerecha(el.scrollLeft < maximoDesplazamientoIzquierda);
         }
     }, []);
 
     useEffect(() => {
-        updateScrollability();
-        const el = scrollContainerRef.current;
-        el && el.addEventListener('scroll', updateScrollability, { passive: true });
-        window.addEventListener('resize', updateScrollability);
+        actualizarDesplazamiento();
+        const el = contenedorDesplazamientoRef.current;
+        el && el.addEventListener('scroll', actualizarDesplazamiento, { passive: true });
+        window.addEventListener('resize', actualizarDesplazamiento);
         return () => {
-            el && el.removeEventListener('scroll', updateScrollability);
-            window.removeEventListener('resize', updateScrollability);
+            el && el.removeEventListener('scroll', actualizarDesplazamiento);
+            window.removeEventListener('resize', actualizarDesplazamiento);
         };
-    }, [updateScrollability]);
+    }, [actualizarDesplazamiento]);
 
-    const handleScroll = (direction) => {
-        const el = scrollContainerRef.current;
+    const handleDesplazamiento = (direccion) => {
+        const el = contenedorDesplazamientoRef.current;
         if (el) {
-            el.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+            el.scrollBy({ left: direccion === 'izquierda' ? -cantidadDesplazamiento : cantidadDesplazamiento, behavior: 'smooth' });
         }
     };
 
-    const renderItemCard = (item) => {
+    const renderizarTarjetaItem = (item) => {
         const tipoItem = item.tipo || tipoPredeterminado;
-        const rutaBase = getResourceRouteBase(tipoItem);
-        const rutaShow = `${rutaBase}.show`;
-        if (typeof route === 'undefined' || !route().has(rutaShow)) return null;
+        const rutaBase = obtenerRutaBaseRecurso(tipoItem);
+        const rutaMostrar = `${rutaBase}.show`;
+        if (typeof route === 'undefined' || !route().has(rutaMostrar)) return null;
         return (
             <li
                 key={`${tipoItem}-${item.id}`}
-                className={`bg-gradient-to-b from-gray-800 to-gray-850 rounded-lg shadow-lg overflow-hidden flex flex-col items-center text-center transition duration-300 ease-in-out hover:from-gray-700 hover:to-gray-750 hover:shadow-xl ${cardWidthClass} flex-shrink-0`}
-                style={{ minWidth: cardMinWidth }}
+                className={`bg-gradient-to-b from-gray-800 to-gray-850 rounded-lg shadow-lg overflow-hidden flex flex-col items-center text-center transition duration-300 ease-in-out hover:from-gray-700 hover:to-gray-750 hover:shadow-xl ${claseAnchoTarjeta} flex-shrink-0`}
+                style={{ minWidth: anchoMinimoTarjeta }}
             >
-                <Link href={route(rutaShow, item.id)} className="block w-full p-2 pb-0 group sm:p-4 sm:pb-0">
+                <Link href={route(rutaMostrar, item.id)} className="block w-full p-2 pb-0 group sm:p-4 sm:pb-0">
                     <div className="relative w-full aspect-square mb-2 sm:mb-3">
                         <ImagenConPlaceholder
                             src={item.imagen} alt={`Portada de ${item.nombre}`}
@@ -160,13 +160,13 @@ const DisplayList = ({ items, usuarioLogueadoId, tipoPredeterminado = 'playlist'
                     </div>
                 </Link>
                 <div className="w-full px-2 sm:px-4 pb-4 flex flex-col items-center">
-                    <Link href={route(rutaShow, item.id)} className="block w-full group">
+                    <Link href={route(rutaMostrar, item.id)} className="block w-full group">
                         <span className="text-sm font-semibold text-gray-100 group-hover:text-white group-hover:underline line-clamp-2" title={item.nombre}>
                             {item.nombre}
                         </span>
                     </Link>
                     {item.usuarios && item.usuarios.length > 0 ? (
-                        <ListaUsuariosPlaylist tipo={tipoItem} usuarios={item.usuarios} usuarioLogueadoId={usuarioLogueadoId} />
+                        <ListaUsuariosPlaylist tipo={tipoItem} usuarios={item.usuarios} idUsuarioLogueado={idUsuarioLogueado} />
                     ) : (
                         <span className="text-xs text-gray-500 mt-1 truncate w-full">
                             {tipoItem === 'playlist' ? 'Sin colaboradores' : 'Sin artistas asociados'}
@@ -180,26 +180,26 @@ const DisplayList = ({ items, usuarioLogueadoId, tipoPredeterminado = 'playlist'
     return (
         <div
             className="relative"
-            onMouseEnter={() => setIsHovering(true)}
-            onMouseLeave={() => setIsHovering(false)}
+            onMouseEnter={() => setEstaEnHover(true)}
+            onMouseLeave={() => setEstaEnHover(false)}
         >
             <button
-                onClick={() => handleScroll('left')} disabled={!canScrollLeft} aria-label="Scroll Left"
-                className={`absolute left-2 top-1/2 transform -translate-y-1/2 z-20 p-2 bg-black bg-opacity-70 rounded-full text-white transition-opacity duration-300 ease-in-out hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white ${isHovering && canScrollLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'} disabled:opacity-20 disabled:pointer-events-none disabled:cursor-not-allowed`}
+                onClick={() => handleDesplazamiento('izquierda')} disabled={!puedeDesplazarseIzquierda} aria-label="Desplazarse a la izquierda"
+                className={`absolute left-2 top-1/2 transform -translate-y-1/2 z-20 p-2 bg-black bg-opacity-70 rounded-full text-white transition-opacity duration-300 ease-in-out hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white ${estaEnHover && puedeDesplazarseIzquierda ? 'opacity-100' : 'opacity-0 pointer-events-none'} disabled:opacity-20 disabled:pointer-events-none disabled:cursor-not-allowed`}
             >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
             </button>
             <div
-                ref={scrollContainerRef}
+                ref={contenedorDesplazamientoRef}
                 className="overflow-x-auto pb-1 -mb-1 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]"
             >
                 <ul className="flex flex-nowrap gap-3 sm:gap-6 px-1 py-1">
-                    {itemsArray.map(item => renderItemCard(item))}
+                    {arrayItems.map(item => renderizarTarjetaItem(item))}
                 </ul>
             </div>
             <button
-                onClick={() => handleScroll('right')} disabled={!canScrollRight} aria-label="Scroll Right"
-                className={`absolute right-2 top-1/2 transform -translate-y-1/2 z-20 p-2 bg-black bg-opacity-70 rounded-full text-white transition-opacity duration-300 ease-in-out hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white ${isHovering && canScrollRight ? 'opacity-100' : 'opacity-0 pointer-events-none'} disabled:opacity-20 disabled:pointer-events-none disabled:cursor-not-allowed`}
+                onClick={() => handleDesplazamiento('derecha')} disabled={!puedeDesplazarseDerecha} aria-label="Desplazarse a la derecha"
+                className={`absolute right-2 top-1/2 transform -translate-y-1/2 z-20 p-2 bg-black bg-opacity-70 rounded-full text-white transition-opacity duration-300 ease-in-out hover:bg-opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white ${estaEnHover && puedeDesplazarseDerecha ? 'opacity-100' : 'opacity-0 pointer-events-none'} disabled:opacity-20 disabled:pointer-events-none disabled:cursor-not-allowed`}
             >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
             </button>
@@ -207,19 +207,19 @@ const DisplayList = ({ items, usuarioLogueadoId, tipoPredeterminado = 'playlist'
     );
 };
 
-DisplayList.propTypes = {
+MostrarLista.propTypes = {
     items: PropTypes.array.isRequired,
-    usuarioLogueadoId: PropTypes.number.isRequired,
+    idUsuarioLogueado: PropTypes.number.isRequired,
     tipoPredeterminado: PropTypes.string,
 };
 
-export default function Biblioteca({ auth, playlists = [], loopzContenedores = [], lanzamientos = [] }) {
-    const usuarioLogueadoId = auth.user.id;
-    const playlistsArray = Array.isArray(playlists) ? playlists : [];
-    const loopzArray = Array.isArray(loopzContenedores) ? loopzContenedores : [];
-    const lanzamientosArray = Array.isArray(lanzamientos) ? lanzamientos : [];
+export default function MiBiblioteca({ auth, playlists = [], contenedoresLoopz = [], lanzamientos = [] }) {
+    const idUsuarioLogueado = auth.user.id;
+    const arrayPlaylists = Array.isArray(playlists) ? playlists : [];
+    const arrayContenedoresLoopz = Array.isArray(contenedoresLoopz) ? contenedoresLoopz : [];
+    const arrayLanzamientos = Array.isArray(lanzamientos) ? lanzamientos : [];
 
-    const [showCreatePlaylistModal, setShowCreatePlaylistModal] = useState(false);
+    const [mostrarModalCrearPlaylist, setMostrarModalCrearPlaylist] = useState(false);
 
     return (
         <AuthenticatedLayout user={auth.user}>
@@ -230,7 +230,7 @@ export default function Biblioteca({ auth, playlists = [], loopzContenedores = [
 
                 <div className="block sm:hidden absolute top-[66px] right-4 z-20">
                     <button
-                        onClick={() => setShowCreatePlaylistModal(true)}
+                        onClick={() => setMostrarModalCrearPlaylist(true)}
                         className="px-4 py-1.5 rounded-full text-sm font-semibold bg-gradient-to-r from-blue-600 to-pink-600 hover:from-blue-500 hover:to-pink-500 text-white shadow-lg transition-all transform hover:scale-105 duration-300 ease-in-out"
                     >
                         Crear Playlist
@@ -242,16 +242,16 @@ export default function Biblioteca({ auth, playlists = [], loopzContenedores = [
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6">
                             <h3 className="text-xl sm:text-2xl font-semibold text-gray-100 mb-2 sm:mb-0">Tus Playlists</h3>
                             <button
-                                onClick={() => setShowCreatePlaylistModal(true)}
+                                onClick={() => setMostrarModalCrearPlaylist(true)}
                                 className="hidden sm:block relative z-10 px-6 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-blue-600 to-pink-600 hover:from-blue-500 hover:to-pink-500 text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105 duration-300 ease-in-out"
                             >
                                 Crear Playlist
                             </button>
                         </div>
-                        {playlistsArray.length > 0 ? (
-                            <DisplayList
-                                items={playlistsArray}
-                                usuarioLogueadoId={usuarioLogueadoId}
+                        {arrayPlaylists.length > 0 ? (
+                            <MostrarLista
+                                items={arrayPlaylists}
+                                idUsuarioLogueado={idUsuarioLogueado}
                                 tipoPredeterminado="playlist"
                             />
                         ) : (
@@ -260,10 +260,10 @@ export default function Biblioteca({ auth, playlists = [], loopzContenedores = [
                     </div>
                     <div>
                         <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-100">Mis LoopZs</h3>
-                        {loopzArray.length > 0 ? (
-                            <DisplayList
-                                items={loopzArray}
-                                usuarioLogueadoId={usuarioLogueadoId}
+                        {arrayContenedoresLoopz.length > 0 ? (
+                            <MostrarLista
+                                items={arrayContenedoresLoopz}
+                                idUsuarioLogueado={idUsuarioLogueado}
                             />
                         ) : (
                             <p className="text-gray-400 italic text-sm sm:text-base">No has marcado nada como LoopZ todavía.</p>
@@ -271,10 +271,10 @@ export default function Biblioteca({ auth, playlists = [], loopzContenedores = [
                     </div>
                     <div>
                         <h3 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-100">Mis lanzamientos</h3>
-                        {lanzamientosArray.length > 0 ? (
-                            <DisplayList
-                                items={lanzamientosArray}
-                                usuarioLogueadoId={usuarioLogueadoId}
+                        {arrayLanzamientos.length > 0 ? (
+                            <MostrarLista
+                                items={arrayLanzamientos}
+                                idUsuarioLogueado={idUsuarioLogueado}
                             />
                         ) : (
                             <p className="text-gray-400 italic text-sm sm:text-base">No hay lanzamientos aún.</p>
@@ -284,17 +284,17 @@ export default function Biblioteca({ auth, playlists = [], loopzContenedores = [
             </main>
 
             <CreatePlaylistModal
-                show={showCreatePlaylistModal}
-                onClose={() => setShowCreatePlaylistModal(false)}
-                usuarioLogueadoId={usuarioLogueadoId}
+                show={mostrarModalCrearPlaylist}
+                onClose={() => setMostrarModalCrearPlaylist(false)}
+                idUsuarioLogueado={idUsuarioLogueado}
             />
         </AuthenticatedLayout>
     );
 }
 
-Biblioteca.propTypes = {
+MiBiblioteca.propTypes = {
     auth: PropTypes.object.isRequired,
     playlists: PropTypes.array,
-    loopzContenedores: PropTypes.array,
+    contenedoresLoopz: PropTypes.array,
     lanzamientos: PropTypes.array,
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from '@inertiajs/react';
 import PropTypes from 'prop-types';
 import InputLabel from '@/Components/InputLabel';
@@ -6,60 +6,58 @@ import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import PrimaryButton from '@/Components/PrimaryButton';
 
-const coreInputStyle = 'rounded-md shadow-sm border-gray-600 bg-gray-800 text-gray-200 focus:outline-none focus:border-transparent focus:ring-2 focus:ring-purple-500 focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed';
-const autofillStyle = '[&:-webkit-autofill]:!bg-transparent [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_theme(colors.gray.800)] [&:-webkit-autofill]:![-webkit-text-fill-color:theme(colors.gray.200)] [&:-webkit-autofill:hover]:!bg-transparent [&:-webkit-autofill:focus]:!bg-transparent [&:-webkit-autofill:focus]:!border-transparent [&:-webkit-autofill:focus]:ring-2 [&:-webkit-autofill:focus]:ring-purple-500 [&:-webkit-autofill:focus]:ring-offset-gray-800';
-const fileInputStyle = 'text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-800 file:text-indigo-200 hover:file:bg-indigo-700 cursor-pointer';
+const estiloInputBase = 'rounded-md shadow-sm border-gray-600 bg-gray-800 text-gray-200 focus:outline-none focus:border-transparent focus:ring-2 focus:ring-purple-500 focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed';
+const estiloAutocompletar = '[&:-webkit-autofill]:!bg-transparent [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_theme(colors.gray.800)] [&:-webkit-autofill]:![-webkit-text-fill-color:theme(colors.gray.200)] [&:-webkit-autofill:hover]:!bg-transparent [&:-webkit-autofill:focus]:!bg-transparent [&:-webkit-autofill:focus]:!border-transparent [&:-webkit-autofill:focus]:ring-2 [&:-webkit-autofill:focus]:ring-purple-500 [&:-webkit-autofill:focus]:ring-offset-gray-800';
+const estiloInputArchivo = 'text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-800 file:text-indigo-200 hover:file:bg-indigo-700 cursor-pointer';
 
-
-const CreatePlaylistModal = ({ show, onClose, usuarioLogueadoId }) => {
+const CreatePlaylistModal = ({ show, onClose, idUsuarioLogueado }) => {
     const { data, setData, post, processing, errors, reset, progress } = useForm({
         nombre: '',
         publico: false,
         descripcion: '',
         imagen: null,
         tipo: 'playlist',
-        userIds: usuarioLogueadoId ? [usuarioLogueadoId] : [],
+        userIds: idUsuarioLogueado ? [idUsuarioLogueado] : [],
     });
 
     useEffect(() => {
         if (!show) {
             reset();
-            const fileInput = document.getElementById('imagen');
-            if(fileInput) fileInput.value = null;
+            const inputArchivo = document.getElementById('imagen');
+            if(inputArchivo) inputArchivo.value = null;
         } else {
-             if (usuarioLogueadoId && data.userIds.length === 0) {
-                 setData('userIds', [usuarioLogueadoId]);
-             }
+            if (idUsuarioLogueado && (data.userIds === null || data.userIds.length === 0)) {
+                setData('userIds', [idUsuarioLogueado]);
+            }
         }
-    }, [show, reset, usuarioLogueadoId]);
+    }, [show, reset, idUsuarioLogueado, data.userIds, setData]);
 
     useEffect(() => {
-        const handleEsc = (event) => {
+        const handleEscape = (event) => {
             if (event.key === 'Escape') {
                 onClose();
             }
         };
         if (show) {
-            document.addEventListener('keydown', handleEsc);
+            document.addEventListener('keydown', handleEscape);
         }
         return () => {
-            document.removeEventListener('keydown', handleEsc);
+            document.removeEventListener('keydown', handleEscape);
         };
     }, [show, onClose]);
 
-
-    const submit = (e) => {
+    const enviarFormulario = (e) => {
         e.preventDefault();
         post(route('playlists.store'), {
             forceFormData: true,
             onSuccess: () => {
                 onClose();
                 reset();
-                 const fileInput = document.getElementById('imagen');
-                 if(fileInput) fileInput.value = null;
+                const inputArchivo = document.getElementById('imagen');
+                if(inputArchivo) inputArchivo.value = null;
             },
-            onError: (errs) => {
-                 console.error("Submission failed:", errs);
+            onError: (erroresFormulario) => {
+                console.error("Error al enviar el formulario:", erroresFormulario);
             },
         });
     };
@@ -76,9 +74,7 @@ const CreatePlaylistModal = ({ show, onClose, usuarioLogueadoId }) => {
                     aria-hidden="true"
                     onClick={onClose}
                 ></div>
-
                 <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
                 <div className="inline-block align-bottom bg-slate-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                     <div className="bg-slate-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                         <div className="sm:flex sm:items-start">
@@ -87,8 +83,7 @@ const CreatePlaylistModal = ({ show, onClose, usuarioLogueadoId }) => {
                                     Crear Nueva Playlist
                                 </h3>
                                 <div className="mt-4">
-                                    <form onSubmit={submit} className="space-y-6">
-
+                                    <form onSubmit={enviarFormulario} className="space-y-6">
                                         <div>
                                             <InputLabel htmlFor="nombre" value="Nombre *" className="text-gray-300 mb-1" />
                                             <input
@@ -96,30 +91,27 @@ const CreatePlaylistModal = ({ show, onClose, usuarioLogueadoId }) => {
                                                 type="text"
                                                 value={data.nombre}
                                                 onChange={(e) => setData('nombre', e.target.value)}
-                                                className={`mt-1 block w-full sm:text-sm ${coreInputStyle} ${autofillStyle} ${errors.nombre ? 'border-red-500' : ''}`}
+                                                className={`mt-1 block w-full sm:text-sm ${estiloInputBase} ${estiloAutocompletar} ${errors.nombre ? 'border-red-500' : ''}`}
                                                 required
                                                 autoComplete="off"
                                             />
                                             <InputError message={errors.nombre} className="mt-1 text-xs text-red-400" />
                                         </div>
-
                                         <div>
-                                             <InputLabel htmlFor="publico" value="Visibilidad *" className="text-gray-300 mb-1" />
-                                             <select
-                                                 id="publico"
-                                                 name="publico"
-                                                 value={String(data.publico)}
-                                                 onChange={(e) => setData('publico', e.target.value === 'true')}
-                                                 className={`mt-1 block w-full sm:text-sm ${coreInputStyle} ${errors.publico ? 'border-red-500' : ''}`}
-                                                 required
-                                             >
-                                                 <option value="false">Privado (Solo tú y colaboradores)</option>
-                                                 <option value="true">Público (Visible para todos)</option>
-                                             </select>
+                                            <InputLabel htmlFor="publico" value="Visibilidad *" className="text-gray-300 mb-1" />
+                                            <select
+                                                id="publico"
+                                                name="publico"
+                                                value={String(data.publico)}
+                                                onChange={(e) => setData('publico', e.target.value === 'true')}
+                                                className={`mt-1 block w-full sm:text-sm ${estiloInputBase} ${errors.publico ? 'border-red-500' : ''}`}
+                                                required
+                                            >
+                                                <option value="false">Privado (Solo tú y colaboradores)</option>
+                                                <option value="true">Público (Visible para todos)</option>
+                                            </select>
                                             <InputError message={errors.publico} className="mt-1 text-xs text-red-400" />
                                         </div>
-
-
                                         <div>
                                             <InputLabel htmlFor="descripcion" value="Descripción" className="text-gray-300 mb-1" />
                                             <textarea
@@ -127,11 +119,10 @@ const CreatePlaylistModal = ({ show, onClose, usuarioLogueadoId }) => {
                                                 rows="4"
                                                 value={data.descripcion}
                                                 onChange={(e) => setData('descripcion', e.target.value)}
-                                                className={`mt-1 block w-full sm:text-sm ${coreInputStyle} ${errors.descripcion ? 'border-red-500' : ''}`}
+                                                className={`mt-1 block w-full sm:text-sm ${estiloInputBase} ${errors.descripcion ? 'border-red-500' : ''}`}
                                             ></textarea>
                                             <InputError message={errors.descripcion} className="mt-1 text-xs text-red-400" />
                                         </div>
-
                                         <div>
                                             <InputLabel htmlFor="imagen" value="Imagen (Opcional)" className="text-gray-300 mb-1" />
                                             <input
@@ -139,7 +130,7 @@ const CreatePlaylistModal = ({ show, onClose, usuarioLogueadoId }) => {
                                                 id="imagen"
                                                 accept="image/*"
                                                 onChange={(e) => setData('imagen', e.target.files[0])}
-                                                className={`mt-1 block w-full text-sm ${coreInputStyle} ${fileInputStyle} ${errors.imagen ? 'border-red-500' : ''}`}
+                                                className={`mt-1 block w-full text-sm ${estiloInputBase} ${estiloInputArchivo} ${errors.imagen ? 'border-red-500' : ''}`}
                                             />
                                             {progress && data.imagen && (
                                                 <div className="mt-2 w-full bg-gray-700 rounded-full h-2.5">
@@ -148,13 +139,6 @@ const CreatePlaylistModal = ({ show, onClose, usuarioLogueadoId }) => {
                                             )}
                                             <InputError message={errors.imagen} className="mt-1 text-xs text-red-400" />
                                         </div>
-
-                                        <InputError message={errors.userIds && typeof errors.userIds === 'string' ? errors.userIds : ''} className="mt-1 text-xs text-red-400" />
-                                        {Object.keys(errors).filter(key => key.startsWith('userIds.')).map(key => (
-                                             <InputError key={key} message={errors[key]} className="mt-1 text-xs text-red-400" />
-                                         ))}
-
-
                                         <div className="flex items-center justify-end space-x-4 pt-6 border-t border-slate-700 mt-6">
                                             <button
                                                 type="button"
@@ -164,7 +148,7 @@ const CreatePlaylistModal = ({ show, onClose, usuarioLogueadoId }) => {
                                             >
                                                 Cancelar
                                             </button>
-                                            <PrimaryButton disabled={processing || !usuarioLogueadoId}>
+                                            <PrimaryButton disabled={processing}>
                                                 {processing ? 'Creando...' : 'Crear Playlist'}
                                             </PrimaryButton>
                                         </div>
@@ -182,7 +166,7 @@ const CreatePlaylistModal = ({ show, onClose, usuarioLogueadoId }) => {
 CreatePlaylistModal.propTypes = {
     show: PropTypes.bool.isRequired,
     onClose: PropTypes.func.isRequired,
-    usuarioLogueadoId: PropTypes.number,
+    idUsuarioLogueado: PropTypes.number,
 };
 
 export default CreatePlaylistModal;

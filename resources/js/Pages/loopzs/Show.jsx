@@ -162,7 +162,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         });
     }, []);
     const contextMenuTimer = useRef(null);
-    const isMobile = window.innerWidth <= 768;
+    const movil = window.innerWidth <= 768;
 
 
     const urlImagenContenedor = contenedor?.imagen || obtenerUrlImagen(contenedor);
@@ -265,7 +265,6 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
     };
 
     const manejarAnadirCancion = (idCancion) => {
-        console.log(idCancion);
         if (anadiendoCancionId === idCancion || !contenedor?.id) return;
         setAnadiendoCancionId(idCancion);
         const nombreRutaAdd = `${rutaBase}.canciones.add`;
@@ -722,7 +721,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                             key={cancion.pivot?.id ?? `fallback-${cancion.id}`}
                                             className={`p-2 bg-slate-700/60 rounded-md flex items-center space-x-3 hover:bg-purple-900/30 transition-colors duration-150 group cursor-pointer ${cancionActual?.id === cancion.id && (Reproduciendo || isPlayerLoading)
                                                 ? 'bg-purple-800/50 border border-purple-500' : ''}`}
-                                            onContextMenu={!isMobile ? (e) => openContextMenu(e, cancion) : undefined}
+                                            onContextMenu={!movil ? (e) => openContextMenu(e, cancion) : undefined}
                                             onDoubleClick={() => handleSongPlay(cancion, 'container')}
                                         >
                                             <button
@@ -765,7 +764,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                                     (cancion.es_loopz ? (<HeartIconSolid className="h-5 w-5 text-purple-500" />) : (<HeartIconOutline className="h-5 w-5" />))
                                                 }
                                             </button>
-                                            {isMobile && (
+                                            {movil && (
                                                 <button
                                                     onClick={(e) => openContextMenuMobile(e, cancion)}
                                                     className="p-1 text-gray-400 hover:text-gray-200 focus:outline-none"

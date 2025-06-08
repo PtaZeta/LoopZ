@@ -71,7 +71,6 @@ export default function Mostrar() {
         else cargarColaYIniciar([cancion], { iniciar: 0, clickDirecto: true });
     };
 
-    // MODIFIED: canEdit now checks for 'Administrador' role
     const canEdit = auth.user && (
         cancion.usuarios_mapeados.some(user => user.id === auth.user.id && user.es_propietario) ||
         auth.user.roles.some(role => role.nombre === 'Administrador')

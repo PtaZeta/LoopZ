@@ -25,7 +25,6 @@ export default function VerifyCodeComponent() {
             const response = await axios.post('/verificar-codigo', { codigo: codigo });
 
             setMensaje(response.data.message);
-            console.log('Verificación exitosa:', response.data);
 
             router.visit(response.data.redirect || '/');
 

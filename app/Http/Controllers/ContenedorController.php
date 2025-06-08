@@ -88,55 +88,10 @@ class ContenedorController extends Controller
             ->all();
     }
 
-    public function index(Request $peticion)
+    public function index()
     {
-        $infoRecurso = $this->getTipoVista($peticion);
-        $tipoContenedor = $infoRecurso['tipo'];
-        $nombreVista = $infoRecurso['vista'] . 'Index';
-        $usuario = Auth::user();
 
-        $consultaContenedores = Contenedor::where('tipo', $tipoContenedor)
-            ->with(['usuarios' => function ($query) {
-                $query->select('users.id', 'users.name');
-            }])
-            ->withCount('canciones')
-            ->latest();
-
-        if ($usuario) {
-            $consultaContenedores->where(function ($query) use ($usuario) {
-                $query->where('publico', true)
-                    ->orWhereHas('usuarios', function ($subQuery) use ($usuario) {
-                        $subQuery->where('users.id', $usuario->id);
-                    });
-            });
-        } else {
-            $consultaContenedores->where('publico', true);
-        }
-        $contenedores = $consultaContenedores->get();
-
-        $contenedoresConPermisos = $contenedores->map(function ($contenedor) use ($usuario) {
-            if ($usuario) {
-                $contenedor->can = [
-                    'view'   => $usuario->can('view', $contenedor),
-                    'edit'   => $usuario->can('update', $contenedor),
-                    'delete' => $usuario->can('delete', $contenedor),
-                ];
-            } else {
-                $contenedor->can = [
-                    'view'   => $contenedor->publico ?? false,
-                    'edit'   => false,
-                    'delete' => false,
-                ];
-            }
-
-            $contenedor->genero = $contenedor->generoPredominante();
-
-            return $contenedor;
-        });
-
-        return Inertia::render($nombreVista, [
-            'contenedores' => $contenedoresConPermisos,
-        ]);
+        return redirect()->route('welcome');
     }
 
 

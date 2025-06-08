@@ -109,7 +109,7 @@ export default function PlaylistComunidad({ auth, genero, playlists, canciones, 
                         <div className="absolute bottom-1/4 right-1/4 w-48 h-48 sm:w-64 sm:h-64 bg-pink-900 rounded-full filter blur-3xl animate-pulse animation-delay-2000"></div>
                     </div>
                     <h1 className="text-3xl md:text-4xl font-extrabold mb-2 text-white relative z-10">
-                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-pink-500">Comunidad de {genero.nombre}</span>
+                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-pink-500">{genero.nombre}</span>
                     </h1>
                     <p className="text-base sm:text-lg text-gray-300 max-w-2xl mx-auto">Descubre playlists, canciones y creadores apasionados por el género {genero.nombre}.</p>
                 </section>

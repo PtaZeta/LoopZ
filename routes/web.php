@@ -166,4 +166,8 @@ Route::get('/verificar-codigo', function () {
 Route::post('/verificar-codigo', [CodigoVerificacionController::class, 'verificarCodigoApi'])
     ->name('verificacion.submit');
 
+Route::fallback(function () {
+    return redirect()->route('welcome');
+});
+
 require __DIR__.'/auth.php';

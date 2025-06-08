@@ -20,7 +20,6 @@ import {
 import { ArrowPathIcon as IconoCarga } from '@heroicons/react/20/solid';
 
 
-// Usa los iconos de Heroicons directamente
 const IconoReproducir = (props) => <IconoHeroReproducir {...props} />;
 const IconoPausar = (props) => <IconoHeroPausar {...props} />;
 const IconoAnterior = (props) => <IconoHeroRetroceder {...props} />;
@@ -132,13 +131,12 @@ export default function LayoutAutenticado({ children, header }) {
     const [contadorNotificacionesNoLeidas, setContadorNotificacionesNoLeidas] = useState(0);
 
     const valorContextoReproductor = useContext(PlayerContext);
-    // Corrección aquí: Se añade `queue = []` como valor por defecto.
     const {
         cancionActual, cancionActualIndex, Reproduciendo, tiempoActual, duration, volumen,
         aleatorio, looping, loopingOne, cargando, playerError, sourceId,
         play, pause, siguienteCancion, anteriorCancion,
         busqueda, setVolumen, toggleAleatorio, toggleLoop,
-        playCola, limpiarErrores, queue = [] // Añade valor por defecto para 'queue'
+        playCola, limpiarErrores, queue = []
     } = valorContextoReproductor || {};
 
     const refBotonCola = useRef(null);
@@ -147,7 +145,6 @@ export default function LayoutAutenticado({ children, header }) {
     const refDropdownNotificaciones = useRef(null);
 
     const accionesReproductorDeshabilitadas = useMemo(() => {
-        // La comprobación de `queue.length` ahora es segura debido al valor por defecto
         return cargando || (!cancionActual && queue.length === 0);
     }, [cargando, cancionActual, queue.length]);
 
@@ -313,13 +310,29 @@ export default function LayoutAutenticado({ children, header }) {
 
     const urlImagenPistaActual = obtenerUrlImagenDisposicion(cancionActual);
     const artistaPistaActual = useMemo(() => {
-        if (!cancionActual) return 'Artista Desconocido';
-        const artistasDeUsuarios = cancionActual.usuarios?.map(u => u.name).join(', ');
-        if (artistasDeUsuarios) return artistasDeUsuarios;
-        if (cancionActual.artista) return cancionActual.artista;
-        if (cancionActual.album?.artista) return cancionActual.album.artista;
-        return 'Artista Desconocido';
-    }, [cancionActual]);
+    if (!cancionActual) return (
+        <span className="text-gray-400">Artista Desconocido</span>
+    );
+
+    if (cancionActual.usuarios && cancionActual.usuarios.length > 0) {
+        return cancionActual.usuarios.map((u, idx) => (
+            <React.Fragment key={u.id}>
+                <Link href={route('profile.show', u.id)} className="text-gray-400 font-semibold transition group hover:text-blue-300 hover:underline hover:underline-offset-2 hover:decoration-blue-300">
+                    <span className="relative group">
+                        {u.name}
+                        <span className="absolute left-0 -bottom-0.5 w-full h-0.5 bg-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"></span>
+                    </span>
+                </Link>
+                {idx < cancionActual.usuarios.length - 1 && ', '}
+            </React.Fragment>
+        ));
+    }
+
+    if (cancionActual.artista) return <span className="text-gray-400">{cancionActual.artista}</span>;
+    if (cancionActual.album?.artista) return <span className="text-gray-400">{cancionActual.album.artista}</span>;
+    return <span className="text-gray-400">Artista Desconocido</span>;
+}, [cancionActual]);
+
 
     const manejarClickReproducirDesdeCola = (index) => {
         if (playCola) {

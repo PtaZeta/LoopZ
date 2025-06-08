@@ -803,7 +803,6 @@ export const PlayerProvider = ({ children }) => {
             }
             const cancionAPrecargar = siguienteCancionPrecargar !== -1 ? colaActual[siguienteCancionPrecargar] : null;
             const urlCancionPrecargada = cancionAPrecargar ? getAudioUrl(cancionAPrecargar) : null;
-            //const currentAudioUrl = cancionActual ? getAudioUrl(cancionActual) : null;
             if (cancionAPrecargar && siguienteCancionPrecargar !== cancionActualIndex && urlCancionPrecargada && cancionPrecargada.src !== urlCancionPrecargada) {
                 cancionPrecargada.src = urlCancionPrecargada;
                 cancionPrecargada.load();

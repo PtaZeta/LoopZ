@@ -24,40 +24,7 @@ class CancionController extends Controller
 {
     public function index()
     {
-        $usuario = Auth::user();
-
-        $query = Cancion::with(['usuarios' => function ($query) {
-            $query->withPivot('propietario');
-        }])->latest();
-
-        if ($usuario) {
-            $query->whereHas('usuarios', function ($q) use ($usuario) {
-                $q->where('user_id', $usuario->id);
-            });
-        } else {
-            $query->whereRaw('1 = 0');
-        }
-
-        $canciones = $query->get();
-
-        $cancionesConPermisos = $canciones->map(function ($cancion) use ($usuario) {
-            if ($usuario && method_exists($usuario, 'can')) {
-                $cancion->can = [
-                    'edit'   => $usuario->can('update', $cancion),
-                    'delete' => $usuario->can('delete', $cancion),
-                ];
-            } else {
-                $cancion->can = [
-                    'edit'   => false,
-                    'delete' => false,
-                ];
-            }
-            return $cancion;
-        });
-
-        return Inertia::render('canciones/Canciones', [
-            'canciones' => $cancionesConPermisos,
-        ]);
+        return redirect()->route('welcome');
     }
 
 
