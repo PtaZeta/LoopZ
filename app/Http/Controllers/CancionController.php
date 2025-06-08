@@ -95,10 +95,7 @@ class CancionController extends Controller
                     ->exists();
 
                 if (! $existe) {
-                    return redirect()->back()
-                        ->withErrors(['cancion_original_id' =>
-                            'La obra original no existe o no tiene licencia CC BY 4.0.'])
-                        ->withInput();
+                    return redirect()->back();
                 }
             }
 
@@ -132,14 +129,7 @@ class CancionController extends Controller
                     }
                     $cancion->archivo_url = Storage::disk('s3')->url($path);
                 } catch (\Exception $e) {
-                    Log::error('Error subiendo audio a S3', [
-                        'error' => $e->getMessage(),
-                        'bucket' => config('filesystems.disks.s3.bucket'),
-                        'region' => config('filesystems.disks.s3.region'),
-                    ]);
-                    return redirect()->back()
-                        ->withErrors(['archivo' => 'No se pudo subir el audio al bucket S3.'])
-                        ->withInput();
+                    return redirect()->back();
                 }
             } else {
                 return redirect()->back()
@@ -150,7 +140,7 @@ class CancionController extends Controller
             if ($request->hasFile('foto') && $request->file('foto')->isValid()) {
                 $archivoFoto = $request->file('foto');
                 $extFoto = $archivoFoto->getClientOriginalExtension();
-                $nombreFoto = Str::uuid() . "_pic.{$extFoto}";
+                $nombreFoto = Str::uuid() . "_foto.{$extFoto}";
                 try {
                     $pathFoto = Storage::disk('s3')
                         ->putFileAs('imagenes', $archivoFoto, $nombreFoto, 'public');
@@ -158,11 +148,6 @@ class CancionController extends Controller
                         ? Storage::disk('s3')->url($pathFoto)
                         : null;
                 } catch (\Exception $e) {
-                    Log::error('Error subiendo imagen a S3', [
-                        'error' => $e->getMessage(),
-                        'bucket' => config('filesystems.disks.s3.bucket'),
-                        'region' => config('filesystems.disks.s3.region'),
-                    ]);
                     $cancion->foto_url = null;
                 }
             }
@@ -251,44 +236,38 @@ class CancionController extends Controller
             'cancion' => $cancion
         ]);
     } catch (ModelNotFoundException $e) {
-        return redirect()->route('welcome')->with('error', 'Canción no encontrada.');
+        return redirect()->route('welcome');
     }
 }
 
     public function edit($id)
     {
-        try {
-            $cancion = Cancion::with(['usuarios' => function ($query) {
-                $query->withPivot('propietario');
-            }])->findOrFail($id);
-            $generosSeleccionados = $cancion->generos->pluck('nombre')->all();
-            $this->authorize('update', $cancion);
+        $cancion = Cancion::with(['usuarios' => function ($query) {
+            $query->withPivot('propietario');
+        }])->findOrFail($id);
+        $generosSeleccionados = $cancion->generos->pluck('nombre')->all();
+        $this->authorize('update', $cancion);
 
-             $usuariosMapeados = $cancion->usuarios->map(function ($usuario) {
-                 return [
-                     'id' => $usuario->id,
-                     'name' => $usuario->name,
-                     'email' => $usuario->email,
-                     'es_propietario' => (bool) $usuario->pivot->propietario,
-                 ];
-             })->all();
+            $usuariosMapeados = $cancion->usuarios->map(function ($usuario) {
+                return [
+                    'id' => $usuario->id,
+                    'name' => $usuario->name,
+                    'email' => $usuario->email,
+                    'es_propietario' => (bool) $usuario->pivot->propietario,
+                ];
+            })->all();
 
-             $cancionData = $cancion->toArray();
-             unset($cancionData['usuarios']);
-             $cancionData['usuarios'] = $usuariosMapeados;
+            $cancionData = $cancion->toArray();
+            unset($cancionData['usuarios']);
+            $cancionData['usuarios'] = $usuariosMapeados;
 
-            $generos = Genero::all()->pluck('nombre');
+        $generos = Genero::all()->pluck('nombre');
 
-            return Inertia::render('canciones/Edit', [
-                'cancion' => $cancionData,
-                'generos' => $generos,
-                'success' => session('success'),
-                'generosSeleccionados' => $generosSeleccionados,
-                'error' => session('error')
-            ]);
-        } catch (ModelNotFoundException $e) {
-            return redirect()->route('canciones.index')->with('error', 'Canción no encontrada.');
-        }
+        return Inertia::render('canciones/Edit', [
+            'cancion' => $cancionData,
+            'generos' => $generos,
+            'generosSeleccionados' => $generosSeleccionados,
+        ]);
     }
 
     public function update(Request $request, $id)
@@ -330,7 +309,7 @@ class CancionController extends Controller
             }
             $path = Storage::disk('s3')->putFileAs('canciones', $nuevoArchivoAudio, $nombre, ['visibility' => 'public']);
             if (!$path) {
-                return back()->withErrors(['archivo' => 'No se pudo guardar el nuevo archivo de audio.'])->withInput();
+                return back();
             }
             $cancion->archivo_url = Storage::disk('s3')->url($path);
         }
@@ -345,7 +324,7 @@ class CancionController extends Controller
             $nombre = Str::uuid() . '_pic.' . $nuevaFoto->getClientOriginalExtension();
             $path = Storage::disk('s3')->putFileAs('imagenes', $nuevaFoto, $nombre, ['visibility' => 'public']);
             if (!$path) {
-                return back()->withErrors(['foto' => 'No se pudo guardar la nueva imagen.'])->withInput();
+                return back();
             }
             $cancion->foto_url = Storage::disk('s3')->url($path);
         } elseif ($eliminarFoto) {
@@ -367,7 +346,7 @@ class CancionController extends Controller
             $propietarioId = $propietario ? $propietario->id : null;
 
             if (!$propietarioId) {
-                return Redirect::route('canciones.edit', $cancion->id)->with('error', 'No se encontró propietario.');
+                return Redirect::route('canciones.edit', $cancion->id);
             }
 
             $ids = array_map('intval', $request->input('userIds', []));
@@ -383,12 +362,12 @@ class CancionController extends Controller
             $cancion->usuarios()->sync($usuariosParaSincronizar);
         }
 
-        return Redirect::route('canciones.show', $cancion->id)->with('success', 'Canción actualizada exitosamente.');
+        return Redirect::route('canciones.show', $cancion->id);
     } catch (ModelNotFoundException $e) {
-        return redirect()->route('canciones.index')->with('error', 'Canción no encontrada.');
+        return redirect()->route('canciones.index');
     } catch (\Exception $e) {
         Log::error("Error al actualizar canción: " . $e->getMessage());
-        return Redirect::route('canciones.edit', $id)->with('error', 'Error al actualizar canción.')->withInput();
+        return Redirect::route('canciones.edit', $id);
     }
 }
 
@@ -416,7 +395,7 @@ class CancionController extends Controller
 
         $cancion->delete();
 
-        return redirect()->route('profile.show', $usuario->id)->with('success', 'Canción eliminada exitosamente.');
+        return redirect()->route('profile.show', $usuario->id);
     }
 
     public function buscarUsuarios(Request $request)
@@ -527,14 +506,14 @@ class CancionController extends Controller
             'cancion_id' => $id,
         ]);
 
-        if ($visualizaciones === 100) {
+        if ($visualizaciones === 10) {
             $cancion = Cancion::with('usuarios')->find($id);
 
             if ($cancion && $cancion->usuarios->isNotEmpty()) {
                 foreach ($cancion->usuarios as $usuario) {
                     Notificacion::create([
                         'titulo' => '¡Tu canción llegó a 100 visualizaciones!',
-                        'mensaje' => "La canción '{$cancion->titulo}' ha alcanzado 100 reproducciones.",
+                        'mensaje' => "La canción '{$cancion->titulo}' ha alcanzado 10 reproducciones.",
                         'leido' => false,
                         'user_id' => $usuario->id,
                     ]);

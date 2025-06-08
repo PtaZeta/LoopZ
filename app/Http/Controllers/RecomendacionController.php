@@ -8,92 +8,92 @@ use App\Models\Cancion;
 
 class RecomendacionController extends Controller
 {
-        public function index(Request $request)
+    public function index(Request $request)
     {
         $userId = Auth::id();
 
-        $seedSongId = $request->input('seedSongId');
-        $seedArtistUserId = $request->input('seedArtistUserId');
-        $perPage = $request->input('perPage', 10);
-        $page = $request->input('page', 1);
-        $offset = ($page - 1) * $perPage;
+        $seedCancionId = $request->input('seedCancionId');
+        $seedUsuarioId = $request->input('seedUsuarioId');
+        $porPagina = $request->input('porPagina', 10);
+        $pagina = $request->input('pagina', 1);
+        $offset = ($pagina - 1) * $porPagina;
 
-        $recommendedSongs = collect();
-        $songsToFetch = $perPage;
+        $cancionesRecomendadas = collect();
+        $cancionesAObtener = $porPagina;
 
         $baseQuery = Cancion::query()
             ->with(['generos', 'usuarios'])
             ->where('publico', true);
 
-        if ($seedSongId) {
-            $seedSong = Cancion::with(['generos', 'usuarios'])->find($seedSongId);
-            if ($seedSong) {
-                $baseQuery->where('id', '<>', $seedSongId);
+        if ($seedCancionId) {
+            $seedCancion = Cancion::with(['generos', 'usuarios'])->find($seedCancionId);
+            if ($seedCancion) {
+                $baseQuery->where('id', '<>', $seedCancionId);
 
-                $seedGenres = $seedSong->generos->pluck('id')->toArray();
-                $seedCreatorUser = $seedSong->usuarios->first();
+                $seedGeneros = $seedCancion->generos->pluck('id')->toArray();
+                $seedUsuario = $seedCancion->usuarios->first();
 
-                if (!empty($seedGenres) || $seedCreatorUser) {
-                    $tier1Query = clone $baseQuery;
-                    $tier1Query->where(function ($q) use ($seedGenres, $seedCreatorUser) {
-                        if (!empty($seedGenres)) {
-                            $q->whereHas('generos', fn($g) => $g->whereIn('genero_id', $seedGenres));
+                if (!empty($seedGeneros) || $seedUsuario) {
+                    $primerQuery = clone $baseQuery;
+                    $primerQuery->where(function ($q) use ($seedGeneros, $seedUsuario) {
+                        if (!empty($seedGeneros)) {
+                            $q->whereHas('generos', fn($g) => $g->whereIn('genero_id', $seedGeneros));
                         }
-                        if ($seedCreatorUser) {
-                            $q->orWhereHas('usuarios', fn($u) => $u->where('users.id', $seedCreatorUser->id));
+                        if ($seedUsuario) {
+                            $q->orWhereHas('usuarios', fn($u) => $u->where('users.id', $seedUsuario->id));
                         }
                     });
 
-                    $tier1Results = $tier1Query->inRandomOrder()->limit($songsToFetch)->get();
-                    $recommendedSongs = $recommendedSongs->merge($tier1Results);
-                    $songsToFetch -= $tier1Results->count();
+                    $primerResultados = $primerQuery->inRandomOrder()->limit($cancionesAObtener)->get();
+                    $cancionesRecomendadas = $cancionesRecomendadas->merge($primerResultados);
+                    $cancionesAObtener -= $primerResultados->count();
                 }
             }
         }
 
-        if ($songsToFetch > 0 && ($seedArtistUserId || (isset($seedSong) && $seedSong->usuarios->isNotEmpty()))) {
-            $currentSeedArtistUserId = $seedArtistUserId ?: ($seedSong->usuarios->first()->id ?? null);
+        if ($cancionesAObtener > 0 && ($seedUsuarioId || (isset($seedCancion) && $seedCancion->usuarios->isNotEmpty()))) {
+            $seedUsuarioActualId = $seedUsuarioId ?: ($seedCancion->usuarios->first()->id ?? null);
 
-            if ($currentSeedArtistUserId) {
-                $tier2Query = clone $baseQuery;
-                $tier2Query->whereHas('usuarios', fn($u) => $u->where('users.id', $currentSeedArtistUserId))
-                           ->whereNotIn('id', $recommendedSongs->pluck('id')->toArray());
+            if ($seedUsuarioActualId) {
+                $segundoQuery = clone $baseQuery;
+                $segundoQuery->whereHas('usuarios', fn($u) => $u->where('users.id', $seedUsuarioActualId))
+                           ->whereNotIn('id', $cancionesRecomendadas->pluck('id')->toArray());
 
-                $tier2Results = $tier2Query->inRandomOrder()->limit($songsToFetch)->get();
-                $recommendedSongs = $recommendedSongs->merge($tier2Results);
-                $songsToFetch -= $tier2Results->count();
+                $segundoResultados = $segundoQuery->inRandomOrder()->limit($cancionesAObtener)->get();
+                $cancionesRecomendadas = $cancionesRecomendadas->merge($segundoResultados);
+                $cancionesAObtener -= $segundoResultados->count();
             }
         }
 
-        if ($songsToFetch > 0 && isset($seedGenres) && !empty($seedGenres)) {
-            $tier3Query = clone $baseQuery;
-            $tier3Query->whereHas('generos', fn($q) => $q->whereIn('genero_id', $seedGenres))
-                       ->whereNotIn('id', $recommendedSongs->pluck('id')->toArray());
+        if ($cancionesAObtener > 0 && isset($seedGeneros) && !empty($seedGeneros)) {
+            $tercerQuery = clone $baseQuery;
+            $tercerQuery->whereHas('generos', fn($q) => $q->whereIn('genero_id', $seedGeneros))
+                       ->whereNotIn('id', $cancionesRecomendadas->pluck('id')->toArray());
 
-            $tier3Results = $tier3Query->inRandomOrder()->limit($songsToFetch)->get();
-            $recommendedSongs = $recommendedSongs->merge($tier3Results);
-            $songsToFetch -= $tier3Results->count();
+            $tercerResultados = $tercerQuery->inRandomOrder()->limit($cancionesAObtener)->get();
+            $cancionesRecomendadas = $cancionesRecomendadas->merge($tercerResultados);
+            $cancionesAObtener -= $tercerResultados->count();
         }
 
-        if ($songsToFetch > 0) {
-            $fallbackQuery = Cancion::query()
+        if ($cancionesAObtener > 0) {
+            $alternativaQuery = Cancion::query()
                 ->with(['generos', 'usuarios'])
                 ->where('publico', true)
-                ->whereNotIn('id', $recommendedSongs->pluck('id')->toArray());
+                ->whereNotIn('id', $cancionesRecomendadas->pluck('id')->toArray());
 
-            $fallbackResults = $fallbackQuery->inRandomOrder()->limit($songsToFetch)->get();
-            $recommendedSongs = $recommendedSongs->merge($fallbackResults);
+            $alternativaResultados = $alternativaQuery->inRandomOrder()->limit($cancionesAObtener)->get();
+            $cancionesRecomendadas = $cancionesRecomendadas->merge($alternativaResultados);
         }
 
-        $paginatedResult = $recommendedSongs->unique('id')
+        $resultadoPaginado = $cancionesRecomendadas->unique('id')
                                             ->skip($offset)
-                                            ->take($perPage);
+                                            ->take($porPagina);
 
-        if ($paginatedResult->isEmpty() && $page > 1 && $recommendedSongs->count() <= $offset) {
+        if ($resultadoPaginado->isEmpty() && $pagina > 1 && $cancionesRecomendadas->count() <= $offset) {
             return response()->json([]);
         }
 
-        return response()->json($paginatedResult->values());
+        return response()->json($resultadoPaginado->values());
     }
 
     protected function getFallbackRecommendations(int $limit = 10)

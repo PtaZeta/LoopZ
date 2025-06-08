@@ -14,118 +14,108 @@ class SearchController extends Controller
 {
     public function index(Request $request)
     {
-        $query = $request->input('query', '');
+        $consulta = $request->input('query', '');
 
-        // Define los límites mínimos deseados para cada tipo
-        $minLimitCanciones = 10;
-        $minLimitOtros = 6; // Para usuarios, playlists, álbumes, EPs, singles
+        $limiteMinimoCanciones = 10;
+        $limiteMinimoOtros = 6;
 
-        // 1. Búsqueda inicial usando Scout (resultados más relevantes a la query)
-        $cancionIds = Cancion::search($query)->keys();
-        $userIds = User::search($query)->keys();
-        $contenedorIds = Contenedor::search($query)->keys();
+        $idsCanciones = Cancion::search($consulta)->keys();
+        $idsUsuarios = User::search($consulta)->keys();
+        $idsContenedores = Contenedor::search($consulta)->keys();
 
-        // 2. Obtener y ordenar los resultados iniciales por relevancia (match_score)
-        $allContenedores = Contenedor::whereIn('id', $contenedorIds)
-            ->with('usuarios', 'canciones.usuarios', 'canciones.generos') // <--- ¡CORREGIDO AQUÍ!
+        $todosContenedores = Contenedor::whereIn('id', $idsContenedores)
+            ->with('usuarios', 'canciones.usuarios', 'canciones.generos')
             ->get()
-            ->map(function ($contenedor) use ($query) {
-                // AQUÍ: Calcula el match_score para el nombre del contenedor
-                $contenedor->match_score = $this->calculateMatchScore($contenedor->nombre, $query);
+            ->map(function ($contenedor) use ($consulta) {
+                $contenedor->puntuacion_coincidencia = $this->calcularPuntuacionCoincidencia($contenedor->nombre, $consulta);
                 return $contenedor;
             })
-            ->sortByDesc('match_score');
+            ->sortByDesc('puntuacion_coincidencia');
 
-        $allCanciones = Cancion::whereIn('id', $cancionIds)
+        $todasCanciones = Cancion::whereIn('id', $idsCanciones)
             ->with('usuarios', 'generos')
             ->get()
-            ->map(function ($cancion) use ($query) {
-                $cancion->match_score = $this->calculateMatchScore($cancion->titulo, $query);
+            ->map(function ($cancion) use ($consulta) {
+                $cancion->puntuacion_coincidencia = $this->calcularPuntuacionCoincidencia($cancion->titulo, $consulta);
                 return $cancion;
             })
-            ->sortByDesc('match_score');
+            ->sortByDesc('puntuacion_coincidencia');
 
-        $allUsers = User::whereIn('id', $userIds)
+        $todosUsuarios = User::whereIn('id', $idsUsuarios)
             ->get()
-            ->map(function ($user) use ($query) {
-                $user->match_score = $this->calculateMatchScore($user->name, $query);
-                return $user;
+            ->map(function ($usuario) use ($consulta) {
+                $usuario->puntuacion_coincidencia = $this->calcularPuntuacionCoincidencia($usuario->name, $consulta);
+                return $usuario;
             })
-            ->sortByDesc('match_score');
+            ->sortByDesc('puntuacion_coincidencia');
 
-        // Filtrar contenedores por tipo
-        $initialPlaylists = $allContenedores->filter(fn($contenedor) => $contenedor->tipo === 'playlist');
-        $initialEps = $allContenedores->filter(fn($contenedor) => $contenedor->tipo === 'ep');
-        $initialSingles = $allContenedores->filter(fn($contenedor) => $contenedor->tipo === 'single');
-        $initialAlbumes = $allContenedores->filter(fn($contenedor) => $contenedor->tipo === 'album');
+        $playlistsIniciales = $todosContenedores->filter(fn($contenedor) => $contenedor->tipo === 'playlist');
+        $epsIniciales = $todosContenedores->filter(fn($contenedor) => $contenedor->tipo === 'ep');
+        $singlesIniciales = $todosContenedores->filter(fn($contenedor) => $contenedor->tipo === 'single');
+        $albumesIniciales = $todosContenedores->filter(fn($contenedor) => $contenedor->tipo === 'album');
 
-        // 3. Lógica para el elemento principal
-        $principalItem = null;
-        $principalKey = null;
+        $itemPrincipal = null;
+        $clavePrincipal = null;
 
-        if ($query) {
-            $principalItem = $this->findFirstExactOrBestMatch([
-                ['items' => $allUsers, 'key' => 'name', 'type' => 'user'],
-                ['items' => $allCanciones, 'key' => 'titulo', 'type' => 'cancion'],
-                ['items' => $initialPlaylists, 'key' => 'nombre', 'type' => 'playlist'],
-                ['items' => $initialAlbumes, 'key' => 'nombre', 'type' => 'album'],
-                ['items' => $initialEps, 'key' => 'nombre', 'type' => 'ep'],
-                ['items' => $initialSingles, 'key' => 'nombre', 'type' => 'single'],
-            ], $query);
+        if ($consulta) {
+            $itemPrincipal = $this->encontrarPrimeraCoincidenciaExactaOMejor([
+                ['items' => $todosUsuarios, 'key' => 'name', 'type' => 'user'],
+                ['items' => $todasCanciones, 'key' => 'titulo', 'type' => 'cancion'],
+                ['items' => $playlistsIniciales, 'key' => 'nombre', 'type' => 'playlist'],
+                ['items' => $albumesIniciales, 'key' => 'nombre', 'type' => 'album'],
+                ['items' => $epsIniciales, 'key' => 'nombre', 'type' => 'ep'],
+                ['items' => $singlesIniciales, 'key' => 'nombre', 'type' => 'single'],
+            ], $consulta);
 
-            if (!$principalItem) {
-                $principalItem =
-                    $allUsers->first() ?:
-                    $allCanciones->first() ?:
-                    $initialPlaylists->first() ?:
-                    $initialAlbumes->first() ?:
-                    $initialEps->first() ?:
-                    $initialSingles->first();
-                $principalKey = $principalItem ? class_basename(get_class($principalItem)) : null;
+            if (!$itemPrincipal) {
+                $itemPrincipal =
+                    $todosUsuarios->first() ?:
+                    $todasCanciones->first() ?:
+                    $playlistsIniciales->first() ?:
+                    $albumesIniciales->first() ?:
+                    $epsIniciales->first() ?:
+                    $singlesIniciales->first();
+                $clavePrincipal = $itemPrincipal ? class_basename(get_class($itemPrincipal)) : null;
             } else {
-                $principalKey = $principalItem['type'];
-                $principalItem = $principalItem['item'];
+                $clavePrincipal = $itemPrincipal['type'];
+                $itemPrincipal = $itemPrincipal['item'];
             }
         }
 
-        // 4. Lógica para contenido relacionado (ej. canciones de álbumes o artistas)
-        $relatedContent = [
+        $contenidoRelacionado = [
             'canciones' => collect(),
         ];
-        $otherRelatedSections = [];
+        $otrasSeccionesRelacionadas = [];
 
-        // IDs de canciones ya incluidas para evitar duplicados en el relleno
-        $includedSongIds = $allCanciones->pluck('id');
+        $idsCancionesIncluidas = $todasCanciones->pluck('id');
 
 
-        if ($principalItem) {
-            switch ($principalKey) {
+        if ($itemPrincipal) {
+            switch ($clavePrincipal) {
                 case 'user':
-                    // Canciones del artista principal
-                    $relatedContent['canciones'] = $relatedContent['canciones']->merge(
-                        $principalItem->perteneceCanciones()
+                    $contenidoRelacionado['canciones'] = $contenidoRelacionado['canciones']->merge(
+                        $itemPrincipal->perteneceCanciones()
                             ->with('usuarios', 'generos')
-                            ->whereNotIn('id', $includedSongIds)
+                            ->whereNotIn('id', $idsCancionesIncluidas)
                             ->inRandomOrder()
-                            ->limit($minLimitCanciones)
+                            ->limit($limiteMinimoCanciones)
                             ->get()
-                            ->map(fn($c) => $this->addMatchScore($c, $query, 'titulo'))
+                            ->map(fn($c) => $this->añadirPuntuacionCoincidencia($c, $consulta, 'titulo'))
                     );
-                    $includedSongIds = $includedSongIds->merge($relatedContent['canciones']->pluck('id'));
+                    $idsCancionesIncluidas = $idsCancionesIncluidas->merge($contenidoRelacionado['canciones']->pluck('id'));
 
-                    // Contenedores del artista principal
-                    $otherRelatedSections['playlists_del_artista'] = $principalItem->perteneceContenedores()
+                    $otrasSeccionesRelacionadas['playlists_del_artista'] = $itemPrincipal->perteneceContenedores()
                         ->where('tipo', 'playlist')
                         ->with('usuarios')
                         ->inRandomOrder()
-                        ->limit($minLimitOtros)
+                        ->limit($limiteMinimoOtros)
                         ->get();
 
-                    $otherRelatedSections['albumes_del_artista'] = $principalItem->perteneceContenedores()
+                    $otrasSeccionesRelacionadas['albumes_del_artista'] = $itemPrincipal->perteneceContenedores()
                         ->where('tipo', 'album')
                         ->with('usuarios')
                         ->inRandomOrder()
-                        ->limit($minLimitOtros)
+                        ->limit($limiteMinimoOtros)
                         ->get();
                     break;
 
@@ -133,255 +123,236 @@ class SearchController extends Controller
                 case 'album':
                 case 'ep':
                 case 'single':
-                    // Canciones del contenedor principal
-                    $relatedContent['canciones'] = $relatedContent['canciones']->merge(
-                        $principalItem->canciones()
+                    $contenidoRelacionado['canciones'] = $contenidoRelacionado['canciones']->merge(
+                        $itemPrincipal->canciones()
                             ->with('usuarios', 'generos')
-                            ->whereNotIn('id', $includedSongIds)
+                            ->whereNotIn('id', $idsCancionesIncluidas)
                             ->inRandomOrder()
-                            ->limit($minLimitCanciones)
+                            ->limit($limiteMinimoCanciones)
                             ->get()
-                            ->map(fn($c) => $this->addMatchScore($c, $query, 'titulo'))
+                            ->map(fn($c) => $this->añadirPuntuacionCoincidencia($c, $consulta, 'titulo'))
                     );
-                    $includedSongIds = $includedSongIds->merge($relatedContent['canciones']->pluck('id'));
+                    $idsCancionesIncluidas = $idsCancionesIncluidas->merge($contenidoRelacionado['canciones']->pluck('id'));
 
 
-                    $artists = $principalItem->usuarios;
-                    if ($artists->isNotEmpty()) {
-                        $otherRelatedSections['artistas_relacionados'] = $artists->take($minLimitOtros);
+                    $artistas = $itemPrincipal->usuarios;
+                    if ($artistas->isNotEmpty()) {
+                        $otrasSeccionesRelacionadas['artistas_relacionados'] = $artistas->take($limiteMinimoOtros);
                     }
 
-                    // Canciones de géneros relacionados del contenedor
-                    $generosContenedor = $principalItem->canciones->pluck('generos')->flatten()->unique('id')->pluck('nombre');
+                    $generosContenedor = $itemPrincipal->canciones->pluck('generos')->flatten()->unique('id')->pluck('nombre');
                     if ($generosContenedor->isNotEmpty()) {
-                        $relatedContent['canciones'] = $relatedContent['canciones']->merge(
+                        $contenidoRelacionado['canciones'] = $contenidoRelacionado['canciones']->merge(
                             Cancion::whereHas('generos', function ($q) use ($generosContenedor) {
                                 $q->whereIn('nombre', $generosContenedor);
                             })
-                            ->whereNotIn('id', $includedSongIds)
+                            ->whereNotIn('id', $idsCancionesIncluidas)
                             ->with('usuarios', 'generos')
                             ->inRandomOrder()
-                            ->limit($minLimitCanciones) // Puede ser más de la mitad, ajusta si necesario
+                            ->limit($limiteMinimoCanciones)
                             ->get()
-                            ->map(fn($c) => $this->addMatchScore($c, $query, 'titulo'))
+                            ->map(fn($c) => $this->añadirPuntuacionCoincidencia($c, $consulta, 'titulo'))
                         );
-                        $includedSongIds = $includedSongIds->merge($relatedContent['canciones']->pluck('id'));
+                        $idsCancionesIncluidas = $idsCancionesIncluidas->merge($contenidoRelacionado['canciones']->pluck('id'));
                     }
                     break;
 
                 case 'cancion':
-                    // Artistas de la canción principal
-                    $songArtists = $principalItem->usuarios;
-                    if ($songArtists->isNotEmpty()) {
-                        $otherRelatedSections['artistas_de_la_cancion'] = $songArtists->take($minLimitOtros);
+                    $artistasCancion = $itemPrincipal->usuarios;
+                    if ($artistasCancion->isNotEmpty()) {
+                        $otrasSeccionesRelacionadas['artistas_de_la_cancion'] = $artistasCancion->take($limiteMinimoOtros);
 
-                        // Canciones de los mismos artistas de la canción principal
-                        foreach($songArtists as $artist) {
-                            $relatedContent['canciones'] = $relatedContent['canciones']->merge(
-                                $artist->perteneceCanciones()
+                        foreach($artistasCancion as $artista) {
+                            $contenidoRelacionado['canciones'] = $contenidoRelacionado['canciones']->merge(
+                                $artista->perteneceCanciones()
                                     ->with('usuarios', 'generos')
-                                    ->whereNotIn('id', $includedSongIds)
+                                    ->whereNotIn('id', $idsCancionesIncluidas)
                                     ->inRandomOrder()
-                                    ->limit(floor($minLimitCanciones / count($songArtists) + 1)) // Distribuir un poco
+                                    ->limit(floor($limiteMinimoCanciones / count($artistasCancion) + 1))
                                     ->get()
-                                    ->map(fn($c) => $this->addMatchScore($c, $query, 'titulo'))
+                                    ->map(fn($c) => $this->añadirPuntuacionCoincidencia($c, $consulta, 'titulo'))
                             );
-                            $includedSongIds = $includedSongIds->merge($relatedContent['canciones']->pluck('id'));
-                            if ($relatedContent['canciones']->count() >= $minLimitCanciones) break; // Si ya llegamos al mínimo
+                            $idsCancionesIncluidas = $idsCancionesIncluidas->merge($contenidoRelacionado['canciones']->pluck('id'));
+                            if ($contenidoRelacionado['canciones']->count() >= $limiteMinimoCanciones) break;
                         }
                     }
 
-                    // Canciones de géneros relacionados de la canción principal
-                    $generosCancion = $principalItem->generos->pluck('nombre');
+                    $generosCancion = $itemPrincipal->generos->pluck('nombre');
                     if ($generosCancion->isNotEmpty()) {
-                        $relatedContent['canciones'] = $relatedContent['canciones']->merge(
+                        $contenidoRelacionado['canciones'] = $contenidoRelacionado['canciones']->merge(
                             Cancion::whereHas('generos', function ($q) use ($generosCancion) {
                                 $q->whereIn('nombre', $generosCancion);
                             })
-                            ->whereNotIn('id', $includedSongIds)
+                            ->whereNotIn('id', $idsCancionesIncluidas)
                             ->with('usuarios', 'generos')
                             ->inRandomOrder()
-                            ->limit($minLimitCanciones)
+                            ->limit($limiteMinimoCanciones)
                             ->get()
-                            ->map(fn($c) => $this->addMatchScore($c, $query, 'titulo'))
+                            ->map(fn($c) => $this->añadirPuntuacionCoincidencia($c, $consulta, 'titulo'))
                         );
-                        $includedSongIds = $includedSongIds->merge($relatedContent['canciones']->pluck('id'));
+                        $idsCancionesIncluidas = $idsCancionesIncluidas->merge($contenidoRelacionado['canciones']->pluck('id'));
                     }
                     break;
             }
 
-            // Asegurarse de que las canciones relacionadas sean únicas y limitadas
-            $relatedContent['canciones'] = $relatedContent['canciones']
+            $contenidoRelacionado['canciones'] = $contenidoRelacionado['canciones']
                 ->unique('id')
-                ->sortByDesc('match_score')
-                ->take($minLimitCanciones);
+                ->sortByDesc('puntuacion_coincidencia')
+                ->take($limiteMinimoCanciones);
         }
 
-        // 5. Consolidar resultados y aplicar relleno si es necesario
-        // Combina las canciones de la búsqueda inicial con las canciones relacionadas del principalItem
-        $finalCanciones = $allCanciones->merge($relatedContent['canciones'])->unique('id')->sortByDesc('match_score');
-        $finalUsers = $allUsers->unique('id')->sortByDesc('match_score');
-        $finalPlaylists = $initialPlaylists->unique('id')->sortByDesc('match_score');
-        $finalEps = $initialEps->unique('id')->sortByDesc('match_score');
-        $finalSingles = $initialSingles->unique('id')->sortByDesc('match_score');
-        $finalAlbumes = $initialAlbumes->unique('id')->sortByDesc('match_score');
+        $cancionesFinales = $todasCanciones->merge($contenidoRelacionado['canciones'])->unique('id')->sortByDesc('puntuacion_coincidencia');
+        $usuariosFinales = $todosUsuarios->unique('id')->sortByDesc('puntuacion_coincidencia');
+        $playlistsFinales = $playlistsIniciales->unique('id')->sortByDesc('puntuacion_coincidencia');
+        $epsFinales = $epsIniciales->unique('id')->sortByDesc('puntuacion_coincidencia');
+        $singlesFinales = $singlesIniciales->unique('id')->sortByDesc('puntuacion_coincidencia');
+        $albumesFinales = $albumesIniciales->unique('id')->sortByDesc('puntuacion_coincidencia');
 
 
-        // Rellenar hasta el mínimo de canciones (primero por género/artista, luego aleatorio)
-        if ($finalCanciones->count() < $minLimitCanciones) {
-            $needed = $minLimitCanciones - $finalCanciones->count();
-            $additionalSongs = collect();
+        if ($cancionesFinales->count() < $limiteMinimoCanciones) {
+            $necesarias = $limiteMinimoCanciones - $cancionesFinales->count();
+            $cancionesAdicionales = collect();
 
-            // Intentar rellenar con canciones que compartan géneros o artistas populares
-            $allRelevantGenreIds = $finalCanciones->pluck('generos')->flatten()->pluck('id')->unique()
-                                ->merge($initialPlaylists->pluck('canciones')->flatten()->pluck('generos')->flatten()->pluck('id')->unique())
-                                ->merge($initialEps->pluck('canciones')->flatten()->pluck('generos')->flatten()->pluck('id')->unique())
-                                ->merge($initialSingles->pluck('canciones')->flatten()->pluck('generos')->flatten()->pluck('id')->unique())
-                                ->merge($initialAlbumes->pluck('canciones')->flatten()->pluck('generos')->flatten()->pluck('id')->unique());
+            $todosIdsGenerosRelevantes = $cancionesFinales->pluck('generos')->flatten()->pluck('id')->unique()
+                                ->merge($playlistsIniciales->pluck('canciones')->flatten()->pluck('generos')->flatten()->pluck('id')->unique())
+                                ->merge($epsIniciales->pluck('canciones')->flatten()->pluck('generos')->flatten()->pluck('id')->unique())
+                                ->merge($singlesIniciales->pluck('canciones')->flatten()->pluck('generos')->flatten()->pluck('id')->unique())
+                                ->merge($albumesIniciales->pluck('canciones')->flatten()->pluck('generos')->flatten()->pluck('id')->unique());
 
-            $allRelevantArtistIds = $finalCanciones->pluck('usuarios')->flatten()->pluck('id')->unique()
-                                ->merge($initialPlaylists->pluck('usuarios')->flatten()->pluck('id')->unique())
-                                ->merge($initialEps->pluck('usuarios')->flatten()->pluck('id')->unique())
-                                ->merge($initialSingles->pluck('usuarios')->flatten()->pluck('id')->unique())
-                                ->merge($initialAlbumes->pluck('usuarios')->flatten()->pluck('id')->unique());
+            $todosIdsArtistasRelevantes = $cancionesFinales->pluck('usuarios')->flatten()->pluck('id')->unique()
+                                ->merge($playlistsIniciales->pluck('usuarios')->flatten()->pluck('id')->unique())
+                                ->merge($epsIniciales->pluck('usuarios')->flatten()->pluck('id')->unique())
+                                ->merge($singlesIniciales->pluck('usuarios')->flatten()->pluck('id')->unique())
+                                ->merge($albumesIniciales->pluck('usuarios')->flatten()->pluck('id')->unique());
 
-            if ($allRelevantGenreIds->isNotEmpty()) {
-                $additionalSongs = $additionalSongs->merge(
-                    Cancion::whereHas('generos', function ($q) use ($allRelevantGenreIds) {
-                        $q->whereIn('generos.id', $allRelevantGenreIds);
+            if ($todosIdsGenerosRelevantes->isNotEmpty()) {
+                $cancionesAdicionales = $cancionesAdicionales->merge(
+                    Cancion::whereHas('generos', function ($q) use ($todosIdsGenerosRelevantes) {
+                        $q->whereIn('generos.id', $todosIdsGenerosRelevantes);
                     })
-                    ->whereNotIn('id', $finalCanciones->pluck('id'))
+                    ->whereNotIn('id', $cancionesFinales->pluck('id'))
                     ->with('usuarios', 'generos')
                     ->inRandomOrder()
-                    ->limit($needed)
+                    ->limit($necesarias)
                     ->get()
                 );
-                $finalCanciones = $finalCanciones->merge($additionalSongs)->unique('id');
-                $needed = $minLimitCanciones - $finalCanciones->count();
-                if ($needed <= 0) goto end_song_filling; // Salir del bucle si ya tenemos suficientes
+                $cancionesFinales = $cancionesFinales->merge($cancionesAdicionales)->unique('id');
+                $necesarias = $limiteMinimoCanciones - $cancionesFinales->count();
+                if ($necesarias <= 0) goto fin_llenado_canciones;
             }
 
-            if ($allRelevantArtistIds->isNotEmpty()) {
-                $additionalSongs = $additionalSongs->merge(
-                    Cancion::whereHas('usuarios', function ($q) use ($allRelevantArtistIds) {
-                        $q->whereIn('users.id', $allRelevantArtistIds);
+            if ($todosIdsArtistasRelevantes->isNotEmpty()) {
+                $cancionesAdicionales = $cancionesAdicionales->merge(
+                    Cancion::whereHas('usuarios', function ($q) use ($todosIdsArtistasRelevantes) {
+                        $q->whereIn('users.id', $todosIdsArtistasRelevantes);
                     })
-                    ->whereNotIn('id', $finalCanciones->pluck('id'))
+                    ->whereNotIn('id', $cancionesFinales->pluck('id'))
                     ->with('usuarios', 'generos')
                     ->inRandomOrder()
-                    ->limit($needed)
+                    ->limit($necesarias)
                     ->get()
                 );
-                $finalCanciones = $finalCanciones->merge($additionalSongs)->unique('id');
-                $needed = $minLimitCanciones - $finalCanciones->count();
-                if ($needed <= 0) goto end_song_filling;
+                $cancionesFinales = $cancionesFinales->merge($cancionesAdicionales)->unique('id');
+                $necesarias = $limiteMinimoCanciones - $cancionesFinales->count();
+                if ($necesarias <= 0) goto fin_llenado_canciones;
             }
 
-            // Si aún faltan, rellenar con canciones aleatorias
-            if ($needed > 0) {
-                $randomCanciones = Cancion::whereNotIn('id', $finalCanciones->pluck('id'))
+            if ($necesarias > 0) {
+                $cancionesAleatorias = Cancion::whereNotIn('id', $cancionesFinales->pluck('id'))
                                         ->with('usuarios', 'generos')
                                         ->inRandomOrder()
-                                        ->limit($needed)
+                                        ->limit($necesarias)
                                         ->get();
-                $finalCanciones = $finalCanciones->merge($randomCanciones)->unique('id');
+                $cancionesFinales = $cancionesFinales->merge($cancionesAleatorias)->unique('id');
             }
-            end_song_filling:; // Etiqueta para goto
+            fin_llenado_canciones:;
         }
 
 
-        // Rellenar hasta el mínimo de usuarios
-        if ($finalUsers->count() < $minLimitOtros) {
-            $needed = $minLimitOtros - $finalUsers->count();
-            $randomUsers = User::whereNotIn('id', $finalUsers->pluck('id'))
+        if ($usuariosFinales->count() < $limiteMinimoOtros) {
+            $necesarias = $limiteMinimoOtros - $usuariosFinales->count();
+            $usuariosAleatorios = User::whereNotIn('id', $usuariosFinales->pluck('id'))
                                 ->inRandomOrder()
-                                ->limit($needed)
+                                ->limit($necesarias)
                                 ->get();
-            $finalUsers = $finalUsers->merge($randomUsers)->unique('id');
+            $usuariosFinales = $usuariosFinales->merge($usuariosAleatorios)->unique('id');
         }
 
-        // Rellenar hasta el mínimo de playlists
-        if ($finalPlaylists->count() < $minLimitOtros) {
-            $needed = $minLimitOtros - $finalPlaylists->count();
-            $randomPlaylists = Contenedor::where('tipo', 'playlist')
-                                        ->whereNotIn('id', $finalPlaylists->pluck('id'))
+        if ($playlistsFinales->count() < $limiteMinimoOtros) {
+            $necesarias = $limiteMinimoOtros - $playlistsFinales->count();
+            $playlistsAleatorias = Contenedor::where('tipo', 'playlist')
+                                        ->whereNotIn('id', $playlistsFinales->pluck('id'))
                                         ->with('usuarios', 'canciones.usuarios')
                                         ->inRandomOrder()
-                                        ->limit($needed)
+                                        ->limit($necesarias)
                                         ->get();
-            $finalPlaylists = $finalPlaylists->merge($randomPlaylists)->unique('id');
+            $playlistsFinales = $playlistsFinales->merge($playlistsAleatorias)->unique('id');
         }
 
-        // Rellenar hasta el mínimo de EPs
-        if ($finalEps->count() < $minLimitOtros) {
-            $needed = $minLimitOtros - $finalEps->count();
-            $randomEps = Contenedor::where('tipo', 'ep')
-                                ->whereNotIn('id', $finalEps->pluck('id'))
+        if ($epsFinales->count() < $limiteMinimoOtros) {
+            $necesarias = $limiteMinimoOtros - $epsFinales->count();
+            $epsAleatorios = Contenedor::where('tipo', 'ep')
+                                ->whereNotIn('id', $epsFinales->pluck('id'))
                                 ->with('usuarios', 'canciones.usuarios')
                                 ->inRandomOrder()
-                                ->limit($needed)
+                                ->limit($necesarias)
                                 ->get();
-            $finalEps = $finalEps->merge($randomEps)->unique('id');
+            $epsFinales = $epsFinales->merge($epsAleatorios)->unique('id');
         }
 
-        // Rellenar hasta el mínimo de Singles
-        if ($finalSingles->count() < $minLimitOtros) {
-            $needed = $minLimitOtros - $finalSingles->count();
-            $randomSingles = Contenedor::where('tipo', 'single')
-                                    ->whereNotIn('id', $finalSingles->pluck('id'))
+        if ($singlesFinales->count() < $limiteMinimoOtros) {
+            $necesarias = $limiteMinimoOtros - $singlesFinales->count();
+            $singlesAleatorios = Contenedor::where('tipo', 'single')
+                                    ->whereNotIn('id', $singlesFinales->pluck('id'))
                                     ->with('usuarios', 'canciones.usuarios')
                                     ->inRandomOrder()
-                                    ->limit($needed)
+                                    ->limit($necesarias)
                                     ->get();
-            $finalSingles = $finalSingles->merge($randomSingles)->unique('id');
+            $singlesFinales = $singlesFinales->merge($singlesAleatorios)->unique('id');
         }
 
-        // Rellenar hasta el mínimo de Álbumes
-        if ($finalAlbumes->count() < $minLimitOtros) {
-            $needed = $minLimitOtros - $finalAlbumes->count();
-            $randomAlbumes = Contenedor::where('tipo', 'album')
-                                    ->whereNotIn('id', $finalAlbumes->pluck('id'))
+        if ($albumesFinales->count() < $limiteMinimoOtros) {
+            $necesarias = $limiteMinimoOtros - $albumesFinales->count();
+            $albumesAleatorios = Contenedor::where('tipo', 'album')
+                                    ->whereNotIn('id', $albumesFinales->pluck('id'))
                                     ->with('usuarios', 'canciones.usuarios')
                                     ->inRandomOrder()
-                                    ->limit($needed)
+                                    ->limit($necesarias)
                                     ->get();
-            $finalAlbumes = $finalAlbumes->merge($randomAlbumes)->unique('id');
+            $albumesFinales = $albumesFinales->merge($albumesAleatorios)->unique('id');
         }
 
 
-        // 6. Marcar canciones en "Loopz"
-        $loopzSongIds = [];
+        $idsCancionesLoopz = [];
         if (Auth::check()) {
-            $loopzContainer = Auth::user()->perteneceContenedores()
+            $contenedorLoopz = Auth::user()->perteneceContenedores()
                 ->where('tipo', 'loopz')
                 ->with('canciones:id')
                 ->first();
 
-            if ($loopzContainer && $loopzContainer->canciones) {
-                $loopzSongIds = $loopzContainer->canciones->pluck('id')->toArray();
+            if ($contenedorLoopz && $contenedorLoopz->canciones) {
+                $idsCancionesLoopz = $contenedorLoopz->canciones->pluck('id')->toArray();
             }
         }
 
-        $finalCanciones->each(fn($c) => $c->is_in_user_loopz = in_array($c->id, $loopzSongIds));
-        $finalPlaylists->each(fn($p) => $p->canciones->each(fn($c) => $c->is_in_user_loopz = in_array($c->id, $loopzSongIds)));
-        $finalEps->each(fn($ep) => $ep->canciones->each(fn($c) => $c->is_in_user_loopz = in_array($c->id, $loopzSongIds)));
-        $finalSingles->each(fn($s) => $s->canciones->each(fn($c) => $c->is_in_user_loopz = in_array($c->id, $loopzSongIds)));
-        $finalAlbumes->each(fn($a) => $a->canciones->each(fn($c) => $c->is_in_user_loopz = in_array($c->id, $loopzSongIds)));
+        $cancionesFinales->each(fn($c) => $c->is_in_user_loopz = in_array($c->id, $idsCancionesLoopz));
+        $playlistsFinales->each(fn($p) => $p->canciones->each(fn($c) => $c->is_in_user_loopz = in_array($c->id, $idsCancionesLoopz)));
+        $epsFinales->each(fn($ep) => $ep->canciones->each(fn($c) => $c->is_in_user_loopz = in_array($c->id, $idsCancionesLoopz)));
+        $singlesFinales->each(fn($s) => $s->canciones->each(fn($c) => $c->is_in_user_loopz = in_array($c->id, $idsCancionesLoopz)));
+        $albumesFinales->each(fn($a) => $a->canciones->each(fn($c) => $c->is_in_user_loopz = in_array($c->id, $idsCancionesLoopz)));
 
 
-        // 7. Preparar los resultados finales para Inertia (aplicando los límites definitivos)
-        $results = [
-            'canciones' => $finalCanciones->take($minLimitCanciones)->values(),
-            'users' => $finalUsers->take($minLimitOtros)->values(),
-            'playlists' => $finalPlaylists->take($minLimitOtros)->values(),
-            'eps' => $finalEps->take($minLimitOtros)->values(),
-            'singles' => $finalSingles->take($minLimitOtros)->values(),
-            'albumes' => $finalAlbumes->take($minLimitOtros)->values(),
+        $resultados = [
+            'canciones' => $cancionesFinales->take($limiteMinimoCanciones)->values(),
+            'users' => $usuariosFinales->take($limiteMinimoOtros)->values(),
+            'playlists' => $playlistsFinales->take($limiteMinimoOtros)->values(),
+            'eps' => $epsFinales->take($limiteMinimoOtros)->values(),
+            'singles' => $singlesFinales->take($limiteMinimoOtros)->values(),
+            'albumes' => $albumesFinales->take($limiteMinimoOtros)->values(),
         ];
 
-        // Obtener las playlists del usuario para el menú contextual
         $usuarioPlaylistsAñadir = Auth::user();
-        $userPlaylists = $usuarioPlaylistsAñadir
+        $playlistsUsuario = $usuarioPlaylistsAñadir
             ? $usuarioPlaylistsAñadir->perteneceContenedores()
                 ->where('tipo', 'playlist')
                 ->select('id', 'nombre', 'imagen')
@@ -395,21 +366,20 @@ class SearchController extends Controller
                 })
             : collect();
 
-        // Renderizar la vista de búsqueda con Inertia
         return Inertia::render('Search/Index', [
-            'searchQuery' => $query,
-            'results' => $results,
-            'principal' => $principalItem,
-            'principalKey' => $principalKey,
-            'relatedContent' => $otherRelatedSections,
-            'relatedSongs' => $finalCanciones->take($minLimitCanciones)->values(),
+            'searchQuery' => $consulta,
+            'results' => $resultados,
+            'principal' => $itemPrincipal,
+            'principalKey' => $clavePrincipal,
+            'relatedContent' => $otrasSeccionesRelacionadas,
+            'relatedSongs' => $cancionesFinales->take($limiteMinimoCanciones)->values(),
             'filters' => [],
             'auth' => $usuarioPlaylistsAñadir
                 ? [
                     'user' => [
                         'id' => $usuarioPlaylistsAñadir->id,
                         'name' => $usuarioPlaylistsAñadir->name,
-                        'playlists' => $userPlaylists->map(function ($p) {
+                        'playlists' => $playlistsUsuario->map(function ($p) {
                             return [
                                 'id' => $p->id,
                                 'nombre' => $p->nombre,
@@ -423,56 +393,46 @@ class SearchController extends Controller
         ]);
     }
 
-    /**
-     * Calcula una puntuación de coincidencia para la búsqueda de texto.
-     * Cuanto mayor sea la puntuación, mejor será la coincidencia.
-     */
-    private function calculateMatchScore(string $text, string $query): int
+    private function calcularPuntuacionCoincidencia(string $texto, string $consulta): int
     {
-        $text = strtolower($text);
-        $query = strtolower($query);
+        $texto = strtolower($texto);
+        $consulta = strtolower($consulta);
 
-        if ($text === $query) return 100;
-        if (str_starts_with($text, $query)) return 80;
-        if (str_contains($text, " $query ") ||
-            str_starts_with($text, "$query ") ||
-            str_ends_with($text, " $query")
+        if ($texto === $consulta) return 100;
+        if (str_starts_with($texto, $consulta)) return 80;
+        if (str_contains($texto, " $consulta ") ||
+            str_starts_with($texto, "$consulta ") ||
+            str_ends_with($texto, " $consulta")
         ) return 60;
-        if (str_contains($text, $query)) return 40;
-        if (similar_text($text, $query, $percent)) {
-            return (int) $percent;
+        if (str_contains($texto, $consulta)) return 40;
+        if (similar_text($texto, $consulta, $porcentaje)) {
+            return (int) $porcentaje;
         }
         return 0;
     }
 
-    /**
-     * Encuentra la primera coincidencia exacta o la mejor coincidencia por puntuación.
-     */
-    private function findFirstExactOrBestMatch(array $candidates, string $query): ?array
+    private function encontrarPrimeraCoincidenciaExactaOMejor(array $candidatos, string $consulta): ?array
     {
-        foreach ($candidates as $candidate) {
-            $exact = $candidate['items']->firstWhere($candidate['key'], $query);
-            if ($exact) {
-                return ['item' => $exact, 'type' => $candidate['type']];
+        foreach ($candidatos as $candidato) {
+            $exacto = $candidato['items']->firstWhere($candidato['key'], $consulta);
+            if ($exacto) {
+                return ['item' => $exacto, 'type' => $candidato['type']];
             }
         }
 
-        foreach ($candidates as $candidate) {
-            $best = $candidate['items']->sortByDesc('match_score')->first();
-            if ($best) {
-                return ['item' => $best, 'type' => $candidate['type']];
+        foreach ($candidatos as $candidato) {
+            $mejor = $candidato['items']->sortByDesc('puntuacion_coincidencia')->first();
+            if ($mejor) {
+                return ['item' => $mejor, 'type' => $candidato['type']];
             }
         }
 
         return null;
     }
 
-    /**
-     * Añade la puntuación de coincidencia a un modelo.
-     */
-    private function addMatchScore($model, string $query, string $field)
+    private function añadirPuntuacionCoincidencia($modelo, string $consulta, string $campo)
     {
-        $model->match_score = $this->calculateMatchScore($model->{$field}, $query);
-        return $model;
+        $modelo->puntuacion_coincidencia = $this->calcularPuntuacionCoincidencia($modelo->{$campo}, $consulta);
+        return $modelo;
     }
 }

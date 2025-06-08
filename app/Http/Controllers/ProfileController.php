@@ -166,9 +166,7 @@ class ProfileController extends Controller
             if ($rutaFoto) {
                 $usuario->foto_perfil = Storage::disk('s3')->url($rutaFoto);
             } else {
-                return redirect()->back()
-                    ->withErrors(['foto_perfil' => 'No se pudo subir la foto de perfil al bucket S3.'])
-                    ->withInput();
+                return redirect()->back();
             }
         }
 
@@ -187,9 +185,7 @@ class ProfileController extends Controller
             if ($rutaBanner) {
                 $usuario->banner_perfil = Storage::disk('s3')->url($rutaBanner);
             } else {
-                return redirect()->back()
-                    ->withErrors(['banner_perfil' => 'No se pudo subir el banner de perfil al bucket S3.'])
-                    ->withInput();
+                return redirect()->back();
             }
         }
 
@@ -199,7 +195,7 @@ class ProfileController extends Controller
 
         $usuario->save();
 
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
+        return Redirect::route('profile.edit');
     }
 
     public function destroy(Request $request): RedirectResponse
@@ -259,7 +255,7 @@ class ProfileController extends Controller
         $usuarioSeguidor = $request->user();
 
         if ($usuarioSeguidor->id === $usuarioSeguir->id) {
-            return Redirect::back()->with('error', 'No puedes seguirte a ti mismo');
+            return Redirect::back();
         }
 
         $siguiendo = $usuarioSeguidor->seguidos()

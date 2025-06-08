@@ -429,7 +429,7 @@ const ProfileCancionesList = ({ items, tipoItem, nombreRuta, onPlayPauseSong, cu
                         isCurrentTrack={isThisCurrentTrack}
                         isPlayingCurrentTrack={isThisCurrentTrack && Reproduciendo}
                         isLoadingTrack={isLoadingThisTrack}
-                        isLiked={item.is_in_user_loopz}
+                        isLiked={item.es_loopz}
                         onToggleLoopz={onToggleLoopz}
                         isLikeProcessing={isLikeProcessing}
                         onContextMenu={onContextMenu}
@@ -592,7 +592,7 @@ export default function Index() {
         if (!songId || likeProcessingSongId === songId) return;
         setLikeProcessingSongId(songId);
         setCancionesUsuarioState(prev =>
-            prev.map(song => (song.id === songId ? { ...song, is_in_user_loopz: !isInLoopz } : song))
+            prev.map(song => (song.id === songId ? { ...song, es_loopz: !isInLoopz } : song))
         );
         router.post(route('cancion.loopz', { cancion: songId }), {}, {
             preserveScroll: true,
@@ -604,7 +604,7 @@ export default function Index() {
             },
             onError: () => {
                 setCancionesUsuarioState(prev =>
-                    prev.map(song => (song.id === songId ? { ...song, is_in_user_loopz: isInLoopz } : song))
+                    prev.map(song => (song.id === songId ? { ...song, es_loopz: isInLoopz } : song))
                 );
             },
             onFinish: () => setLikeProcessingSongId(null),
@@ -623,9 +623,9 @@ export default function Index() {
                 },
             },
             {
-                label: contextMenu.song.is_in_user_loopz ? "Quitar LoopZ" : "Añadir a LoopZ",
-                icon: contextMenu.song.is_in_user_loopz ? <HeartIconSolid className="h-5 w-5 text-purple-500" /> : <HeartIconOutline className="h-5 w-5" />,
-                action: () => handleToggleLoopzSong(contextMenu.song.id, contextMenu.song.is_in_user_loopz),
+                label: contextMenu.song.es_loopz ? "Quitar LoopZ" : "Añadir a LoopZ",
+                icon: contextMenu.song.es_loopz ? <HeartIconSolid className="h-5 w-5 text-purple-500" /> : <HeartIconOutline className="h-5 w-5" />,
+                action: () => handleToggleLoopzSong(contextMenu.song.id, contextMenu.song.es_loopz),
                 disabled: likeProcessingSongId === contextMenu.song.id,
             }
         ];
