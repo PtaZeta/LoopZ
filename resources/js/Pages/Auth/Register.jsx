@@ -1,3 +1,4 @@
+import ApplicationLogo from '@/Components/ApplicationLogo';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -20,7 +21,6 @@ export default function Register() {
 
         post(route('register'), {
             onSuccess: () => {
-                console.log('Registro exitoso. Se ha enviado un código de verificación.');
             },
             onFinish: () => {
                 reset('password', 'password_confirmation', 'foto_perfil', 'banner_perfil');
@@ -46,9 +46,7 @@ export default function Register() {
 
             <div className="max-w-xl w-full mx-auto p-8 bg-gray-900 rounded-md shadow-lg text-gray-300 mt-8 my-auto">
                 <div className="flex justify-center mb-8">
-                    <Link href="/" className="text-3xl md:text-4xl font-bold text-blue-500 hover:text-blue-400 transition-colors">
-                        LoopZ
-                    </Link>
+                    <ApplicationLogo className="h-12 w-auto text-gray-200" />
                 </div>
 
                 <form onSubmit={submit}>

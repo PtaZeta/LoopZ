@@ -23,7 +23,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('canciones', function (Blueprint $table) {
-            $table->dropForeign(['cancion_original_id']);
             $table->dropIfExists('remix');
             $table->dropIfExists('cancion_original_id');
         });

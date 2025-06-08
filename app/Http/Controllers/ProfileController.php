@@ -19,7 +19,8 @@ use Illuminate\Support\Facades\Log;
 use getID3;
 use Illuminate\Support\Facades\DB;
 
-function obtenerClaveS3DesdeUrl($url, $nombreBucket) {
+function obtenerClaveS3DesdeUrl($url, $nombreBucket)
+{
     $urlParseada = parse_url($url);
     if ($urlParseada && isset($urlParseada['host']) && isset($urlParseada['path'])) {
         if (strpos($urlParseada['host'], $nombreBucket) !== false) {
@@ -29,15 +30,12 @@ function obtenerClaveS3DesdeUrl($url, $nombreBucket) {
     return $url;
 }
 
-
 class ProfileController extends Controller
 {
-    public function show($id): \Inertia\Response
+    public function show($id): Response
     {
         $usuario = User::findOrFail($id);
-
         $seguidores = $usuario->seguidores()->get();
-
         $seguidos = $usuario->seguidos()->get();
 
         $withUsuariosCallback = function ($query) {
@@ -45,18 +43,13 @@ class ProfileController extends Controller
         };
 
         $usuarioAuth = auth()->user();
-        $esCreador = $usuarioAuth && $usuarioAuth->id === $usuario->id; // Determina si el usuario autenticado es el dueño del perfil
+        $esCreador = $usuarioAuth && $usuarioAuth->id === $usuario->id;
 
-        // --- Lógica de privacidad para Canciones ---
         $cancionesQuery = $usuario->perteneceCanciones()
-            ->with([
-                'usuarios' => $withUsuariosCallback,
-                'contenedores:id,nombre'
-            ]);
+            ->with(['usuarios' => $withUsuariosCallback, 'contenedores:id,nombre']);
 
-        // Si el usuario que ve el perfil NO es el creador, solo mostrar canciones públicas
         if (!$esCreador) {
-            $cancionesQuery->where('canciones.publico', true); // Se usa la columna 'publico'
+            $cancionesQuery->where('canciones.publico', true);
         }
 
         $consultaCanciones = $cancionesQuery->orderBy('pertenece_user.created_at', 'desc')->get();
@@ -67,13 +60,11 @@ class ProfileController extends Controller
             $cancion->is_in_user_loopz = in_array($cancion->id, $loopzSongIds);
         });
 
-        // --- Lógica de privacidad para Contenedores (Playlists, Álbumes, EPs, Singles) ---
         $contenedoresBaseQuery = $usuario->perteneceContenedores()
             ->with(['usuarios' => $withUsuariosCallback]);
 
-        // Si el usuario que ve el perfil NO es el creador, solo mostrar contenedores públicos
         if (!$esCreador) {
-            $contenedoresBaseQuery->where('contenedores.publico', true); // Se usa la columna 'publico'
+            $contenedoresBaseQuery->where('contenedores.publico', true);
         }
 
         $consultaPlaylists = (clone $contenedoresBaseQuery)
@@ -95,7 +86,6 @@ class ProfileController extends Controller
             ->where('contenedores.tipo', 'single')
             ->orderBy('pertenece_user.created_at', 'desc')
             ->get();
-
 
         if ($usuarioAuth) {
             $userPlaylists = $usuarioAuth->perteneceContenedores()
@@ -133,22 +123,13 @@ class ProfileController extends Controller
             'seguidores_count' => $usuario->seguidores()->count(),
             'seguidos_count' => $usuario->seguidos()->count(),
             'is_following' => $usuarioAuth ? $usuarioAuth->seguidos->contains($usuario->id) : false,
+            'es_administrador' => $usuarioAuth ? $usuarioAuth->es_administrador : false,
         ]);
     }
 
-
-    public function edit($id, Request $request): Response
+    public function edit(Request $request): Response
     {
-        // Obtener el usuario a editar
-        $usuario = User::findOrFail($id);
-
-        // Verificar si el usuario logueado es administrador o es el mismo usuario
-        if ($request->user()->id !== $usuario->id && !$request->user()->es_administrador) {
-            abort(403, 'No tienes permiso para editar este perfil.');
-        }
-
         return Inertia::render('Profile/Edit', [
-            'usuario' => $usuario->only(['id', 'name', 'email', 'foto_perfil', 'banner_perfil']),
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
             'auth' => [
@@ -183,11 +164,9 @@ class ProfileController extends Controller
             $rutaFoto = Storage::disk('s3')->putFileAs('perfiles/fotos', $archivoFoto, $nombreFoto, 'public-read');
 
             if ($rutaFoto) {
-                 $usuario->foto_perfil = Storage::disk('s3')->url($rutaFoto);
+                $usuario->foto_perfil = Storage::disk('s3')->url($rutaFoto);
             } else {
-                return redirect()->back()
-                    ->withErrors(['foto_perfil' => 'No se pudo subir la foto de perfil al bucket S3.'])
-                    ->withInput();
+                return redirect()->back();
             }
         }
 
@@ -203,12 +182,10 @@ class ProfileController extends Controller
             $nombreBanner = Str::uuid() . '_banner.' . $archivoBanner->getClientOriginalExtension();
             $rutaBanner = Storage::disk('s3')->putFileAs('perfiles/banners', $archivoBanner, $nombreBanner, 'public-read');
 
-             if ($rutaBanner) {
+            if ($rutaBanner) {
                 $usuario->banner_perfil = Storage::disk('s3')->url($rutaBanner);
             } else {
-                return redirect()->back()
-                    ->withErrors(['banner_perfil' => 'No se pudo subir el banner de perfil al bucket S3.'])
-                    ->withInput();
+                return redirect()->back();
             }
         }
 
@@ -218,7 +195,7 @@ class ProfileController extends Controller
 
         $usuario->save();
 
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
+        return Redirect::route('profile.edit');
     }
 
     public function destroy(Request $request): RedirectResponse
@@ -228,26 +205,23 @@ class ProfileController extends Controller
         ]);
 
         $usuario = $request->user();
-
         $rutaFotoPerfil = $usuario->foto_perfil;
         $rutaBanner = $usuario->banner_perfil;
-
         $nombreBucket = config('filesystems.disks.s3.bucket');
+
         $claveFotoPerfil = $rutaFotoPerfil ? obtenerClaveS3DesdeUrl($rutaFotoPerfil, $nombreBucket) : null;
         $claveBanner = $rutaBanner ? obtenerClaveS3DesdeUrl($rutaBanner, $nombreBucket) : null;
 
-
         Auth::logout();
-
         $usuario->delete();
 
         if ($claveFotoPerfil && Storage::disk('s3')->exists($claveFotoPerfil)) {
-             Storage::disk('s3')->delete($claveFotoPerfil);
-        }
-        if ($claveBanner && Storage::disk('s3')->exists($claveBanner)) {
-             Storage::disk('s3')->delete($claveBanner);
+            Storage::disk('s3')->delete($claveFotoPerfil);
         }
 
+        if ($claveBanner && Storage::disk('s3')->exists($claveBanner)) {
+            Storage::disk('s3')->delete($claveBanner);
+        }
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -255,49 +229,24 @@ class ProfileController extends Controller
         return Redirect::to('/');
     }
 
-    public function searchUsers(Request $request)
-    {
-        $termino = $request->input('q', '');
-        $limite = 10;
-
-        if (empty($termino)) {
-            return response()->json([]);
-        }
-
-        $consulta = User::query()
-            ->where(function ($q) use ($termino) {
-                $q->where('name', 'LIKE', "%{$termino}%")
-                    ->orWhere('email', 'LIKE', "%{$termino}%");
-            })
-            ->select('id', 'name', 'email', 'foto_perfil')
-            ->limit($limite);
-
-        if (Auth::check()) {
-            $consulta->where('id', '!=', Auth::id());
-        }
-
-        $usuarios = $consulta->get();
-
-        return response()->json($usuarios);
-    }
-
-        private function getLoopZUsuario($user): array
+    private function getLoopZUsuario($user): array
     {
         if (!$user) {
             return [];
         }
+
         $loopzPlaylist = $user->perteneceContenedores()
-                                ->where('tipo', 'loopz')
-                                ->first();
+            ->where('tipo', 'loopz')
+            ->first();
 
         if (!$loopzPlaylist) {
             return [];
         }
 
         return DB::table('cancion_contenedor')
-               ->where('contenedor_id', $loopzPlaylist->id)
-               ->pluck('cancion_id')
-               ->all();
+            ->where('contenedor_id', $loopzPlaylist->id)
+            ->pluck('cancion_id')
+            ->all();
     }
 
     public function seguirUsuario(Request $request, $id)
@@ -306,10 +255,9 @@ class ProfileController extends Controller
         $usuarioSeguidor = $request->user();
 
         if ($usuarioSeguidor->id === $usuarioSeguir->id) {
-            return Redirect::back()->with('error', 'No puedes seguirte a ti mismo');
+            return Redirect::back();
         }
 
-        // Verificar correctamente usando wherePivot
         $siguiendo = $usuarioSeguidor->seguidos()
             ->wherePivot('user_id', $usuarioSeguir->id)
             ->exists();

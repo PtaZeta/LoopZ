@@ -6,6 +6,7 @@ import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
+import ApplicationLogo from '@/Components/ApplicationLogo';
 
 
 export default function VerifyCodeComponent() {
@@ -24,7 +25,6 @@ export default function VerifyCodeComponent() {
             const response = await axios.post('/verificar-codigo', { codigo: codigo });
 
             setMensaje(response.data.message);
-            console.log('Verificación exitosa:', response.data);
 
             router.visit(response.data.redirect || '/');
 
@@ -46,9 +46,7 @@ export default function VerifyCodeComponent() {
 
             <div className="max-w-xl w-full mx-auto p-8 bg-gray-900 rounded-md shadow-lg text-gray-300 mt-8 my-auto">
                 <div className="flex justify-center mb-8">
-                    <Link href="/" className="text-3xl md:text-4xl font-bold text-blue-500 hover:text-blue-400 transition-colors">
-                        LoopZ
-                    </Link>
+                    <ApplicationLogo className="w-24 h-16 text-blue-400" />
                 </div>
 
                 <h1 className="text-2xl md:text-3xl font-bold text-center text-blue-400 mb-6">Verifica tu Cuenta</h1>

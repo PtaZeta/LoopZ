@@ -121,7 +121,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
     {};
 
     const [contenedor, setContenedor] = useState(contenedorInicial);
-    const [isLiked, setIsLiked] = useState(contenedorInicial?.is_liked_by_user || false);
+    const [isLiked, setIsLiked] = useState(contenedorInicial?.user_megusta || false);
     const [consultaBusqueda, setConsultaBusqueda] = useState('');
     const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
     const [estaBuscando, setEstaBuscando] = useState(false);
@@ -162,7 +162,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         });
     }, []);
     const contextMenuTimer = useRef(null);
-    const isMobile = window.innerWidth <= 768;
+    const movil = window.innerWidth <= 768;
 
 
     const urlImagenContenedor = contenedor?.imagen || obtenerUrlImagen(contenedor);
@@ -222,21 +222,21 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         if (currentContenedorProps && currentContenedorProps.id === (contenedorInicial?.id || contenedor?.id)) {
             if (JSON.stringify(currentContenedorProps) !== JSON.stringify(contenedor)) {
                 if (!Array.isArray(currentContenedorProps.canciones)) { currentContenedorProps.canciones = []; }
-                currentContenedorProps.canciones.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
+                currentContenedorProps.canciones.forEach(c => { if (typeof c.es_loopz === 'undefined') c.es_loopz = false; });
                 setContenedor(currentContenedorProps);
             }
-            const likedStatusProps = currentContenedorProps?.is_liked_by_user || false;
+            const likedStatusProps = currentContenedorProps?.user_megusta || false;
             if (likedStatusProps !== isLiked) { setIsLiked(likedStatusProps); }
         } else if (contenedorInicial && !contenedor) {
             if (!Array.isArray(contenedorInicial.canciones)) { contenedorInicial.canciones = []; }
-            contenedorInicial.canciones.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
+            contenedorInicial.canciones.forEach(c => { if (typeof c.es_loopz === 'undefined') c.es_loopz = false; });
             setContenedor(contenedorInicial);
-            setIsLiked(contenedorInicial?.is_liked_by_user || false);
+            setIsLiked(contenedorInicial?.user_megusta || false);
         }
 
         if (pagina.props.resultadosBusqueda && Array.isArray(pagina.props.resultadosBusqueda)) {
             if (Array.isArray(pagina.props.resultadosBusqueda)) {
-                pagina.props.resultadosBusqueda.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
+                pagina.props.resultadosBusqueda.forEach(c => { if (typeof c.es_loopz === 'undefined') c.es_loopz = false; });
                 setResultadosBusqueda(pagina.props.resultadosBusqueda);
             }
         }
@@ -265,7 +265,6 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
     };
 
     const manejarAnadirCancion = (idCancion) => {
-        console.log(idCancion);
         if (anadiendoCancionId === idCancion || !contenedor?.id) return;
         setAnadiendoCancionId(idCancion);
         const nombreRutaAdd = `${rutaBase}.canciones.add`;
@@ -275,8 +274,8 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             onSuccess: (page) => {
                 if (page.props.contenedor?.canciones && Array.isArray(page.props.contenedor.canciones)) {
                     page.props.contenedor.canciones.forEach(c => {
-                        if (typeof c.is_in_user_loopz ===
-                            'undefined') c.is_in_user_loopz = false;
+                        if (typeof c.es_loopz ===
+                            'undefined') c.es_loopz = false;
                     });
                     setContenedor(prevContenedor => ({
                         ...prevContenedor,
@@ -290,7 +289,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                         canciones_count: prevContenedor?.canciones?.length || 0
                     }));
                 }
-                setIsLiked(page.props.contenedor?.is_liked_by_user || false);
+                setIsLiked(page.props.contenedor?.user_megusta || false);
                 startTransition(() => { setResultadosBusqueda(prev => prev.filter(cancion => cancion.id !== idCancion)); });
                 closeContextMenu();
             },
@@ -312,7 +311,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             if (songIndex !== -1) {
                 newCanciones[songIndex] = {
                     ...newCanciones[songIndex],
-                    is_in_user_loopz: !isInLoopz
+                    es_loopz: !isInLoopz
                 };
             }
             return {
@@ -327,7 +326,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             if (songIndex !== -1) {
                 newResultados[songIndex] = {
                     ...newResultados[songIndex],
-                    is_in_user_loopz: !isInLoopz
+                    es_loopz: !isInLoopz
                 };
             }
 
@@ -339,15 +338,15 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             onSuccess: (page) => {
                 if (page.props.contenedor?.canciones && Array.isArray(page.props.contenedor.canciones)) {
                     page.props.contenedor.canciones.forEach(c => {
-                        if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false;
+                        if (typeof c.es_loopz === 'undefined') c.es_loopz = false;
                     });
                     setContenedor(page.props.contenedor);
                 }
-                setIsLiked(page.props.contenedor?.is_liked_by_user || false);
+                setIsLiked(page.props.contenedor?.user_megusta || false);
 
 
                 if (page.props.resultadosBusqueda && Array.isArray(page.props.resultadosBusqueda)) {
-                    page.props.resultadosBusqueda.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
+                    page.props.resultadosBusqueda.forEach(c => { if (typeof c.es_loopz === 'undefined') c.es_loopz = false; });
                     setResultadosBusqueda(page.props.resultadosBusqueda);
                 }
             },
@@ -357,7 +356,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                     const newCanciones = [...prevContenedor.canciones];
                     const songIndex = newCanciones.findIndex(c => c.id === songId);
                     if (songIndex !== -1) {
-                        newCanciones[songIndex] = { ...newCanciones[songIndex], is_in_user_loopz: isInLoopz };
+                        newCanciones[songIndex] = { ...newCanciones[songIndex], es_loopz: isInLoopz };
                     }
                     return { ...prevContenedor, canciones: newCanciones };
                 });
@@ -366,7 +365,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                     const newResultados = [...prevResultados];
                     const songIndex = newResultados.findIndex(c => c.id === songId);
                     if (songIndex !== -1) {
-                        newResultados[songIndex] = { ...newResultados[songIndex], is_in_user_loopz: isInLoopz };
+                        newResultados[songIndex] = { ...newResultados[songIndex], es_loopz: isInLoopz };
                     }
                     return newResultados;
                 });
@@ -383,10 +382,10 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             preserveScroll: true,
             preserveState: true,
             onSuccess: (page) => {
-                setIsLiked(page.props.contenedor?.is_liked_by_user || false);
+                setIsLiked(page.props.contenedor?.user_megusta || false);
                 if (page.props.contenedor && JSON.stringify(page.props.contenedor) !== JSON.stringify(contenedor)) {
                     if (!Array.isArray(page.props.contenedor.canciones)) { page.props.contenedor.canciones = []; }
-                    page.props.contenedor.canciones.forEach(c => { if (typeof c.is_in_user_loopz === 'undefined') c.is_in_user_loopz = false; });
+                    page.props.contenedor.canciones.forEach(c => { if (typeof c.es_loopz === 'undefined') c.es_loopz = false; });
                     setContenedor(page.props.contenedor);
                 }
             },
@@ -439,25 +438,25 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         if (Reproduciendo && isClickedSongCurrent) {
             pause();
         } else {
-            let queueToLoad = [];
-            let startIndex =
+            let cargarCola = [];
+            let inicioIndex =
                 0;
             let newSourceId = null;
 
             if (source === 'container' && contenedor?.canciones) {
-                queueToLoad = contenedor.canciones;
-                startIndex = queueToLoad.findIndex(s => s.id === song.id);
+                cargarCola = contenedor.canciones;
+                inicioIndex = cargarCola.findIndex(s => s.id === song.id);
                 newSourceId = contenedor.id;
             } else if (source === 'search' && resultadosBusqueda) {
-                queueToLoad = resultadosBusqueda;
-                startIndex = queueToLoad.findIndex(s => s.id === song.id);
+                cargarCola = resultadosBusqueda;
+                inicioIndex = cargarCola.findIndex(s => s.id === song.id);
                 newSourceId = 'search-results';
             } else {
                 return;
             }
 
-            if (startIndex !== -1) {
-                cargarColaYIniciar(queueToLoad, { iniciar: startIndex, id: newSourceId, clickDirecto: true });
+            if (inicioIndex !== -1) {
+                cargarColaYIniciar(cargarCola, { iniciar: inicioIndex, id: newSourceId, clickDirecto: true });
             } else {
             }
         }
@@ -570,13 +569,13 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         });
 
         options.push({
-            label: contextMenu.song.is_in_user_loopz ? "Quitar LoopZ" : "Añadir LoopZ",
-            action: () => manejarCancionLoopzToggle(contextMenu.song.id, contextMenu.song.is_in_user_loopz),
+            label: contextMenu.song.es_loopz ? "Quitar LoopZ" : "Añadir LoopZ",
+            action: () => manejarCancionLoopzToggle(contextMenu.song.id, contextMenu.song.es_loopz),
             icon: <HeartIconOutline className="h-5 w-5" />,
             disabled: likeProcessing === contextMenu.song.id,
         });
 
-        if (contextMenu.song.is_in_user_loopz) {
+        if (contextMenu.song.es_loopz) {
             options[0].icon = <HeartIconSolid className="h-5 w-5 text-purple-500" />;
         }
 
@@ -722,7 +721,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                             key={cancion.pivot?.id ?? `fallback-${cancion.id}`}
                                             className={`p-2 bg-slate-700/60 rounded-md flex items-center space-x-3 hover:bg-purple-900/30 transition-colors duration-150 group cursor-pointer ${cancionActual?.id === cancion.id && (Reproduciendo || isPlayerLoading)
                                                 ? 'bg-purple-800/50 border border-purple-500' : ''}`}
-                                            onContextMenu={!isMobile ? (e) => openContextMenu(e, cancion) : undefined}
+                                            onContextMenu={!movil ? (e) => openContextMenu(e, cancion) : undefined}
                                             onDoubleClick={() => handleSongPlay(cancion, 'container')}
                                         >
                                             <button
@@ -755,17 +754,17 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                             </div>
                                             <span className="text-gray-400 text-xs pr-2 hidden sm:inline">{formatearDuracion(cancion.duracion)}</span>
                                             <button
-                                                onClick={() => manejarCancionLoopzToggle(cancion.id, cancion.is_in_user_loopz)}
+                                                onClick={() => manejarCancionLoopzToggle(cancion.id, cancion.es_loopz)}
                                                 disabled={likeProcessing === cancion.id}
                                                 className={`p-1 text-gray-400 hover:text-purple-400 focus:outline-none flex-shrink-0 ${likeProcessing === cancion.id ? 'cursor-wait' : ''}`}
-                                                title={cancion.is_in_user_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ"}
+                                                title={cancion.es_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ"}
                                             >
                                                 {likeProcessing ===
                                                     cancion.id ? <LoadingIcon className="h-5 w-5 animate-spin text-purple-400" /> :
-                                                    (cancion.is_in_user_loopz ? (<HeartIconSolid className="h-5 w-5 text-purple-500" />) : (<HeartIconOutline className="h-5 w-5" />))
+                                                    (cancion.es_loopz ? (<HeartIconSolid className="h-5 w-5 text-purple-500" />) : (<HeartIconOutline className="h-5 w-5" />))
                                                 }
                                             </button>
-                                            {isMobile && (
+                                            {movil && (
                                                 <button
                                                     onClick={(e) => openContextMenuMobile(e, cancion)}
                                                     className="p-1 text-gray-400 hover:text-gray-200 focus:outline-none"
@@ -810,13 +809,13 @@ ContenedorShow.propTypes = {
             foto_url: PropTypes.string,
             image_url: PropTypes.string,
             duracion: PropTypes.number,
-            is_in_user_loopz: PropTypes.bool,
+            es_loopz: PropTypes.bool,
             pivot: PropTypes.shape({ id: PropTypes.number, created_at: PropTypes.string, }),
             usuarios: PropTypes.arrayOf(PropTypes.shape({ id: PropTypes.number, name: PropTypes.string })),
             artista: PropTypes.string,
         })),
         canciones_count: PropTypes.number,
         can: PropTypes.shape({ view: PropTypes.bool, edit: PropTypes.bool, delete: PropTypes.bool, }),
-        is_liked_by_user: PropTypes.bool,
+        user_megusta: PropTypes.bool,
     }),
 };

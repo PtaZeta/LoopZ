@@ -18,7 +18,7 @@ import {
 
 const ImagenPerfilEdit = ({ fuente, textoAlternativo, clasesImagen, clasesPlaceholder, tipo = 'perfil', nombre = '' }) => {
     const [errorCarga, setErrorCarga] = useState(false);
-    const cacheBuster = ''; // Consider adding a dynamic cache buster for immediate image updates
+    const cacheBuster = '';
     let urlFinal = null;
 
     if (fuente) {

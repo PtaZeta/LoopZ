@@ -11,13 +11,13 @@ use App\Models\Licencia;
 use App\Models\Cancion;
 use App\Models\Contenedor;
 use Faker\Factory as Faker;
-use Carbon\Carbon; // Asegúrate de tener Carbon importado para email_verified_at
+use Carbon\Carbon;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $faker = Faker::create('es_ES');
+        $generadorDatosFalsos = Faker::create('es_ES');
 
         $this->call([
             SpotifyGenresSeeder::class,
@@ -33,27 +33,25 @@ class DatabaseSeeder extends Seeder
         Cancion::truncate();
         Contenedor::truncate();
 
-        $generos = Genero::all();
+        $generosMusicales = Genero::all();
         $licencias = Licencia::all();
 
-        if ($generos->isEmpty() || $licencias->isEmpty()) {
+        if ($generosMusicales->isEmpty() || $licencias->isEmpty()) {
             return;
         }
 
         $usuarios = collect();
         for ($i = 1; $i <= 50; $i++) {
-            $bgColor = str_pad(dechex(mt_rand(0, 0xFFFFFF)), 6, '0', STR_PAD_LEFT);
-            $textColor = str_pad(dechex(mt_rand(0, 0xFFFFFF)), 6, '0', STR_PAD_LEFT);
+            $colorFondo = sprintf('%06x', mt_rand(0, 0xFFFFFF));
+            $colorTexto = sprintf('%06x', mt_rand(0, 0xFFFFFF));
 
             $usuarios->push(
                 User::create([
-                    'name' => $faker->name(),
+                    'name' => $generadorDatosFalsos->name(),
                     'email' => "usuario{$i}@example.com",
                     'password' => Hash::make('password'),
-                    // Eliminamos "?text=" para foto_perfil
-                    'foto_perfil' => "https://placehold.co/150x150/{$bgColor}/{$textColor}",
-                    // Eliminamos "?text=" para banner_perfil
-                    'banner_perfil' => "https://placehold.co/800x200/{$bgColor}/{$textColor}",
+                    'foto_perfil' => "https://placehold.co/150x150/{$colorFondo}/{$colorTexto}",
+                    'banner_perfil' => "https://placehold.co/800x200/{$colorFondo}/{$colorTexto}",
                     'email_verified_at' => Carbon::now(),
                 ])
             );
@@ -61,71 +59,83 @@ class DatabaseSeeder extends Seeder
 
         $canciones = collect();
         for ($i = 1; $i <= 500; $i++) {
-            $bgColor = str_pad(dechex(mt_rand(0, 0xFFFFFF)), 6, '0', STR_PAD_LEFT); // Genera un nuevo color para cada canción
-            $textColor = "FFF"; // Color de texto blanco (si lo hubiera, pero lo eliminamos)
+            $colorFondo = sprintf('%06x', mt_rand(0, 0xFFFFFF));
+            $colorTexto = "FFF";
 
             $cancion = Cancion::create([
-                'titulo'        => $faker->sentence(rand(3, 7), true),
+                'titulo'        => $generadorDatosFalsos->sentence(rand(3, 7), true),
                 'duracion'      => rand(120, 300),
                 'licencia_id'   => $licencias->random()->id,
-                // Eliminamos "?text=" para foto_url de canción
-                'foto_url'      => "https://placehold.co/300x300/{$bgColor}/{$textColor}",
+                'foto_url'      => "https://placehold.co/300x300/{$colorFondo}/{$colorTexto}",
                 'archivo_url'   => "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-" . (($i % 16) + 1) . ".mp3",
                 'publico'       => (bool) rand(0,1),
                 'remix'         => false,
             ]);
             $cancion->generos()->attach(
-                $generos->random(rand(1, min(3, $generos->count())))->pluck('id')->toArray()
+                $generosMusicales->random(rand(1, min(3, $generosMusicales->count())))->pluck('id')->toArray()
             );
-            $cancion->usuarios()->attach($usuarios->random()->id, ['propietario' => true]);
+            $cancion->usuarios()->attach(
+                $usuarios->random(rand(1, min(5, $usuarios->count())))->pluck('id')->toArray(),
+                ['propietario' => false]
+            );
+            if ($cancion->usuarios->count() > 0) {
+                $cancion->usuarios()->updateExistingPivot($cancion->usuarios->random()->id, ['propietario' => true]);
+            }
             $canciones->push($cancion);
         }
 
-        foreach ($canciones->random(50) as $cancion_base) {
-            $bgColor = str_pad(dechex(mt_rand(0, 0xFFFFFF)), 6, '0', STR_PAD_LEFT);
-            $textColor = "FFF";
+        foreach ($canciones->random(50) as $cancionBase) {
+            $colorFondo = sprintf('%06x', mt_rand(0, 0xFFFFFF));
+            $colorTexto = "FFF";
 
             $remix = Cancion::create([
-                'titulo'                => $faker->sentence(rand(3, 7), true) . ' (Remix)',
-                'duracion'              => $cancion_base->duracion + rand(10,60),
-                'licencia_id'           => $cancion_base->licencia_id,
-                'foto_url'              => "https://placehold.co/300x300/{$bgColor}/{$textColor}",
-                'archivo_url'           => "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-" . (($cancion_base->id % 16) + 1) . ".mp3",
+                'titulo'                => $generadorDatosFalsos->sentence(rand(3, 7), true) . ' (Remix)',
+                'duracion'              => $cancionBase->duracion + rand(10,60),
+                'licencia_id'           => $cancionBase->licencia_id,
+                'foto_url'              => "https://placehold.co/300x300/{$colorFondo}/{$colorTexto}",
+                'archivo_url'           => "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-" . (($cancionBase->id % 16) + 1) . ".mp3",
                 'publico'               => true,
                 'remix'                 => true,
-                'cancion_original_id'   => $cancion_base->id,
+                'cancion_original_id'   => $cancionBase->id,
             ]);
-            $remix->generos()->attach($cancion_base->generos->pluck('id')->toArray());
-            $remix->usuarios()->attach($usuarios->random()->id, ['propietario' => true]);
+            $remix->generos()->attach($cancionBase->generos->pluck('id')->toArray());
+            $remix->usuarios()->attach(
+                $usuarios->random(rand(1, min(5, $usuarios->count())))->pluck('id')->toArray(),
+                ['propietario' => false]
+            );
+            if ($remix->usuarios->count() > 0) {
+                $remix->usuarios()->updateExistingPivot($remix->usuarios->random()->id, ['propietario' => true]);
+            }
             $canciones->push($remix);
         }
 
-
-        $tipos = ['playlist','album','ep','single','loopz'];
-        foreach ($tipos as $tipo) {
+        $tiposContenedor = ['playlist','album','ep','single','loopz'];
+        foreach ($tiposContenedor as $tipoContenedor) {
             for ($k = 1; $k <= 20; $k++) {
-                $bgColor = str_pad(dechex(mt_rand(0, 0xFFFFFF)), 6, '0', STR_PAD_LEFT); // Nuevo color para contenedores
-                $textColor = "FFF";
+                $colorFondo = sprintf('%06x', mt_rand(0, 0xFFFFFF));
+                $colorTexto = "FFF";
 
                 $contenedor = Contenedor::create([
-                    'nombre'        => ucfirst($tipo) . " - " . $faker->words(rand(1, 3), true),
-                    'descripcion'   => $faker->sentence(rand(5, 15), true),
+                    'nombre'        => ucfirst($tipoContenedor) . " - " . $generadorDatosFalsos->words(rand(1, 3), true),
+                    'descripcion'   => $generadorDatosFalsos->sentence(rand(5, 15), true),
                     'publico'       => true,
-                    'tipo'          => $tipo,
-                    'imagen'        => "https://placehold.co/400x400/{$bgColor}/{$textColor}",
+                    'tipo'          => $tipoContenedor,
+                    'imagen'        => "https://placehold.co/400x400/{$colorFondo}/{$colorTexto}",
                 ]);
                 $contenedor->canciones()->attach(
                     $canciones->random(rand(10,50))->pluck('id')->toArray()
                 );
-                $propietario = $usuarios->random();
-                $contenedor->usuarios()->attach($propietario->id, ['propietario'=>true]);
-                $seguidores = $usuarios->where('id','!=',$propietario->id)->random(rand(5,15));
-                foreach ($seguidores as $seguidor) {
-                    $contenedor->usuarios()->attach($seguidor->id, ['propietario'=>false]);
+                // Adjuntar entre 1 y 5 usuarios al contenedor
+                $propietariosContenedor = $usuarios->random(rand(1, min(5, $usuarios->count())));
+                foreach ($propietariosContenedor as $propietario) {
+                    $contenedor->usuarios()->attach($propietario->id, ['propietario' => true]);
                 }
-                /*if ($tipo === 'loopz') {
-                    $contenedor->loopzusuarios()->attach($usuarios->random(rand(5, 15))->pluck('id')->toArray());
-                }*/
+
+                $seguidores = $usuarios->whereNotIn('id', $propietariosContenedor->pluck('id'))
+                                       ->random(rand(0, min(5, $usuarios->count() - $propietariosContenedor->count())));
+                foreach ($seguidores as $seguidor) {
+                    $contenedor->usuarios()->attach($seguidor->id, ['propietario' => false]);
+                }
             }
         }
 

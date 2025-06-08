@@ -49,12 +49,12 @@ class RolController extends Controller
     {
         $request->validate([
             'role_ids' => 'nullable|array',
-            'role_ids.*' => 'exists:roles,id', // Cada elemento del array (role_ids.*) debe existir en la tabla '
+            'role_ids.*' => 'exists:roles,id',
         ]);
 
         $user->roles()->sync($request->input('role_ids', []));
 
-        return redirect()->back()->with('success', 'Roles del usuario actualizados correctamente.');
+        return redirect()->back();
     }
 
     /**

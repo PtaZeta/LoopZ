@@ -30,20 +30,26 @@ class RegisteredUserController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            'email' => 'required|string|lowercase|email|max:255|unique:' . User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'foto_perfil' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'banner_perfil' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:4096',
         ]);
 
         $rutaFotoPerfil = null;
-        if ($request->hasFile('foto_perfil') && $request->file('foto_perfil')->isValid()) {
-            $rutaFotoPerfil = $request->file('foto_perfil')->store('foto_perfil', 'public');
+        if ($request->hasFile('foto_perfil')) {
+            $archivo = $request->file('foto_perfil');
+            $nombre = Str::uuid() . '_perfil.' . $archivo->getClientOriginalExtension();
+            $key = Storage::disk('s3')->putFileAs('perfiles/fotos', $archivo, $nombre, 'public-read');
+            $rutaFotoPerfil = Storage::disk('s3')->url($key);
         }
 
         $rutaBannerPerfil = null;
-        if ($request->hasFile('banner_perfil') && $request->file('banner_perfil')->isValid()) {
-            $rutaBannerPerfil = $request->file('banner_perfil')->store('banner_perfil', 'public');
+        if ($request->hasFile('banner_perfil')) {
+            $archivo = $request->file('banner_perfil');
+            $nombre = Str::uuid() . '_banner.' . $archivo->getClientOriginalExtension();
+            $key = Storage::disk('s3')->putFileAs('perfiles/banners', $archivo, $nombre, 'public-read');
+            $rutaBannerPerfil = Storage::disk('s3')->url($key);
         }
 
         $codigo = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
@@ -58,13 +64,6 @@ class RegisteredUserController extends Controller
             'codigo_verificacion' => $codigo,
             'codigo_verificacion_expira_en' => $expiraEn,
         ]);
-
-        $user = (object) Session::get('registration_data');
-        $user->name = $request->name;
-        $user->email = $request->email;
-        $user->password = Hash::make($request->password);
-        $user->codigo_verificacion = $codigo;
-        $user->codigo_verificacion_expira_en = $expiraEn;
 
         (new User([
             'name' => $request->name,

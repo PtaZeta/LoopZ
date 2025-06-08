@@ -4,16 +4,17 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import GuestLayout from '@/Layouts/GuestLayout';
 import PropTypes from 'prop-types';
 import { usePlayer } from '@/contexts/PlayerContext';
+import { PauseIcon, PlayIcon } from '@heroicons/react/24/solid';
 
 const ImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, tipo = 'playlist', nombre = '' }) => {
     const [errorCarga, setErrorCarga] = useState(false);
     const urlImagenCompleta = src;
 
-    const handleImageError = () => {
+    const manejarErrorImagen = () => {
         setErrorCarga(true);
     };
 
-    const PlaceholderContenido = () => {
+    const ContenidoPlaceholder = () => {
         if (tipo === 'user') {
             return (
                 <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
@@ -38,12 +39,12 @@ const ImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder, tipo = 
             src={urlImagenCompleta}
             alt={alt}
             className={claseImagen}
-            onError={handleImageError}
+            onError={manejarErrorImagen}
             loading="lazy"
         />
     ) : (
         <div key={claveUnica} className={`${clasePlaceholder} flex items-center justify-center overflow-hidden`}>
-            <PlaceholderContenido />
+            <ContenidoPlaceholder />
         </div>
     );
 };
@@ -56,9 +57,6 @@ ImagenConPlaceholder.propTypes = {
     tipo: PropTypes.string,
     nombre: PropTypes.string,
 };
-
-const PlayIcon = () => <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd"></path></svg>;
-const PauseIcon = () => <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1_0_00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd"></path></svg>;
 
 export default function PlaylistComunidad({ auth, genero, playlists, canciones, usuariosDelGenero }) {
     const {
@@ -86,9 +84,9 @@ export default function PlaylistComunidad({ auth, genero, playlists, canciones, 
             }
         } else {
             if (cancion.archivo_url) {
-                const index = canciones.findIndex(s => s.id === cancion.id);
-                if (index !== -1) {
-                    cargarColaYIniciar(canciones, { iniciar: index, clickDirecto: true });
+                const indice = canciones.findIndex(s => s.id === cancion.id);
+                if (indice !== -1) {
+                    cargarColaYIniciar(canciones, { iniciar: indice, clickDirecto: true });
                 }
             } else {
                 console.warn('La canción no tiene URL de archivo:', cancion.titulo);
@@ -96,7 +94,7 @@ export default function PlaylistComunidad({ auth, genero, playlists, canciones, 
         }
     };
 
-    const isThisSongPlaying = (songId) => cancionActual && cancionActual.id === songId && Reproduciendo;
+    const estaSonandoEstaCancion = (idCancion) => cancionActual && cancionActual.id === idCancion && Reproduciendo;
 
     const Layout = auth.user ? AuthenticatedLayout : GuestLayout;
 
@@ -111,7 +109,7 @@ export default function PlaylistComunidad({ auth, genero, playlists, canciones, 
                         <div className="absolute bottom-1/4 right-1/4 w-48 h-48 sm:w-64 sm:h-64 bg-pink-900 rounded-full filter blur-3xl animate-pulse animation-delay-2000"></div>
                     </div>
                     <h1 className="text-3xl md:text-4xl font-extrabold mb-2 text-white relative z-10">
-                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-pink-500">Comunidad de {genero.nombre}</span>
+                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-pink-500">{genero.nombre}</span>
                     </h1>
                     <p className="text-base sm:text-lg text-gray-300 max-w-2xl mx-auto">Descubre playlists, canciones y creadores apasionados por el género {genero.nombre}.</p>
                 </section>
@@ -133,10 +131,12 @@ export default function PlaylistComunidad({ auth, genero, playlists, canciones, 
                                         />
                                         <button
                                             onClick={() => manejarReproducirPausa(cancion)}
-                                            className="absolute bottom-2 right-2 bg-blue-600 text-white p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform group-hover:scale-110"
-                                            aria-label={isThisSongPlaying(cancion.id) ? 'Pausar canción' : 'Reproducir canción'}
+                                            className={`absolute bottom-2 right-2 flex items-center justify-center w-10 h-10 rounded-full text-white transition-colors opacity-0 group-hover:opacity-100 duration-300 transform group-hover:scale-110
+                                            ${estaSonandoEstaCancion(cancion.id) ? 'bg-pink-600 hover:bg-pink-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                                            disabled={!cancion.archivo_url}
+                                            aria-label={estaSonandoEstaCancion(cancion.id) ? 'Pausar canción' : 'Reproducir canción'}
                                         >
-                                            {isThisSongPlaying(cancion.id) ? <PauseIcon /> : <PlayIcon />}
+                                            {estaSonandoEstaCancion(cancion.id) ? <PauseIcon className="w-5 h-5" /> : <PlayIcon className="w-5 h-5" />}
                                         </button>
                                     </div>
                                     <div className="p-3 sm:p-4">

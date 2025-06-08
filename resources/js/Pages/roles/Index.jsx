@@ -9,17 +9,14 @@ export default function RolesIndex({ auth, users, roles, flash }) {
     const [mostrandoModalEdicionUsuario, setMostrandoModalEdicionUsuario] = useState(false);
     const [usuarioEditando, setUsuarioEditando] = useState(null);
     const [rolesSeleccionados, setRolesSeleccionados] = useState([]);
-
     const [mostrandoModalCreacionRol, setMostrandoModalCreacionRol] = useState(false);
     const [nombreNuevoRol, setNombreNuevoRol] = useState('');
-
     const [mostrandoModalGestionRoles, setMostrandoModalGestionRoles] = useState(false);
     const [rolEditandoDetalle, setRolEditandoDetalle] = useState(null);
     const [nombreRolEditando, setNombreRolEditando] = useState('');
 
     useEffect(() => {
         if (flash && flash.success) {
-            console.log(flash.success);
         }
     }, [flash]);
 
@@ -78,9 +75,6 @@ export default function RolesIndex({ auth, users, roles, flash }) {
                 onSuccess: () => {
                     cerrarModalEdicionUsuario();
                     router.reload({ only: ['users'] });
-                },
-                onError: (errors) => {
-                    console.error("Error al actualizar el rol del usuario:", errors);
                 }
             });
         }
@@ -104,9 +98,6 @@ export default function RolesIndex({ auth, users, roles, flash }) {
                 onSuccess: () => {
                     cerrarModalCreacionRol();
                     router.reload({ only: ['roles'] });
-                },
-                onError: (errors) => {
-                    console.error("Error al crear el rol:", errors);
                 }
             });
         }
@@ -135,7 +126,6 @@ export default function RolesIndex({ auth, users, roles, flash }) {
         }
 
         if (nombreRolEditando.trim() === rolEditandoDetalle.nombre) {
-            console.log("Nombre del rol no ha cambiado. Simulación de éxito.");
             setRolEditandoDetalle(null);
             setNombreRolEditando('');
             cerrarModalGestionRoles();
@@ -152,7 +142,6 @@ export default function RolesIndex({ auth, users, roles, flash }) {
                 cerrarModalGestionRoles();
             },
             onError: (errors) => {
-                console.error("Error al actualizar el rol:", errors);
                 if (errors.nombre && errors.nombre.includes('has already been taken')) {
                     alert('Error: El nombre de rol ya existe. Por favor, elige un nombre diferente.');
                 } else {
@@ -168,8 +157,7 @@ export default function RolesIndex({ auth, users, roles, flash }) {
                 onSuccess: () => {
                     router.reload({ only: ['roles'] });
                 },
-                onError: (errors) => {
-                    console.error("Error al eliminar el rol:", errors);
+                onError: () => {
                     alert("Error al eliminar el rol. Asegúrate de que no esté asignado a ningún usuario.");
                 }
             });
@@ -198,15 +186,13 @@ export default function RolesIndex({ auth, users, roles, flash }) {
                                     />
                                     <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                                 </div>
-
-                                {/* NEW: Role Filter Dropdown */}
                                 <div className="relative">
                                     <select
                                         value={rolFiltroSeleccionado}
                                         onChange={manejarFiltroRol}
                                         className="block w-full pl-3 pr-10 py-2 text-base bg-gray-700 border border-gray-600 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md text-white"
                                     >
-                                        <option value="">Todos los Roles</option> {/* Option to show all users */}
+                                        <option value="">Todos los Roles</option>
                                         {roles.map((rol) => (
                                             <option key={rol.id} value={rol.id}>
                                                 {rol.nombre}
@@ -214,8 +200,6 @@ export default function RolesIndex({ auth, users, roles, flash }) {
                                         ))}
                                     </select>
                                 </div>
-
-                                {/* Action Buttons */}
                                 <button
                                     onClick={abrirModalCreacionRol}
                                     className="inline-flex items-center px-4 py-2 rounded-md text-white bg-green-600 hover:bg-green-700 transition-colors duration-200 text-sm font-medium shadow-md"
@@ -446,7 +430,7 @@ export default function RolesIndex({ auth, users, roles, flash }) {
                                                         <button
                                                             onClick={enviarEdicionRol}
                                                             className="inline-flex items-center px-3 py-1 rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors duration-200 text-xs font-medium"
-                                                            disabled={nombreRolEditando.trim() === ''} // Only disable if empty, allow "save" if same as before
+                                                            disabled={nombreRolEditando.trim() === ''}
                                                         >
                                                             Guardar
                                                         </button>

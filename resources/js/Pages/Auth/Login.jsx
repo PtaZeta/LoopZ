@@ -1,3 +1,4 @@
+import ApplicationLogo from '@/Components/ApplicationLogo';
 import Checkbox from '@/Components/Checkbox';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
@@ -26,9 +27,7 @@ export default function Login({ status, canResetPassword }) {
             <Head title="Log in" />
             <div className="max-w-xl w-full mx-auto p-8 bg-gray-900 rounded-md shadow-lg text-white mt-8 my-auto">
                 <div className="flex justify-center mb-8">
-                    <Link href="/" className="text-3xl md:text-4xl font-bold text-blue-500 hover:text-blue-400 transition-colors">
-                        LoopZ
-                    </Link>
+                    <ApplicationLogo className="h-12 w-auto text-gray-200" />
                 </div>
 
                 {status && (

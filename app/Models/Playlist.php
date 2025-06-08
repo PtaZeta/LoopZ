@@ -8,32 +8,6 @@ use Illuminate\Support\Facades\Storage;
 
 class Playlist extends Model
 {
+    /** @use HasFactory<\Database\Factories\PlaylistFactory> */
     use HasFactory;
-
-    protected $fillable = [
-        'nombre',
-        'descripcion',
-        'imagen',
-        'publico',
-    ];
-
-    protected $appends = ['imagen_url'];
-
-    public function getImagenUrlAttribute()
-    {
-        return $this->imagen
-            ? Storage::disk('public')->url($this->imagen)
-            : null;
-    }
-
-    public function usuarios()
-    {
-        return $this->morphToMany(User::class, 'perteneceable', 'pertenece_user');
-    }
-    public function canciones()
-    {
-        return $this->morphToMany(Cancion::class, 'perteneceable', 'pertenece_cancion')
-                    ->withPivot('id')
-                    ->withTimestamps();
-    }
 }

@@ -22,28 +22,42 @@ const PlayerContext = createContext();
 export const usePlayer = () => useContext(PlayerContext);
 
 export const PlayerProvider = ({ children }) => {
-    const [colaOriginal, setColaOriginal] = useState([]);
+    const [colaOriginal, setColaOriginal] = useState(() => {
+        try {
+            const saved = sessionStorage.getItem('colaOriginal_player');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            return [];
+        }
+    });
     const [reservasRecomendadas, setReservasRecomendadas] = useState([]);
-    const [colaAleatoria, setColaAleatoria] = useState([]);
+    const [colaAleatoria, setColaAleatoria] = useState(() => {
+        try {
+            const saved = sessionStorage.getItem('colaAleatoria_player');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            return [];
+        }
+    });
     const [cancionActualIndex, setCancionActualIndex] = useState(() => {
         const saved = sessionStorage.getItem('cancionActualIndex_player');
         return saved !== null ? Number(saved) : -1;
     });
     const [Reproduciendo, setReproduciendo] = useState(false);
     const [tiempoActual, setTiempoActual] = useState(0);
-    const [duration, setDuration] = useState(0);
+    const [duration, setDuracion] = useState(0);
     const [volumen, setVolumen] = useState(0.5);
     const [aleatorio, setAleatorio] = useState(false);
     const [looping, setLooping] = useState(false);
     const [loopingOne, setLoopingOne] = useState(false);
-    const [sourceId, setSourceId] = useState(null);
+    const [sourceId, setSourceId] = useState(() => sessionStorage.getItem('sourceId_player') || null);
     const [cargando, setCargando] = useState(false);
     const [playerError, setPlayerError] = useState(null);
     const audioRef = useRef(null);
-    const preloadAudioRef = useRef(null);
-    const [preloadedSongIndex, setPreloadedSongIndex] = useState(null);
-    const userInitiatedPlayRef = useRef(false);
-    const hasCountedRef = useRef(false);
+    const precargarAudioRef = useRef(null);
+    const [cancionPrecargadaIndex, setcancionPrecargadaIndex] = useState(null);
+    const usuarioInicioPlayRef = useRef(false);
+    const conteoRef = useRef(false);
 
     useEffect(() => {
         const vol = sessionStorage.getItem('volumen_player');
@@ -80,6 +94,28 @@ export const PlayerProvider = ({ children }) => {
         }
     }, [cancionActualIndex]);
 
+    useEffect(() => {
+        try {
+            sessionStorage.setItem('colaOriginal_player', JSON.stringify(colaOriginal));
+        } catch (e) {
+        }
+    }, [colaOriginal]);
+
+    useEffect(() => {
+        try {
+            sessionStorage.setItem('colaAleatoria_player', JSON.stringify(colaAleatoria));
+        } catch (e) {
+        }
+    }, [colaAleatoria]);
+
+    useEffect(() => {
+        if (sourceId !== null) {
+            sessionStorage.setItem('sourceId_player', sourceId);
+        } else {
+            sessionStorage.removeItem('sourceId_player');
+        }
+    }, [sourceId]);
+
     const limpiarErrores = useCallback(() => {
         setPlayerError(null);
     }, []);
@@ -89,22 +125,25 @@ export const PlayerProvider = ({ children }) => {
             audioRef.current.pause();
             audioRef.current.src = '';
         }
-        if (preloadAudioRef.current) {
-            preloadAudioRef.current.src = '';
+        if (precargarAudioRef.current) {
+            precargarAudioRef.current.src = '';
         }
         setColaOriginal([]);
         setReservasRecomendadas([]);
         setColaAleatoria([]);
         setCancionActualIndex(-1);
-        setPreloadedSongIndex(null);
+        setcancionPrecargadaIndex(null);
         setReproduciendo(false);
         setTiempoActual(0);
-        setDuration(0);
+        setDuracion(0);
         setSourceId(null);
         setCargando(false);
         limpiarErrores();
         sessionStorage.removeItem('cancionActualIndex_player');
-        userInitiatedPlayRef.current = false;
+        sessionStorage.removeItem('colaOriginal_player');
+        sessionStorage.removeItem('colaAleatoria_player');
+        sessionStorage.removeItem('sourceId_player');
+        usuarioInicioPlayRef.current = false;
     }, [limpiarErrores]);
 
     const colaActual = aleatorio ? colaAleatoria : colaOriginal;
@@ -114,55 +153,54 @@ export const PlayerProvider = ({ children }) => {
         audioRef.current?.pause();
         setReproduciendo(false);
         setCargando(false);
-        userInitiatedPlayRef.current = false;
+        usuarioInicioPlayRef.current = false;
     }, []);
 
     const play = useCallback(() => {
         limpiarErrores();
         const audio = audioRef.current;
         if (!audio) {
-            setPlayerError("Player not ready.");
             return;
         }
         if (cancionActual) {
             if (Reproduciendo) {
                 pause();
             } else {
-                userInitiatedPlayRef.current = true;
+                usuarioInicioPlayRef.current = true;
                 audio.play()
                     .then(() => {
                         setReproduciendo(true);
-                        userInitiatedPlayRef.current = false;
+                        usuarioInicioPlayRef.current = false;
                     })
                     .catch((e) => {
                         setReproduciendo(false);
                         setCargando(false);
-                        userInitiatedPlayRef.current = false;
+                        usuarioInicioPlayRef.current = false;
                     });
             }
         } else if (colaActual.length > 0) {
-            const initialIndex = cancionActualIndex === -1 ? 0 : cancionActualIndex;
-            setCancionActualIndex(initialIndex);
+            const valorInicial = cancionActualIndex === -1 ? 0 : cancionActualIndex;
+            setCancionActualIndex(valorInicial);
             setReproduciendo(true);
-            userInitiatedPlayRef.current = true;
+            usuarioInicioPlayRef.current = true;
         } else {
             reiniciarPlayer();
         }
     }, [cancionActual, colaActual, Reproduciendo, pause, limpiarErrores, reiniciarPlayer, cancionActualIndex]);
 
-    const seek = useCallback((time) => {
+    const busqueda = useCallback((time) => {
         const audio = audioRef.current;
         if (audio && isFinite(time) && duration > 0) {
             limpiarErrores();
-            const newTime = Math.max(0, Math.min(time, duration));
-            audio.currentTime = newTime;
-            setTiempoActual(newTime);
+            const nuevoTiempo = Math.max(0, Math.min(time, duration));
+            audio.currentTime = nuevoTiempo;
+            setTiempoActual(nuevoTiempo);
         }
     }, [duration, limpiarErrores]);
 
     const setVolumenCallback = useCallback((v) => {
-        const newVol = Math.max(0, Math.min(1, v));
-        setVolumen(newVol);
+        const nuevoVolumen = Math.max(0, Math.min(1, v));
+        setVolumen(nuevoVolumen);
     }, []);
 
     const fetchReservas = useCallback(async () => {
@@ -187,40 +225,40 @@ export const PlayerProvider = ({ children }) => {
         limpiarErrores();
 
         if (loopingOne || (looping && colaActual.length === 1)) {
-            seek(0);
+            busqueda(0);
             if (!Reproduciendo) {
                 play();
             }
             return;
         }
 
-        let nextIndex = cancionActualIndex + 1;
+        let siguienteIndex = cancionActualIndex + 1;
         while (
-            nextIndex < colaActual.length &&
-            colaActual[nextIndex]?.id === cancionActual?.id
+            siguienteIndex < colaActual.length &&
+            colaActual[siguienteIndex]?.id === cancionActual?.id
         ) {
-            nextIndex++;
+            siguienteIndex++;
         }
-        const isLastInQueue = nextIndex >= colaActual.length;
-        const isSingleTrack = colaActual.length === 1;
-        if (isLastInQueue) {
+        const ultimoEnCola = siguienteIndex >= colaActual.length;
+        const cancionUnica = colaActual.length === 1;
+        if (ultimoEnCola) {
             if (looping) {
-                nextIndex = 0;
+                siguienteIndex = 0;
                 if (aleatorio) {
-                    const allSongs = colaOriginal.concat(
+                    const todasCanciones = colaOriginal.concat(
                         reservasRecomendadas.filter(r => !colaOriginal.some(o => o.id === r.id))
                     );
-                    const nuevaColaAleatoria = arrayAleatorio(allSongs);
+                    const nuevaColaAleatoria = arrayAleatorio(todasCanciones);
                     setColaAleatoria(nuevaColaAleatoria);
-                    nextIndex = 0;
+                    siguienteIndex = 0;
                     setReservasRecomendadas([]);
                 }
-            } else if (isSingleTrack && !looping && reservasRecomendadas.length === 0) {
-                seek(0);
+            } else if (cancionUnica && !looping && reservasRecomendadas.length === 0) {
+                busqueda(0);
                 return;
             } else if (!aleatorio && !looping && reservasRecomendadas.length > 0) {
-                const updatedColaOriginal = [...colaOriginal, ...reservasRecomendadas];
-                setColaOriginal(updatedColaOriginal);
+                const actualizarColaOriginal = [...colaOriginal, ...reservasRecomendadas];
+                setColaOriginal(actualizarColaOriginal);
                 setCargando(true);
                 setCancionActualIndex(colaActual.length);
                 setReproduciendo(true);
@@ -228,17 +266,17 @@ export const PlayerProvider = ({ children }) => {
                 setSourceId(null);
                 return;
             } else if (aleatorio && !looping && reservasRecomendadas.length > 0) {
-                const originalWithReservas = [...colaOriginal, ...reservasRecomendadas];
-                setColaOriginal(originalWithReservas);
-                const remainingQueue = colaActual.slice(cancionActualIndex + 1);
+                const originalConReservadas = [...colaOriginal, ...reservasRecomendadas];
+                setColaOriginal(originalConReservadas);
+                const colaRestante = colaActual.slice(cancionActualIndex + 1);
                 const recommendationsToAdd = reservasRecomendadas.filter(r =>
-                    !remainingQueue.some(s => s.id === r.id) &&
+                    !colaRestante.some(s => s.id === r.id) &&
                     !colaOriginal.some(o => o.id === r.id)
                 );
-                const combinedForShuffle = [...remainingQueue, ...recommendationsToAdd];
-                const shuffledRemaining = arrayAleatorio(combinedForShuffle);
-                const newAleatoria = [...colaAleatoria.slice(0, cancionActualIndex + 1), ...shuffledRemaining];
-                setColaAleatoria(newAleatoria);
+                const combinarAleatorio = [...colaRestante, ...recommendationsToAdd];
+                const aleatorioRestante = arrayAleatorio(combinarAleatorio);
+                const nuevoAleatorio = [...colaAleatoria.slice(0, cancionActualIndex + 1), ...aleatorioRestante];
+                setColaAleatoria(nuevoAleatorio);
                 setCargando(true);
                 setCancionActualIndex(cancionActualIndex + 1);
                 setReproduciendo(true);
@@ -250,56 +288,54 @@ export const PlayerProvider = ({ children }) => {
                 return;
             }
         }
-        const targetIndex = nextIndex;
-        const targetSong = colaActual[targetIndex];
-        const preloadedSong = preloadedSongIndex !== null && preloadedSongIndex < colaActual.length ? colaActual[preloadedSongIndex] : null;
+        const objetivoIndex = siguienteIndex;
+        const cancionObjetivo = colaActual[objetivoIndex];
+        const cancionPrecargada = cancionPrecargadaIndex !== null && cancionPrecargadaIndex < colaActual.length ? colaActual[cancionPrecargadaIndex] : null;
         if (
-            preloadedSong &&
-            preloadedSong.id === targetSong.id &&
-            preloadAudioRef.current &&
+            cancionPrecargada &&
+            cancionPrecargada.id === cancionObjetivo.id &&
+            precargarAudioRef.current &&
             audioRef.current
         ) {
-            const mainAudio = audioRef.current;
-            const preloadAudio = preloadAudioRef.current;
-            mainAudio.src = preloadAudio.src;
-            mainAudio.currentTime = 0;
+            const audioPrincipal = audioRef.current;
+            const precargarAudio = precargarAudioRef.current;
+            audioPrincipal.src = precargarAudio.src;
+            audioPrincipal.currentTime = 0;
             setTiempoActual(0);
-            mainAudio.volume = preloadAudio.volume;
-            if (preloadAudio.duration && isFinite(preloadAudio.duration)) {
-                setDuration(preloadAudio.duration);
+            audioPrincipal.volume = precargarAudio.volume;
+            if (precargarAudio.duration && isFinite(precargarAudio.duration)) {
+                setDuracion(precargarAudio.duration);
             } else {
                 const onLoadedMetadata = () => {
-                    setDuration(mainAudio.duration || 0);
-                    mainAudio.removeEventListener('loadedmetadata', onLoadedMetadata);
+                    setDuracion(audioPrincipal.duration || 0);
+                    audioPrincipal.removeEventListener('loadedmetadata', onLoadedMetadata);
                 };
-                mainAudio.addEventListener('loadedmetadata', onLoadedMetadata);
+                audioPrincipal.addEventListener('loadedmetadata', onLoadedMetadata);
             }
-            preloadAudio.removeAttribute('src');
-            preloadAudio.load();
-            setPreloadedSongIndex(null);
+            precargarAudio.removeAttribute('src');
+            precargarAudio.load();
+            setcancionPrecargadaIndex(null);
             setCargando(true);
-            setCancionActualIndex(targetIndex);
+            setCancionActualIndex(objetivoIndex);
             if (Reproduciendo) {} else {
                 setCargando(false);
             }
-            userInitiatedPlayRef.current = true;
+            usuarioInicioPlayRef.current = true;
             setTimeout(() => {
-                mainAudio.play()
+                audioPrincipal.play()
                     .then(() => {
                         setReproduciendo(true);
                         setCargando(false);
-                        userInitiatedPlayRef.current = false;
+                        usuarioInicioPlayRef.current = false;
                     })
                     .catch((e) => {
-                        console.error("Playback error:", e);
-                        setPlayerError("No se pudo reproducir automáticamente.");
                         setCargando(false);
-                        userInitiatedPlayRef.current = false;
+                        usuarioInicioPlayRef.current = false;
                     });
             }, 50);
         } else {
             setCargando(true);
-            setCancionActualIndex(targetIndex);
+            setCancionActualIndex(objetivoIndex);
         }
     }, [
         cancionActualIndex,
@@ -314,8 +350,8 @@ export const PlayerProvider = ({ children }) => {
         limpiarErrores,
         reiniciarPlayer,
         Reproduciendo,
-        preloadedSongIndex,
-        seek,
+        cancionPrecargadaIndex,
+        busqueda,
         getAudioUrl,
         cancionActual,
         play
@@ -326,170 +362,164 @@ export const PlayerProvider = ({ children }) => {
         limpiarErrores();
 
         if (loopingOne) {
-            seek(0);
+            busqueda(0);
             if (!Reproduciendo) {
                 play();
             }
             return;
         }
 
-        let prevIndex = cancionActualIndex - 1;
-        if (prevIndex < 0) {
+        let anteriorIndex = cancionActualIndex - 1;
+        if (anteriorIndex < 0) {
             if (looping) {
-                prevIndex = colaActual.length - 1;
+                anteriorIndex = colaActual.length - 1;
             } else {
-                seek(0);
+                busqueda(0);
                 return;
             }
         }
-        const targetIndex = prevIndex;
-        const targetSong = colaActual[targetIndex];
-        const preloadedSong = preloadedSongIndex !== null && preloadedSongIndex < colaActual.length ? colaActual[preloadedSongIndex] : null;
-        if (preloadedSong && preloadedSong.id === targetSong.id && preloadAudioRef.current && audioRef.current) {
-            const mainAudio = audioRef.current;
-            const preloadAudio = preloadAudioRef.current;
-            mainAudio.src = preloadAudio.src;
-            mainAudio.currentTime = 0;
+        const objetivoIndex = anteriorIndex;
+        const cancionObjetivo = colaActual[objetivoIndex];
+        const cancionPrecargada = cancionPrecargadaIndex !== null && cancionPrecargadaIndex < colaActual.length ? colaActual[cancionPrecargadaIndex] : null;
+        if (cancionPrecargada && cancionPrecargada.id === cancionObjetivo.id && precargarAudioRef.current && audioRef.current) {
+            const audioPrincipal = audioRef.current;
+            const precargarAudio = precargarAudioRef.current;
+            audioPrincipal.src = precargarAudio.src;
+            audioPrincipal.currentTime = 0;
             setTiempoActual(0);
-            mainAudio.volume = preloadAudio.volume;
-            if (preloadAudio.duration && isFinite(preloadAudio.duration)) {
-                setDuration(preloadAudio.duration);
+            audioPrincipal.volume = precargarAudio.volume;
+            if (precargarAudio.duration && isFinite(precargarAudio.duration)) {
+                setDuracion(precargarAudio.duration);
             } else {
                 const onLoadedMetadata = () => {
-                    setDuration(mainAudio.duration || 0);
-                    mainAudio.removeEventListener('loadedmetadata', onLoadedMetadata);
+                    setDuracion(audioPrincipal.duration || 0);
+                    audioPrincipal.removeEventListener('loadedmetadata', onLoadedMetadata);
                 };
-                mainAudio.addEventListener('loadedmetadata', onLoadedMetadata);
+                audioPrincipal.addEventListener('loadedmetadata', onLoadedMetadata);
             }
-            preloadAudio.removeAttribute('src');
-            preloadAudio.load();
-            setPreloadedSongIndex(null);
+            precargarAudio.removeAttribute('src');
+            precargarAudio.load();
+            setcancionPrecargadaIndex(null);
             setCargando(true);
-            setCancionActualIndex(targetIndex);
+            setCancionActualIndex(objetivoIndex);
             if (Reproduciendo) {} else {
                 setCargando(false);
             }
-            userInitiatedPlayRef.current = true;
+            usuarioInicioPlayRef.current = true;
             setTimeout(() => {
-                mainAudio.play()
+                audioPrincipal.play()
                     .then(() => {
                         setReproduciendo(true);
                         setCargando(false);
-                        userInitiatedPlayRef.current = false;
+                        usuarioInicioPlayRef.current = false;
                     })
                     .catch((e) => {
-                        console.error("Playback error:", e);
-                        setPlayerError("No se pudo reproducir automáticamente.");
                         setCargando(false);
-                        userInitiatedPlayRef.current = false;
+                        usuarioInicioPlayRef.current = false;
                     });
             }, 50);
         } else {
             setCargando(true);
-            setCancionActualIndex(targetIndex);
+            setCancionActualIndex(objetivoIndex);
         }
-    }, [colaActual, cancionActualIndex, looping, loopingOne, limpiarErrores, seek, Reproduciendo, preloadedSongIndex, getAudioUrl, play]); // Añadido loopingOne y play
+    }, [colaActual, cancionActualIndex, looping, loopingOne, limpiarErrores, busqueda, Reproduciendo, cancionPrecargadaIndex, getAudioUrl, play]);
 
     const cargarColaYIniciar = useCallback((canciones, opciones = {}) => {
         if (audioRef.current) {
             audioRef.current.pause();
             audioRef.current.src = '';
         }
-        if (preloadAudioRef.current) {
-            preloadAudioRef.current.src = '';
+        if (precargarAudioRef.current) {
+            precargarAudioRef.current.src = '';
         }
         limpiarErrores();
         setReproduciendo(false);
         setCargando(false);
         setTiempoActual(0);
-        setDuration(0);
+        setDuracion(0);
         const validas = canciones.filter(s => s.id && s.titulo && getAudioUrl(s));
         if (validas.length === 0) {
-            setPlayerError("No se encontraron canciones válidas en la cola.");
             return reiniciarPlayer();
         }
         setSourceId(opciones.id ?? null);
         setReservasRecomendadas([]);
-        let startIndex = opciones.iniciar ?? 0;
+        let inicioIndex = opciones.iniciar ?? 0;
         let nuevaAleatoria = [];
         if (aleatorio) {
             const clickDirecto = opciones.clickDirecto === true;
-            if (clickDirecto && Number.isInteger(startIndex) && startIndex >= 0 && startIndex < validas.length) {
-                const clicked = validas[startIndex];
-                const restantes = validas.filter((_, i) => i !== startIndex);
-                nuevaAleatoria = [clicked, ...arrayAleatorio(restantes)];
+            if (clickDirecto && Number.isInteger(inicioIndex) && inicioIndex >= 0 && inicioIndex < validas.length) {
+                const clickado = validas[inicioIndex];
+                const restantes = validas.filter((_, i) => i !== inicioIndex);
+                nuevaAleatoria = [clickado, ...arrayAleatorio(restantes)];
             } else {
                 nuevaAleatoria = arrayAleatorio(validas);
             }
             setColaAleatoria(nuevaAleatoria);
-            startIndex = 0;
+            inicioIndex = 0;
         } else {
             setColaAleatoria([]);
         }
         setColaOriginal(validas);
-        const finalStartIndex = Math.max(0, Math.min(startIndex, validas.length - 1));
-        setCancionActualIndex(finalStartIndex);
+        const inicioValidoIndex = Math.max(0, Math.min(inicioIndex, validas.length - 1));
+        setCancionActualIndex(inicioValidoIndex);
         setReproduciendo(true);
-        userInitiatedPlayRef.current = true;
+        usuarioInicioPlayRef.current = true;
     }, [aleatorio, reiniciarPlayer, limpiarErrores, getAudioUrl]);
 
     const añadirSiguiente = useCallback((song) => {
         limpiarErrores();
         if (!song || !song.id || !song.titulo || !getAudioUrl(song)) {
-            setPlayerError("No se puede añadir una canción inválida.");
             return;
         }
         if (cancionActualIndex === -1) {
-            setPlayerError("Selecciona una canción para empezar antes de usar 'añadir siguiente'.");
             return;
         }
-        const insertIndex = cancionActualIndex + 1;
+        const insertarIndex = cancionActualIndex + 1;
         if (aleatorio) {
-            setColaAleatoria(prevColaAleatoria => {
-                const newColaAleatoria = [...prevColaAleatoria];
-                if (insertIndex <= newColaAleatoria.length) {
-                    newColaAleatoria.splice(insertIndex, 0, song);
+            setColaAleatoria(anteriorColaAleatoria => {
+                const nuevaColaAleatoria = [...anteriorColaAleatoria];
+                if (insertarIndex <= nuevaColaAleatoria.length) {
+                    nuevaColaAleatoria.splice(insertarIndex, 0, song);
                 } else {
-                    return prevColaAleatoria;
+                    return anteriorColaAleatoria;
                 }
-                return newColaAleatoria;
+                return nuevaColaAleatoria;
             });
-            setColaOriginal(prevColaOriginal => {
-                if (!prevColaOriginal.some(s => s.id === song.id)) {
-                    return [...prevColaOriginal, song];
+            setColaOriginal(anteriorColaOriginal => {
+                if (!anteriorColaOriginal.some(s => s.id === song.id)) {
+                    return [...anteriorColaOriginal, song];
                 }
-                return prevColaOriginal;
+                return anteriorColaOriginal;
             });
         } else {
-            setColaOriginal(prevColaOriginal => {
-                const newColaOriginal = [...prevColaOriginal];
-                if (insertIndex <= newColaOriginal.length) {
-                    newColaOriginal.splice(insertIndex, 0, song);
+            setColaOriginal(anteriorColaOriginal => {
+                const nuevaColaOriginal = [...anteriorColaOriginal];
+                if (insertarIndex <= nuevaColaOriginal.length) {
+                    nuevaColaOriginal.splice(insertarIndex, 0, song);
                 } else {
-                    console.error(`Calculated insertIndex (${insertIndex}) out of bounds for colaOriginal length (${newColaOriginal.length}). Current index was ${cancionActualIndex}.`);
-                    return prevColaOriginal;
+                    return anteriorColaOriginal;
                 }
-                return newColaOriginal;
+                return nuevaColaOriginal;
             });
         }
-        setPreloadedSongIndex(null);
+        setcancionPrecargadaIndex(null);
     }, [cancionActualIndex, aleatorio, limpiarErrores, getAudioUrl]);
 
     const toggleAleatorio = useCallback(() => {
         limpiarErrores();
-        const next = !aleatorio;
-        setAleatorio(next);
+        const siguiente = !aleatorio;
+        setAleatorio(siguiente);
         if (colaOriginal.length > 0) {
             const actualId = cancionActual?.id;
-            if (next) {
-                const shuffled = arrayAleatorio(colaOriginal);
-                setColaAleatoria(shuffled);
-                const newIndex = shuffled.findIndex(t => t.id === actualId);
-                setCancionActualIndex(newIndex !== -1 ? newIndex : 0);
+            if (siguiente) {
+                const colaBarajada = arrayAleatorio(colaOriginal);
+                setColaAleatoria(colaBarajada);
+                const nuevoIndex = colaBarajada.findIndex(t => t.id === actualId);
+                setCancionActualIndex(nuevoIndex !== -1 ? nuevoIndex : 0);
             } else {
                 setColaAleatoria([]);
-                const newIndex = colaOriginal.findIndex(t => t.id === actualId);
-                setCancionActualIndex(newIndex !== -1 ? newIndex : 0);
+                const nuevoIndex = colaOriginal.findIndex(t => t.id === actualId);
+                setCancionActualIndex(nuevoIndex !== -1 ? nuevoIndex : 0);
             }
         } else {
             setCancionActualIndex(-1);
@@ -498,11 +528,11 @@ export const PlayerProvider = ({ children }) => {
 
     const toggleLoop = useCallback(() => {
         limpiarErrores();
-        setLooping(prevLooping => {
-            if (prevLooping && !loopingOne) {
+        setLooping(anteriorLooping => {
+            if (anteriorLooping && !loopingOne) {
                 setLoopingOne(true);
                 return true;
-            } else if (prevLooping && loopingOne) {
+            } else if (anteriorLooping && loopingOne) {
                 setLoopingOne(false);
                 return false;
             } else {
@@ -517,7 +547,7 @@ export const PlayerProvider = ({ children }) => {
         if (i >= 0 && i < colaActual.length) {
             setCancionActualIndex(i);
             setReproduciendo(true);
-            userInitiatedPlayRef.current = true;
+            usuarioInicioPlayRef.current = true;
         }
     }, [limpiarErrores, colaActual.length, colaActual]);
 
@@ -525,8 +555,8 @@ export const PlayerProvider = ({ children }) => {
         if (audioRef.current) {
             audioRef.current.volume = volumen;
         }
-        if (preloadAudioRef.current) {
-            preloadAudioRef.current.volume = volumen;
+        if (precargarAudioRef.current) {
+            precargarAudioRef.current.volume = volumen;
         }
     }, [volumen]);
 
@@ -539,7 +569,7 @@ export const PlayerProvider = ({ children }) => {
             audio.src = url;
             audio.currentTime = 0;
             setTiempoActual(0);
-            setDuration(0);
+            setDuracion(0);
             audio.load();
         } else {
             audio.pause();
@@ -550,8 +580,8 @@ export const PlayerProvider = ({ children }) => {
             setReproduciendo(false);
             setCargando(false);
             setTiempoActual(0);
-            setDuration(0);
-            userInitiatedPlayRef.current = false;
+            setDuracion(0);
+            usuarioInicioPlayRef.current = false;
         }
     }, [cancionActual, getAudioUrl]);
 
@@ -566,13 +596,12 @@ export const PlayerProvider = ({ children }) => {
                 .then(() => {
                     setReproduciendo(true);
                     setCargando(false);
-                    userInitiatedPlayRef.current = false;
+                    usuarioInicioPlayRef.current = false;
                 })
                 .catch((e) => {
-                    console.error("Playback error:", e);
                     setReproduciendo(false);
                     setCargando(false);
-                    userInitiatedPlayRef.current = false;
+                    usuarioInicioPlayRef.current = false;
                 });
         };
         if (Reproduciendo) {
@@ -583,24 +612,23 @@ export const PlayerProvider = ({ children }) => {
             if (!audio.paused) {
                 audio.pause();
                 setCargando(false);
-                userInitiatedPlayRef.current = false;
+                usuarioInicioPlayRef.current = false;
             }
         }
     }, [Reproduciendo, cancionActual, limpiarErrores]);
 
     useEffect(() => {
         const audio = audioRef.current;
-        const preloadAudioElement = preloadAudioRef.current;
+        const cancionPrecargada = precargarAudioRef.current;
         if (!audio) return;
-        const onMainTimeUpdate = () => {
+        const establecerTiempoReproduccion = () => {
             setTiempoActual(audio.currentTime);
-            if (audio.currentTime >= 10 && !hasCountedRef.current && cancionActual) {
-                hasCountedRef.current = true;
+            if (audio.currentTime >= 10 && !conteoRef.current && cancionActual) {
+                conteoRef.current = true;
 
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
                 if (!csrfToken) {
-                    console.error('CSRF token not found. Make sure you have <meta name="csrf-token" content="{{ csrf_token() }}"> in your HTML head.');
                     return;
                 }
 
@@ -614,26 +642,22 @@ export const PlayerProvider = ({ children }) => {
                 })
                 .then(response => {
                     if (!response.ok) {
-                        console.error(`HTTP error! status: ${response.status}, text: ${response.statusText}`);
-                        throw new Error('Error en la respuesta');
                     }
                     return response.json();
                 })
                 .then(data => {
-                    console.log('Visualización incrementada:', data.visualizaciones);
                 })
                 .catch(err => {
-                    console.error('Error al contar visualización:', err);
                 });
             }
         };
-        const onMainLoadedMetadata = () => {
+        const cargarMetadataCancion = () => {
             if (isFinite(audio.duration) && audio.duration > 0) {
-                setDuration(audio.duration);
+                setDuracion(audio.duration);
             } else {
-                setDuration(0);
+                setDuracion(0);
             }
-            if (userInitiatedPlayRef.current && Reproduciendo) {
+            if (usuarioInicioPlayRef.current && Reproduciendo) {
                 if (audio.readyState < 3) {
                     setCargando(true);
                 }
@@ -641,20 +665,18 @@ export const PlayerProvider = ({ children }) => {
                     .then(() => {
                         setReproduciendo(true);
                         setCargando(false);
-                        userInitiatedPlayRef.current = false;
+                        usuarioInicioPlayRef.current = false;
                     })
                     .catch((e) => {
-                        console.error("Playback error:", e);
-                        setPlayerError(`Error al reproducir: ${cancionActual?.titulo || 'canción'}. Permita la reproducción automática en su navegador.`);
                         setReproduciendo(false);
                         setCargando(false);
-                        userInitiatedPlayRef.current = false;
+                        usuarioInicioPlayRef.current = false;
                     });
             }
         };
-        const onMainCanPlay = () => {
+        const puedeReproducir = () => {
             setCargando(false);
-            if (userInitiatedPlayRef.current && Reproduciendo && audio.paused) {
+            if (usuarioInicioPlayRef.current && Reproduciendo && audio.paused) {
                 if (audio.readyState < 3) {
                     setCargando(true);
                 }
@@ -662,28 +684,26 @@ export const PlayerProvider = ({ children }) => {
                     .then(() => {
                         setReproduciendo(true);
                         setCargando(false);
-                        userInitiatedPlayRef.current = false;
+                        usuarioInicioPlayRef.current = false;
                     })
                     .catch((e) => {
-                        console.error("Playback error:", e);
-                        setPlayerError(`Error al reproducir: ${cancionActual?.titulo || 'canción'}. Permita la reproducción automática en su navegador.`);
                         setReproduciendo(false);
                         setCargando(false);
-                        userInitiatedPlayRef.current = false;
+                        usuarioInicioPlayRef.current = false;
                     });
             }
         };
-        const onMainPlaying = () => {
+        const reproduciendo = () => {
             setCargando(false);
             setReproduciendo(true);
-            userInitiatedPlayRef.current = false;
+            usuarioInicioPlayRef.current = false;
         };
-        const onMainWaiting = () => {
+        const esperando = () => {
             setCargando(true);
         };
-        const onMainEnded = () => {
+        const terminado = () => {
             if (loopingOne) {
-                seek(0);
+                busqueda(0);
                 if (!Reproduciendo) {
                     play();
                 }
@@ -691,10 +711,10 @@ export const PlayerProvider = ({ children }) => {
                 siguienteCancion();
             }
         };
-        const onMainError = (e) => {
+        const errores = (e) => {
             setCargando(false);
             setReproduciendo(false);
-            userInitiatedPlayRef.current = false;
+            usuarioInicioPlayRef.current = false;
             let mensaje = 'Error en reproducción.';
             switch (e.target.error?.code) {
                 case e.target.error.MEDIA_ERR_ABORTED:
@@ -714,18 +734,18 @@ export const PlayerProvider = ({ children }) => {
                     break;
             }
         };
-        const onMainLoadStart = () => {
+        const cargarInicio = () => {
             setCargando(true);
         };
-        const onMainDurationChange = () => {
+        const cambiarDuracion = () => {
             if (duration !== audio.duration && isFinite(audio.duration) && audio.duration > 0) {
-                setDuration(audio.duration);
+                setDuracion(audio.duration);
             } else if (!isFinite(audio.duration) || audio.duration <= 0) {
-                setDuration(0);
+                setDuracion(0);
             }
         };
-        const onMainSeeking = () => {};
-        const onMainSeeked = () => {
+        const busquedaPrincipal = () => {};
+        const busquedaPrincipalHecha = () => {
             if (Reproduciendo && audio.paused) {
                 if (audio.readyState < 3) {
                     setCargando(true);
@@ -734,112 +754,108 @@ export const PlayerProvider = ({ children }) => {
                     .then(() => {
                         setReproduciendo(true);
                         setCargando(false);
-                        userInitiatedPlayRef.current = false;
+                        usuarioInicioPlayRef.current = false;
                     })
                     .catch((e) => {
-                        console.error("Playback error:", e);
-                        setPlayerError(`Error al reproducir: ${cancionActual?.titulo || 'canción'}. Permita la reproducción automática en su navegador.`);
                         setReproduciendo(false);
                         setCargando(false);
-                        userInitiatedPlayRef.current = false;
+                        usuarioInicioPlayRef.current = false;
                     });
             }
         };
-        const onMainPlay = () => {
+        const reproducir = () => {
             setReproduciendo(true);
             setCargando(false);
         };
-        const onMainPause = () => {
+        const pausar = () => {
             setReproduciendo(false);
             setCargando(false);
-            userInitiatedPlayRef.current = false;
+            usuarioInicioPlayRef.current = false;
         };
-        audio.addEventListener('timeupdate', onMainTimeUpdate);
-        audio.addEventListener('loadedmetadata', onMainLoadedMetadata);
-        audio.addEventListener('canplay', onMainCanPlay);
-        audio.addEventListener('playing', onMainPlaying);
-        audio.addEventListener('waiting', onMainWaiting);
-        audio.addEventListener('ended', onMainEnded);
-        audio.addEventListener('error', onMainError);
-        audio.addEventListener('loadstart', onMainLoadStart);
-        audio.addEventListener('durationchange', onMainDurationChange);
-        audio.addEventListener('seeking', onMainSeeking);
-        audio.addEventListener('seeked', onMainSeeked);
-        audio.addEventListener('play', onMainPlay);
-        audio.addEventListener('pause', onMainPause);
-        if (preloadAudioElement) {
-            let nextSongIndexToPreload = -1;
+        audio.addEventListener('timeupdate', establecerTiempoReproduccion);
+        audio.addEventListener('loadedmetadata', cargarMetadataCancion);
+        audio.addEventListener('canplay', puedeReproducir);
+        audio.addEventListener('playing', reproduciendo);
+        audio.addEventListener('waiting', esperando);
+        audio.addEventListener('ended', terminado);
+        audio.addEventListener('error', errores);
+        audio.addEventListener('loadstart', cargarInicio);
+        audio.addEventListener('durationchange', cambiarDuracion);
+        audio.addEventListener('seeking', busquedaPrincipal);
+        audio.addEventListener('seeked', busquedaPrincipalHecha);
+        audio.addEventListener('play', reproducir);
+        audio.addEventListener('pause', pausar);
+        if (cancionPrecargada) {
+            let siguienteCancionPrecargar = -1;
             if (colaActual.length > 0) {
-                const potentialNextIndex = cancionActualIndex !== -1 ? cancionActualIndex + 1 : 0;
+                const siguienteCancionPotencial = cancionActualIndex !== -1 ? cancionActualIndex + 1 : 0;
                 if (loopingOne) {
-                    nextSongIndexToPreload = -1;
-                } else if (potentialNextIndex < colaActual.length) {
-                    nextSongIndexToPreload = potentialNextIndex;
+                    siguienteCancionPrecargar = -1;
+                } else if (siguienteCancionPotencial < colaActual.length) {
+                    siguienteCancionPrecargar = siguienteCancionPotencial;
                 } else if (looping && colaActual.length > 0 && cancionActualIndex !== -1) {
-                    nextSongIndexToPreload = 0;
+                    siguienteCancionPrecargar = 0;
                 } else if (colaActual.length > 0 && cancionActualIndex === -1 && !looping) {
-                    nextSongIndexToPreload = 0;
+                    siguienteCancionPrecargar = 0;
                 } else {
-                    nextSongIndexToPreload = -1;
+                    siguienteCancionPrecargar = -1;
                 }
             }
-            const songToPreload = nextSongIndexToPreload !== -1 ? colaActual[nextSongIndexToPreload] : null;
-            const preloadUrl = songToPreload ? getAudioUrl(songToPreload) : null;
-            const currentAudioUrl = cancionActual ? getAudioUrl(cancionActual) : null;
-            if (songToPreload && nextSongIndexToPreload !== cancionActualIndex && preloadUrl && preloadAudioElement.src !== preloadUrl) {
-                preloadAudioElement.src = preloadUrl;
-                preloadAudioElement.load();
-                setPreloadedSongIndex(nextSongIndexToPreload);
-            } else if ((!songToPreload || nextSongIndexToPreload === cancionActualIndex) && preloadAudioElement.src) {
-                preloadAudioElement.removeAttribute('src');
-                preloadAudioElement.load();
-                setPreloadedSongIndex(null);
+            const cancionAPrecargar = siguienteCancionPrecargar !== -1 ? colaActual[siguienteCancionPrecargar] : null;
+            const urlCancionPrecargada = cancionAPrecargar ? getAudioUrl(cancionAPrecargar) : null;
+            if (cancionAPrecargar && siguienteCancionPrecargar !== cancionActualIndex && urlCancionPrecargada && cancionPrecargada.src !== urlCancionPrecargada) {
+                cancionPrecargada.src = urlCancionPrecargada;
+                cancionPrecargada.load();
+                setcancionPrecargadaIndex(siguienteCancionPrecargar);
+            } else if ((!cancionAPrecargar || siguienteCancionPrecargar === cancionActualIndex) && cancionPrecargada.src) {
+                cancionPrecargada.removeAttribute('src');
+                cancionPrecargada.load();
+                setcancionPrecargadaIndex(null);
             }
-            const onPreloadLoadedMetadata = () => {};
-            const onPreloadCanPlay = () => {};
-            const onPreloadLoadStart = () => {};
-            const onPreloadError = (e) => {
-                console.error("Preload error:", e);
-                setPreloadedSongIndex(null);
+            const cargarMetadataPrecargada = () => {};
+            const precargadaReproducir = () => {};
+            const precargadaCargarIniciar = () => {};
+            const erroresPrecargada = (e) => {
+                setcancionPrecargadaIndex(null);
             };
-            preloadAudioElement.addEventListener('loadedmetadata', onPreloadLoadedMetadata);
-            preloadAudioElement.addEventListener('canplay', onPreloadCanPlay);
-            preloadAudioElement.addEventListener('error', onPreloadError);
-            preloadAudioElement.addEventListener('loadstart', onPreloadLoadStart);
+            cancionPrecargada.addEventListener('loadedmetadata', cargarMetadataPrecargada);
+            cancionPrecargada.addEventListener('canplay', precargadaReproducir);
+            cancionPrecargada.addEventListener('error', erroresPrecargada);
+            cancionPrecargada.addEventListener('loadstart', precargadaCargarIniciar);
             return () => {
-                audio.removeEventListener('timeupdate', onMainTimeUpdate);
-                audio.removeEventListener('loadedmetadata', onMainLoadedMetadata);
-                audio.removeEventListener('canplay', onMainCanPlay);
-                audio.removeEventListener('playing', onMainPlaying);
-                audio.removeEventListener('waiting', onMainWaiting);
-                audio.removeEventListener('ended', onMainEnded);
-                audio.removeEventListener('error', onMainError);
-                audio.removeEventListener('loadstart', onMainLoadStart);
-                audio.removeEventListener('durationchange', onMainDurationChange);
-                audio.removeEventListener('seeking', onMainSeeking);
-                audio.removeEventListener('seeked', onMainSeeked);
-                audio.removeEventListener('play', onMainPlay);
-                audio.removeEventListener('pause', onMainPause);
-                preloadAudioElement.removeEventListener('loadedmetadata', onPreloadLoadedMetadata);
-                preloadAudioElement.removeEventListener('canplay', onPreloadCanPlay);
-                preloadAudioElement.removeEventListener('error', onPreloadError);
-                preloadAudioElement.removeEventListener('loadstart', onPreloadLoadStart);
+                audio.removeEventListener('timeupdate', establecerTiempoReproduccion);
+                audio.removeEventListener('loadedmetadata', cargarMetadataCancion);
+                audio.removeEventListener('canplay', puedeReproducir);
+                audio.removeEventListener('playing', reproduciendo);
+                audio.removeEventListener('waiting', esperando);
+                audio.removeEventListener('ended', terminado);
+                audio.removeEventListener('error', errores);
+                audio.removeEventListener('loadstart', cargarInicio);
+                audio.removeEventListener('durationchange', cambiarDuracion);
+                audio.removeEventListener('seeking', busquedaPrincipal);
+                audio.removeEventListener('seeked', busquedaPrincipalHecha);
+                audio.removeEventListener('play', reproducir);
+                audio.removeEventListener('pause', pausar);
+                cancionPrecargada.removeEventListener('loadedmetadata', cargarMetadataPrecargada);
+                cancionPrecargada.removeEventListener('canplay', precargadaReproducir);
+                cancionPrecargada.removeEventListener('error', erroresPrecargada);
+                cancionPrecargada.removeEventListener('loadstart', precargadaCargarIniciar);
             };
         } else {
             return () => {
-                audio.removeEventListener('timeupdate', onMainTimeUpdate);
-                audio.removeEventListener('loadedmetadata', onMainLoadedMetadata);
-                audio.removeEventListener('canplay', onMainCanPlay);
-                audio.removeEventListener('playing', onMainPlaying);
-                audio.removeEventListener('waiting', onMainWaiting);
-                audio.removeEventListener('ended', onMainEnded);
-                audio.removeEventListener('error', onMainError);
-                audio.removeEventListener('loadstart', onMainLoadStart);
-                audio.removeEventListener('durationchange', onMainDurationChange);
-                audio.removeEventListener('seeking', onMainSeeking);
-                audio.removeEventListener('seeked', onMainSeeked);
-                audio.removeEventListener('play', onMainPlay);
-                audio.removeEventListener('pause', onMainPause);
+                audio.removeEventListener('timeupdate', establecerTiempoReproduccion);
+                audio.removeEventListener('loadedmetadata', cargarMetadataCancion);
+                audio.removeEventListener('canplay', puedeReproducir);
+                audio.removeEventListener('playing', reproduciendo);
+                audio.removeEventListener('waiting', esperando);
+                audio.removeEventListener('ended', terminado);
+                audio.removeEventListener('error', errores);
+                audio.removeEventListener('loadstart', cargarInicio);
+                audio.removeEventListener('durationchange', cambiarDuracion);
+                audio.removeEventListener('seeking', busquedaPrincipal);
+                audio.removeEventListener('seeked', busquedaPrincipalHecha);
+                audio.removeEventListener('play', reproducir);
+                audio.removeEventListener('pause', pausar);
             };
         }
     }, [
@@ -849,14 +865,14 @@ export const PlayerProvider = ({ children }) => {
         getAudioUrl,
         colaActual,
         looping,
-        loopingOne, // Añadido
+        loopingOne,
         cancionActualIndex,
-        preloadedSongIndex,
+        cancionPrecargadaIndex,
         Reproduciendo,
-        userInitiatedPlayRef,
+        usuarioInicioPlayRef,
         cancionActual,
-        play, // Añadido
-        seek // Añadido
+        play,
+        busqueda
     ]);
 
     return (
@@ -881,7 +897,7 @@ export const PlayerProvider = ({ children }) => {
                 pause,
                 siguienteCancion,
                 anteriorCancion,
-                seek,
+                busqueda,
                 setVolumen: setVolumenCallback,
                 toggleAleatorio,
                 toggleLoop,
@@ -892,7 +908,7 @@ export const PlayerProvider = ({ children }) => {
         >
             {children}
             <audio ref={audioRef} preload="metadata" style={{ display: 'none' }} />
-            <audio ref={preloadAudioRef} preload="metadata" style={{ display: 'none' }} />
+            <audio ref={precargarAudioRef} preload="metadata" style={{ display: 'none' }} />
         </PlayerContext.Provider>
     );
 };

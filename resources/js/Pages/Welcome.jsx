@@ -22,20 +22,20 @@ export default function Welcome({ auth, generos }) {
         pause
     } = useContext(PlayerContext);
 
-    const [likeProcessing, setLikeProcessing] = useState({});
+    const [procesandoMeGusta, setProcesandoMeGusta] = useState({});
 
     const recargarCancionesAleatorias = () => {
         fetch('/api/welcome-random')
             .then(res => {
                 if (!res.ok) {
-                    throw new Error(`HTTP error! status: ${res.status}`);
+                    throw new Error(`Error HTTP! estado: ${res.status}`);
                 }
                 return res.json();
             })
             .then(data => {
                 const cancionesConLoopz = data.map(cancion => ({
                     ...cancion,
-                    is_in_user_loopz: cancion.is_in_user_loopz ?? false,
+                    esta_en_loopz_usuario: cancion.es_loopz ?? false,
                 }));
                 setCancionesAleatorias(cancionesConLoopz);
             })
@@ -43,17 +43,17 @@ export default function Welcome({ auth, generos }) {
     };
 
     const manejarCancionLoopzToggle = (cancion) => {
-        if (likeProcessing[cancion.id] || !auth.user) {
+        if (procesandoMeGusta[cancion.id] || !auth.user) {
             return;
         }
 
         setCancionesAleatorias(prevCanciones =>
             prevCanciones.map(c =>
-                c.id === cancion.id ? { ...c, is_in_user_loopz: !c.is_in_user_loopz } : c
+                c.id === cancion.id ? { ...c, esta_en_loopz_usuario: !c.esta_en_loopz_usuario } : c
             )
         );
 
-        setLikeProcessing(prev => ({ ...prev, [cancion.id]: true }));
+        setProcesandoMeGusta(prev => ({ ...prev, [cancion.id]: true }));
 
         router.post(route('cancion.loopz', { cancion: cancion.id }), {}, {
             preserveScroll: true,
@@ -63,16 +63,16 @@ export default function Welcome({ auth, generos }) {
             onError: () => {
                 setCancionesAleatorias(prevCanciones =>
                     prevCanciones.map(c =>
-                        c.id === cancion.id ? { ...c, is_in_user_loopz: !c.is_in_user_loopz } : c
+                        c.id === cancion.id ? { ...c, esta_en_loopz_usuario: !c.esta_en_loopz_usuario } : c
                     )
                 );
                 console.error(`Error al alternar LoopZ para la canción ${cancion.id}`);
             },
             onFinish: () => {
-                setLikeProcessing(prev => {
-                    const newState = { ...prev };
-                    delete newState[cancion.id];
-                    return newState;
+                setProcesandoMeGusta(prev => {
+                    const nuevoEstado = { ...prev };
+                    delete nuevoEstado[cancion.id];
+                    return nuevoEstado;
                 });
             },
         });
@@ -98,7 +98,7 @@ export default function Welcome({ auth, generos }) {
     };
 
     const estaSonandoCancion = (cancion) => cancionActual?.id === cancion.id && Reproduciendo;
-    const estaProcesandoLoopz = (cancionId) => likeProcessing[cancionId];
+    const estaProcesandoLoopz = (cancionId) => procesandoMeGusta[cancionId];
 
 
     return (
@@ -186,12 +186,12 @@ export default function Welcome({ auth, generos }) {
                                                     className={`p-2 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-800 ${procesandoLoopz || !auth.user ?
                                                         'text-gray-500 cursor-not-allowed' : 'text-gray-400 hover:text-purple-400'
                                                         }`}
-                                                    title={cancion.is_in_user_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ"}
+                                                    title={cancion.esta_en_loopz_usuario ? "Quitar de LoopZ" : "Añadir a LoopZ"}
                                                 >
                                                     {procesandoLoopz ? (
                                                         <LoadingIcon className="h-5 w-5 animate-spin text-purple-400" />
                                                     ) : (
-                                                        cancion.is_in_user_loopz ? (
+                                                        cancion.esta_en_loopz_usuario ? (
                                                             <HeartIconSolid className="h-5 w-5 text-purple-500" />
                                                         ) : (
                                                             <HeartIconOutline className="h-5 w-5" />

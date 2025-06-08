@@ -8,15 +8,15 @@ import ContextMenu from '@/Components/ContextMenu';
 import {
   PlayIcon,
   PauseIcon,
-  ArrowPathIcon as LoadingIconSolid,
+  ArrowPathIcon as IconoCargandoSolido,
   EllipsisVerticalIcon,
   ShareIcon,
   QueueListIcon,
   ArrowUpOnSquareIcon,
-  HeartIcon as HeartIconOutline,
+  HeartIcon as IconoCorazonContorno,
   MusicalNoteIcon
 } from '@heroicons/react/24/outline';
-import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
+import { HeartIcon as IconoCorazonSolido } from '@heroicons/react/24/solid';
 
 
 const obtenerUrlImagen = (item, tipo) => {
@@ -80,38 +80,38 @@ const ImagenConPlaceholder = ({ src, alt, claseImagen, clasePlaceholder }) => {
   );
 };
 
-const ResultadoCard = memo(({ objeto, tipo }) => {
+const TarjetaResultado = memo(({ objeto, tipo }) => {
   const href = construirRuta(tipo, objeto.id);
-  const imageUrl = obtenerUrlImagen(objeto, tipo);
-  const title = objeto.name || objeto.titulo || objeto.nombre || 'Desconocido';
+  const urlImagen = obtenerUrlImagen(objeto, tipo);
+  const titulo = objeto.name || objeto.titulo || objeto.nombre || 'Desconocido';
   const {
     cargarColaYIniciar,
-    Reproduciendo,
-    play,
-    pause,
-    sourceId,
+    reproduciendo,
+    reproducir,
+    pausar,
+    idFuente,
     cargando
   } = useContext(PlayerContext);
 
-  const sourceKey = tipo === 'cancion'
+  const claveFuente = tipo === 'cancion'
     ? `search-cancion-${objeto.id}`
     : `search-container-${objeto.id}`;
-  const isCurrent = sourceId === sourceKey;
+  const esActual = idFuente === claveFuente;
   const canciones = (tipo === 'cancion' && objeto.archivo_url) ? [objeto] : (objeto.canciones || []);
 
-  const handlePlayClick = e => {
+  const manejarClickReproducir = e => {
     e.preventDefault(); e.stopPropagation();
-    if (cargando && !isCurrent) return;
+    if (cargando && !esActual) return;
 
-    if (isCurrent) {
-      return Reproduciendo ? pause() : play();
+    if (esActual) {
+      return reproduciendo ? pausar() : reproducir();
     }
 
     if (canciones.length) {
       if (tipo === 'cancion' && objeto.archivo_url) {
-        cargarColaYIniciar([objeto], { id: sourceKey, type: 'search-result-single-song' });
+        cargarColaYIniciar([objeto], { id: claveFuente, type: 'search-result-single-song' });
       } else {
-        cargarColaYIniciar(canciones, { id: sourceKey, type: 'search-container', iniciar: 0 });
+        cargarColaYIniciar(canciones, { id: claveFuente, type: 'search-container', iniciar: 0 });
       }
     } else {
       if (canciones.length === 0) {
@@ -120,54 +120,54 @@ const ResultadoCard = memo(({ objeto, tipo }) => {
     }
   };
 
-  const showPlayButton = tipo === 'cancion' || (canciones.length > 0);
+  const mostrarBotonReproducir = tipo === 'cancion' || (canciones.length > 0);
 
-  const isUserType = tipo === 'user';
-  const cardClasses = `
+  const esTipoUsuario = tipo === 'user';
+  const clasesTarjeta = `
     bg-gradient-to-b from-gray-800 to-gray-850 rounded-lg shadow-lg overflow-hidden
     flex flex-col items-center text-center p-4 pb-0
     transition duration-300 ease-in-out hover:from-gray-700 hover:to-gray-750 hover:shadow-xl w-full group
   `;
 
-  const imageContainerClasses = `
+  const clasesContenedorImagen = `
     relative w-full aspect-square mb-3 transform transition-transform duration-300 ease-in-out group-hover:scale-105
-    ${isUserType ? 'rounded-full' : 'rounded'}
+    ${esTipoUsuario ? 'rounded-full' : 'rounded'}
   `;
 
-  const imageClasses = `
+  const clasesImagen = `
     absolute inset-0 w-full h-full object-cover
-    ${isUserType ? 'rounded-full' : 'rounded'}
+    ${esTipoUsuario ? 'rounded-full' : 'rounded'}
   `;
 
-  const placeholderClasses = `
+  const clasesPlaceholder = `
     absolute inset-0 w-full h-full bg-gray-750 flex items-center justify-center
-    ${isUserType ? 'rounded-full' : 'rounded'}
+    ${esTipoUsuario ? 'rounded-full' : 'rounded'}
   `;
 
   return (
-    <Link href={href} className={cardClasses}>
-      <div className={imageContainerClasses}>
+    <Link href={href} className={clasesTarjeta}>
+      <div className={clasesContenedorImagen}>
         <ImagenConPlaceholder
-          src={imageUrl}
-          alt={title}
-          claseImagen={imageClasses}
-          clasePlaceholder={placeholderClasses}
+          src={urlImagen}
+          alt={titulo}
+          claseImagen={clasesImagen}
+          clasePlaceholder={clasesPlaceholder}
         />
-        {showPlayButton && (
+        {mostrarBotonReproducir && (
           <button
-            onClick={handlePlayClick}
+            onClick={manejarClickReproducir}
             className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded"
-            disabled={cargando && !isCurrent}
+            disabled={cargando && !esActual}
           >
-            {cargando && isCurrent
-              ? <LoadingIconSolid className="w-7 h-7 animate-spin text-white" />
-              : isCurrent && Reproduciendo
+            {cargando && esActual
+              ? <IconoCargandoSolido className="w-7 h-7 animate-spin text-white" />
+              : esActual && reproduciendo
                 ? <PauseIcon className="w-7 h-7 text-white" />
                 : <PlayIcon className="w-7 h-7 text-white" />}
           </button>
         )}
       </div>
-      <p className="text-sm font-semibold text-gray-100 group-hover:text-white group-hover:underline line-clamp-2" title={title}>{title}</p>
+      <p className="text-sm font-semibold text-gray-100 group-hover:text-white group-hover:underline line-clamp-2" title={titulo}>{titulo}</p>
       <p className="text-xs text-gray-400 mt-1 truncate w-full">
         {getTipoNombreMayuscula(tipo)}
       </p>
@@ -175,28 +175,28 @@ const ResultadoCard = memo(({ objeto, tipo }) => {
   );
 });
 
-ResultadoCard.propTypes = {
+TarjetaResultado.propTypes = {
     objeto: PropTypes.object.isRequired,
     tipo: PropTypes.string.isRequired,
 };
 
-const CancionListaItem = ({ cancion, openContextMenu, openContextMenuMobile, isMobile, auth, likeProcessing, manejarCancionLoopzToggle }) => {
+const ItemListaCancion = ({ cancion, abrirMenuContexto, abrirMenuContextoMovil, esMovil, auth, procesandoMeGusta, manejarAlternarCancionLoopz }) => {
   const {
     cargarColaYIniciar,
-    Reproduciendo,
-    play,
-    pause,
+    reproduciendo,
+    reproducir,
+    pausar,
     cancionActual,
-    sourceId,
+    idFuente,
     cargando
   } = useContext(PlayerContext);
-  const isThis = cancionActual?.id === cancion.id;
-  const isThisLoading = cargando && isThis;
+  const esEsta = cancionActual?.id === cancion.id;
+  const esEstaCargando = cargando && esEsta;
 
-  const handlePlay = () => {
+  const manejarReproducir = () => {
     if (!cancion.archivo_url) return;
-    if (sourceId === `search-cancion-${cancion.id}`) {
-      return Reproduciendo ? pause() : play();
+    if (idFuente === `search-cancion-${cancion.id}`) {
+      return reproduciendo ? pausar() : reproducir();
     }
     cargarColaYIniciar([cancion], { id: `search-cancion-${cancion.id}`, type: 'search-result' });
   };
@@ -204,16 +204,16 @@ const CancionListaItem = ({ cancion, openContextMenu, openContextMenuMobile, isM
   return (
     <div
       className="flex items-center py-2 px-2 hover:bg-gray-700 rounded-md transition duration-150 ease-in-out group relative"
-      onContextMenu={!isMobile ? (e) => openContextMenu(e, cancion) : undefined}
+      onContextMenu={!esMovil ? (e) => abrirMenuContexto(e, cancion) : undefined}
     >
       <button
-        onClick={handlePlay}
-        className={`flex-shrink-0 p-1 ${isThis ? 'text-blue-500' : 'text-gray-400 hover:text-blue-400'}`}
-        disabled={isThisLoading || !cancion.archivo_url}
+        onClick={manejarReproducir}
+        className={`flex-shrink-0 p-1 ${esEsta ? 'text-blue-500' : 'text-gray-400 hover:text-blue-400'}`}
+        disabled={esEstaCargando || !cancion.archivo_url}
       >
-        {isThisLoading
-          ? <LoadingIconSolid className="h-5 w-5 animate-spin text-blue-500" />
-          : isThis
+        {esEstaCargando
+          ? <IconoCargandoSolido className="h-5 w-5 animate-spin text-blue-500" />
+          : esEsta
             ? <PauseIcon className="h-5 w-5" />
             : <PlayIcon className="h-5 w-5" />}
       </button>
@@ -233,20 +233,20 @@ const CancionListaItem = ({ cancion, openContextMenu, openContextMenuMobile, isM
 
       {auth.user && (
           <button
-              onClick={() => manejarCancionLoopzToggle(cancion.id, cancion.is_in_user_loopz)}
-              disabled={likeProcessing === cancion.id}
-              className={`p-1 text-gray-400 hover:text-purple-400 focus:outline-none flex-shrink-0 ml-auto ${likeProcessing === cancion.id ? 'cursor-wait' : ''}`}
+              onClick={() => manejarAlternarCancionLoopz(cancion.id, cancion.is_in_user_loopz)}
+              disabled={procesandoMeGusta === cancion.id}
+              className={`p-1 text-gray-400 hover:text-purple-400 focus:outline-none flex-shrink-0 ml-auto ${procesandoMeGusta === cancion.id ? 'cursor-wait' : ''}`}
               title={cancion.is_in_user_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ"}
           >
-              {likeProcessing === cancion.id ? <LoadingIconSolid className="h-5 w-5 animate-spin text-purple-400" /> :
-                  (cancion.is_in_user_loopz ? (<HeartIconSolid className="h-5 w-5 text-purple-500" />) : (<HeartIconOutline className="h-5 w-5" />))
+              {procesandoMeGusta === cancion.id ? <IconoCargandoSolido className="h-5 w-5 animate-spin text-purple-400" /> :
+                  (cancion.is_in_user_loopz ? (<IconoCorazonSolido className="h-5 w-5 text-purple-500" />) : (<IconoCorazonContorno className="h-5 w-5" />))
               }
           </button>
       )}
 
-      {isMobile && (
+      {esMovil && (
         <button
-            onClick={(e) => openContextMenuMobile(e, cancion)}
+            onClick={(e) => abrirMenuContextoMovil(e, cancion)}
             className="p-1 text-gray-400 hover:text-gray-200 focus:outline-none flex-shrink-0 ml-1"
             title="Opciones"
         >
@@ -257,74 +257,74 @@ const CancionListaItem = ({ cancion, openContextMenu, openContextMenuMobile, isM
   );
 };
 
-CancionListaItem.propTypes = {
+ItemListaCancion.propTypes = {
     cancion: PropTypes.object.isRequired,
-    openContextMenu: PropTypes.func.isRequired,
-    openContextMenuMobile: PropTypes.func.isRequired,
-    isMobile: PropTypes.bool.isRequired,
+    abrirMenuContexto: PropTypes.func.isRequired,
+    abrirMenuContextoMovil: PropTypes.func.isRequired,
+    esMovil: PropTypes.bool.isRequired,
     auth: PropTypes.object.isRequired,
-    likeProcessing: PropTypes.string,
-    manejarCancionLoopzToggle: PropTypes.func.isRequired,
+    procesandoMeGusta: PropTypes.string,
+    manejarAlternarCancionLoopz: PropTypes.func.isRequired,
 };
 
 export default function SearchIndex({ searchQuery, results, principal, principalKey, relatedContent, relatedSongs, auth }) {
   const {
     cargarColaYIniciar,
-    Reproduciendo,
-    play,
-    pause,
-    sourceId,
+    reproduciendo,
+    reproducir,
+    pausar,
+    idFuente,
     cargando,
     añadirSiguiente = () => {},
   } = useContext(PlayerContext);
 
   const page = usePage();
-  const [cancionesState, setCancionesState] = useState(relatedSongs || []);
-  const [likeProcessing, setLikeProcessing] = useState(null);
+  const [estadoCanciones, setEstadoCanciones] = useState(relatedSongs || []);
+  const [procesandoMeGusta, setProcesandoMeGusta] = useState(null);
   const [mostrarToast, setMostrarToast] = useState(false);
   const [mensajeToast, setMensajeToast] = useState('');
-  const [contextMenu, setContextMenu] = useState({
-      show: false,
+  const [menuContexto, setMenuContexto] = useState({
+      mostrar: false,
       x: 0,
       y: 0,
-      song: null,
+      cancion: null,
   });
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [esMovil, setEsMovil] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const manejarRedimension = () => setEsMovil(window.innerWidth <= 768);
+    window.addEventListener('resize', manejarRedimension);
+    return () => window.removeEventListener('resize', manejarRedimension);
   }, []);
 
   useEffect(() => {
-    setCancionesState(relatedSongs || []);
+    setEstadoCanciones(relatedSongs || []);
   }, [relatedSongs]);
 
 
-  const principalSourceKey = `search-principal-${principalKey}-${principal?.id}`;
-  const isPrincipalPlayingOrLoading = sourceId === principalSourceKey;
+  const claveFuentePrincipal = `search-principal-${principalKey}-${principal?.id}`;
+  const estaPrincipalReproduciendoOCargando = idFuente === claveFuentePrincipal;
 
-  const handlePrincipalPlay = () => {
+  const manejarReproduccionPrincipal = () => {
     if (!principal) return;
     if (principalKey === 'cancion' && principal.archivo_url) {
-      if (isPrincipalPlayingOrLoading) {
-        return Reproduciendo ? pause() : play();
+      if (estaPrincipalReproduciendoOCargando) {
+        return reproduciendo ? pausar() : reproducir();
       }
-      cargarColaYIniciar([principal], { id: principalSourceKey, type: 'search-principal' });
+      cargarColaYIniciar([principal], { id: claveFuentePrincipal, type: 'search-principal' });
     } else if (principal.canciones && principal.canciones.length > 0) {
-      if (isPrincipalPlayingOrLoading) {
-        return Reproduciendo ? pause() : play();
+      if (estaPrincipalReproduciendoOCargando) {
+        return reproduciendo ? pausar() : reproducir();
       }
-      cargarColaYIniciar(principal.canciones, { id: principalSourceKey, type: 'search-principal-container', iniciar: 0 });
+      cargarColaYIniciar(principal.canciones, { id: claveFuentePrincipal, type: 'search-principal-container', iniciar: 0 });
     } else {
       alert(`No hay canciones para reproducir en este ${getTipoNombreMayuscula(principalKey)}.`);
     }
   };
 
-  const showPrincipalPlayButton = principal && (principalKey === 'cancion' || (principal.canciones && principal.canciones.length > 0));
+  const mostrarBotonReproduccionPrincipal = principal && (principalKey === 'cancion' || (principal.canciones && principal.canciones.length > 0));
 
-  const sectionsToRender = [];
+  const seccionesARenderizar = [];
 
   const copiarAlPortapapeles = useCallback((texto, mensaje = 'Guardado en el portapapeles') => {
     navigator.clipboard.writeText(texto).then(() => {
@@ -332,36 +332,35 @@ export default function SearchIndex({ searchQuery, results, principal, principal
         setMostrarToast(true);
         setTimeout(() => { setMostrarToast(false); }, 3000);
     }).catch(err => {
-        console.error('Error al copiar:', err);
         setMensajeToast('Error al copiar');
         setMostrarToast(true);
         setTimeout(() => { setMostrarToast(false); }, 3000);
     });
   }, []);
 
-  const closeContextMenu = useCallback(() => {
-      setContextMenu({ ...contextMenu, show: false, song: null });
-  }, [contextMenu]);
+  const cerrarMenuContexto = useCallback(() => {
+      setMenuContexto({ ...menuContexto, mostrar: false, cancion: null });
+  }, [menuContexto]);
 
-  const manejarCancionLoopzToggle = useCallback((songId, isInLoopz) => {
-    if (!songId || likeProcessing === songId) return;
-    setLikeProcessing(songId);
+  const manejarAlternarCancionLoopz = useCallback((idCancion, estaEnLoopz) => {
+    if (!idCancion || procesandoMeGusta === idCancion) return;
+    setProcesandoMeGusta(idCancion);
 
-    setCancionesState(prevCanciones => {
+    setEstadoCanciones(prevCanciones => {
         if (!prevCanciones) return prevCanciones;
-        const newCanciones = [...prevCanciones];
-        const songIndex = newCanciones.findIndex(c => c.id === songId);
+        const nuevasCanciones = [...prevCanciones];
+        const indiceCancion = nuevasCanciones.findIndex(c => c.id === idCancion);
 
-        if (songIndex !== -1) {
-            newCanciones[songIndex] = {
-                ...newCanciones[songIndex],
-                is_in_user_loopz: !isInLoopz
+        if (indiceCancion !== -1) {
+            nuevasCanciones[indiceCancion] = {
+                ...nuevasCanciones[indiceCancion],
+                is_in_user_loopz: !estaEnLoopz
             };
         }
-        return newCanciones;
+        return nuevasCanciones;
     });
 
-    router.post(route('cancion.loopz', { cancion: songId }), {}, {
+    router.post(route('cancion.loopz', { cancion: idCancion }), {}, {
         preserveScroll: true,
         preserveState: true,
         onSuccess: (page) => {
@@ -369,41 +368,41 @@ export default function SearchIndex({ searchQuery, results, principal, principal
                 setMensajeToast(page.props.flash.song_loopz_status);
                 setMostrarToast(true);
             }
-            if (contextMenu.show && contextMenu.song?.id === songId) {
-                closeContextMenu();
+            if (menuContexto.mostrar && menuContexto.cancion?.id === idCancion) {
+                cerrarMenuContexto();
             }
         },
         onError: (errors) => {
-            setCancionesState(prevCanciones => {
+            setEstadoCanciones(prevCanciones => {
                 if (!prevCanciones) return prevCanciones;
-                const newCanciones = [...prevCanciones];
-                const songIndex = newCanciones.findIndex(c => c.id === songId);
-                if (songIndex !== -1) {
-                    newCanciones[songIndex] = { ...newCanciones[songIndex], is_in_user_loopz: isInLoopz };
+                const nuevasCanciones = [...prevCanciones];
+                const indiceCancion = nuevasCanciones.findIndex(c => c.id === idCancion);
+                if (indiceCancion !== -1) {
+                    nuevasCanciones[indiceCancion] = { ...nuevasCanciones[indiceCancion], is_in_user_loopz: estaEnLoopz };
                 }
-                return newCanciones;
+                return nuevasCanciones;
             });
             setMensajeToast(errors.message || 'Error al actualizar LoopZ.');
             setMostrarToast(true);
         },
         onFinish: () => {
-            setLikeProcessing(null);
+            setProcesandoMeGusta(null);
         },
     });
-  }, [likeProcessing, contextMenu.show, contextMenu.song, closeContextMenu]);
+  }, [procesandoMeGusta, menuContexto.mostrar, menuContexto.cancion, cerrarMenuContexto]);
 
-  const manejarToggleCancion = useCallback((cancionId, playlistId) => {
-    if (!cancionId || !playlistId) return;
+  const manejarAlternarCancionPlaylist = useCallback((idCancion, idPlaylist) => {
+    if (!idCancion || !idPlaylist) return;
     router.post(
         route('playlist.toggleCancion', {
-            playlist: playlistId,
-            cancion: cancionId
+            playlist: idPlaylist,
+            cancion: idCancion
         }),
         {},
         {
             preserveScroll: true,
             onSuccess: (page) => {
-                closeContextMenu();
+                cerrarMenuContexto();
                 setMensajeToast(page.props.flash?.message || 'Canción actualizada en la playlist.');
                 setMostrarToast(true);
                 setTimeout(() => { setMostrarToast(false); }, 3000);
@@ -416,109 +415,109 @@ export default function SearchIndex({ searchQuery, results, principal, principal
             }
         }
     );
-  }, [closeContextMenu]);
+  }, [cerrarMenuContexto]);
 
-  const openContextMenu = useCallback((event, song) => {
+  const abrirMenuContexto = useCallback((event, cancion) => {
       event.preventDefault();
-      setContextMenu({
-          show: true,
+      setMenuContexto({
+          mostrar: true,
           x: event.pageX,
           y: event.pageY,
-          song: song,
+          cancion: cancion,
       });
   }, []);
 
-  const openContextMenuMobile = useCallback((event, song) => {
+  const abrirMenuContextoMovil = useCallback((event, cancion) => {
       event.stopPropagation();
       const rect = event.currentTarget.getBoundingClientRect();
-      setContextMenu({
-          show: true,
+      setMenuContexto({
+          mostrar: true,
           x: rect.left + window.scrollX + rect.width / 2,
           y: rect.bottom + window.scrollY + 10,
-          song: song,
+          cancion: cancion,
       });
   }, []);
 
-  const handleAddToQueueNext = useCallback(() => {
-    if (contextMenu.song && añadirSiguiente) {
-        añadirSiguiente(contextMenu.song);
-        closeContextMenu();
+  const handleAñadirSiguienteCola = useCallback(() => {
+    if (menuContexto.cancion && añadirSiguiente) {
+        añadirSiguiente(menuContexto.cancion);
+        cerrarMenuContexto();
         setMensajeToast('Canción añadida a la cola');
         setMostrarToast(true);
         setTimeout(() => { setMostrarToast(false); }, 3000);
     }
-  }, [contextMenu.song, añadirSiguiente, closeContextMenu]);
+  }, [menuContexto.cancion, añadirSiguiente, cerrarMenuContexto]);
 
-  const handleCompartirCancion = useCallback(() => {
-    if (contextMenu.song) {
-        const songUrl = route('canciones.show', contextMenu.song.id);
-        copiarAlPortapapeles(songUrl, 'URL de canción copiada');
-        closeContextMenu();
+  const manejarCompartirCancion = useCallback(() => {
+    if (menuContexto.cancion) {
+        const urlCancion = route('canciones.show', menuContexto.cancion.id);
+        copiarAlPortapapeles(urlCancion, 'URL de canción copiada');
+        cerrarMenuContexto();
     }
-  }, [contextMenu.song, copiarAlPortapapeles, closeContextMenu]);
+  }, [menuContexto.cancion, copiarAlPortapapeles, cerrarMenuContexto]);
 
-  const getContextMenuOptions = useCallback(() => {
-      if (!contextMenu.song) return [];
-      const options = [];
-      options.push({
+  const obtenerOpcionesMenuContexto = useCallback(() => {
+      if (!menuContexto.cancion) return [];
+      const opciones = [];
+      opciones.push({
           label: "Ver canción",
           icon: <MusicalNoteIcon className="h-5 w-5" />,
           action: () => {
-              router.visit(route('canciones.show', contextMenu.song.id));
-              closeContextMenu();
+              router.visit(route('canciones.show', menuContexto.cancion.id));
+              cerrarMenuContexto();
           },
       });
 
-      options.push({
-          label: contextMenu.song.is_in_user_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ",
-          action: () => manejarCancionLoopzToggle(contextMenu.song.id, contextMenu.song.is_in_user_loopz),
-          icon: contextMenu.song.is_in_user_loopz ? <HeartIconSolid className="h-5 w-5 text-purple-500" /> : <HeartIconOutline className="h-5 w-5" />,
-          disabled: likeProcessing === contextMenu.song.id,
+      opciones.push({
+          label: menuContexto.cancion.is_in_user_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ",
+          action: () => manejarAlternarCancionLoopz(menuContexto.cancion.id, menuContexto.cancion.is_in_user_loopz),
+          icon: menuContexto.cancion.is_in_user_loopz ? <IconoCorazonSolido className="h-5 w-5 text-purple-500" /> : <IconoCorazonContorno className="h-5 w-5" />,
+          disabled: procesandoMeGusta === menuContexto.cancion.id,
       });
 
-      options.push({
+      opciones.push({
           label: "Añadir a la cola",
-          action: handleAddToQueueNext,
+          action: handleAñadirSiguienteCola,
           icon: <QueueListIcon className="h-5 w-5" />,
           disabled: !añadirSiguiente,
       });
 
       if (auth.user) {
-          options.push({
+          opciones.push({
               label: "Añadir a playlist",
               icon: <ArrowUpOnSquareIcon className="h-5 w-5" />,
               submenu: 'userPlaylists',
           });
       }
 
-      options.push({
+      opciones.push({
           label: "Compartir",
           icon: <ShareIcon className="h-5 w-5" />,
-          action: handleCompartirCancion,
+          action: manejarCompartirCancion,
       });
 
-      return options;
+      return opciones;
   }, [
-      contextMenu.song,
-      manejarCancionLoopzToggle,
-      likeProcessing,
-      handleAddToQueueNext,
-      handleCompartirCancion,
+      menuContexto.cancion,
+      manejarAlternarCancionLoopz,
+      procesandoMeGusta,
+      handleAñadirSiguienteCola,
+      manejarCompartirCancion,
       añadirSiguiente,
       auth.user,
-      closeContextMenu
+      cerrarMenuContexto
   ]);
 
-  if (cancionesState && cancionesState.length > 0) {
-      sectionsToRender.push({
+  if (estadoCanciones && estadoCanciones.length > 0) {
+      seccionesARenderizar.push({
           key: 'all_related_songs',
           label: `Canciones`,
-          items: cancionesState,
+          items: estadoCanciones,
           type: 'cancion'
       });
   }
 
-  const relatedSectionLabels = {
+  const etiquetasSeccionRelacionadas = {
       'artistas_relacionados': 'Artistas relacionados',
       'playlists_del_artista': 'Playlists del artista',
       'albumes_del_artista': 'Álbumes del artista',
@@ -531,29 +530,29 @@ export default function SearchIndex({ searchQuery, results, principal, principal
 
   Object.keys(relatedContent).forEach(key => {
       if (relatedContent[key] && relatedContent[key].length > 0) {
-          let sectionItemType;
-          if (key.includes('artistas')) sectionItemType = 'user';
-          else if (key.includes('canciones')) sectionItemType = 'cancion';
-          else sectionItemType = relatedContent[key][0]?.tipo || 'album';
+          let tipoItemSeccion;
+          if (key.includes('artistas')) tipoItemSeccion = 'user';
+          else if (key.includes('canciones')) tipoItemSeccion = 'cancion';
+          else tipoItemSeccion = relatedContent[key][0]?.tipo || 'album';
 
-          sectionsToRender.push({
+          seccionesARenderizar.push({
               key: `related_${key}`,
-              label: relatedSectionLabels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+              label: etiquetasSeccionRelacionadas[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
               items: relatedContent[key],
-              type: sectionItemType
+              type: tipoItemSeccion
           });
       }
   });
 
 
-  const displayedTypes = new Set(sectionsToRender.map(s => s.type));
-  if (cancionesState && cancionesState.length > 0) displayedTypes.add('cancion');
+  const tiposMostrados = new Set(seccionesARenderizar.map(s => s.type));
+  if (estadoCanciones && estadoCanciones.length > 0) tiposMostrados.add('cancion');
 
   ['users', 'playlists', 'eps', 'singles', 'albumes']
     .forEach(key => {
       if (results[key] && results[key].length > 0) {
-        if (!displayedTypes.has(key.slice(0, -1))) {
-            sectionsToRender.push({
+        if (!tiposMostrados.has(key.slice(0, -1))) {
+            seccionesARenderizar.push({
                 key: `general_${key}`,
                 label: `Más ${getTipoNombreMayuscula(key.slice(0, -1)).toLowerCase()}${key.endsWith('s') ? 's' : ''} de tu búsqueda`,
                 items: results[key],
@@ -563,7 +562,7 @@ export default function SearchIndex({ searchQuery, results, principal, principal
       }
     });
 
-  const noResultsFound = !principal && sectionsToRender.every(s => s.items.length === 0);
+  const noResultadosEncontrados = !principal && seccionesARenderizar.every(s => s.items.length === 0);
 
   return (
     <AuthenticatedLayout>
@@ -571,19 +570,19 @@ export default function SearchIndex({ searchQuery, results, principal, principal
 
       <div className="relative z-[9999]">
         <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          show={contextMenu.show}
-          onClose={closeContextMenu}
-          options={getContextMenuOptions()}
+          x={menuContexto.x}
+          y={menuContexto.y}
+          show={menuContexto.mostrar}
+          onClose={cerrarMenuContexto}
+          options={obtenerOpcionesMenuContexto()}
           userPlaylists={(auth.user?.playlists || []).map(p => ({
               id: p.id,
               name: p.nombre,
-              action: () => manejarToggleCancion(contextMenu.song?.id, p.id),
+              action: () => manejarAlternarCancionPlaylist(menuContexto.cancion?.id, p.id),
               canciones: p.canciones || [],
               imagen: p.imagen,
           }))}
-          currentSong={contextMenu.song}
+          currentSong={menuContexto.cancion}
         />
       </div>
 
@@ -627,15 +626,15 @@ export default function SearchIndex({ searchQuery, results, principal, principal
               </div>
             </Link>
 
-            {showPrincipalPlayButton && (
+            {mostrarBotonReproduccionPrincipal && (
               <button
-                onClick={handlePrincipalPlay}
+                onClick={manejarReproduccionPrincipal}
                 className="absolute top-4 right-4 inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full text-white shadow-lg hover:scale-105 transition-transform focus:outline-none"
-                disabled={cargando && !isPrincipalPlayingOrLoading}
+                disabled={cargando && !estaPrincipalReproduciendoOCargando}
               >
-                {cargando && isPrincipalPlayingOrLoading
-                  ? <LoadingIconSolid className="h-7 w-7 animate-spin" />
-                  : isPrincipalPlayingOrLoading && Reproduciendo
+                {cargando && estaPrincipalReproduciendoOCargando
+                  ? <IconoCargandoSolido className="h-7 w-7 animate-spin" />
+                  : estaPrincipalReproduciendoOCargando && reproduciendo
                     ? <PauseIcon className="h-7 w-7" />
                     : <PlayIcon className="h-7 w-7" />}
               </button>
@@ -643,35 +642,35 @@ export default function SearchIndex({ searchQuery, results, principal, principal
           </div>
         )}
 
-        {sectionsToRender.map((section, index) => (
+        {seccionesARenderizar.map((section, index) => (
           section.items.length > 0 && (
             <section key={section.key || `section-${index}`} className="mb-8">
               <h2 className="text-white text-xl font-semibold mb-4">{section.label}</h2>
               {section.type === 'cancion' ? (
                 <div className="flex flex-col gap-2">
                   {section.items.map(c => (
-                    <CancionListaItem
+                    <ItemListaCancion
                       key={c.id}
                       cancion={c}
-                      openContextMenu={openContextMenu}
-                      openContextMenuMobile={openContextMenuMobile}
-                      isMobile={isMobile}
+                      abrirMenuContexto={abrirMenuContexto}
+                      abrirMenuContextoMovil={abrirMenuContextoMovil}
+                      esMovil={esMovil}
                       auth={auth}
-                      likeProcessing={likeProcessing}
-                      manejarCancionLoopzToggle={manejarCancionLoopzToggle}
+                      procesandoMeGusta={procesandoMeGusta}
+                      manejarAlternarCancionLoopz={manejarAlternarCancionLoopz}
                     />
                   ))}
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                  {section.items.map(o => <ResultadoCard key={`${o.tipo || 'desconocido'}-${o.id}`} objeto={o} tipo={o.tipo || section.type} />)}
+                  {section.items.map(o => <TarjetaResultado key={`${o.tipo || 'desconocido'}-${o.id}`} objeto={o} tipo={o.tipo || section.type} />)}
                 </div>
               )}
             </section>
           )
         ))}
 
-        {noResultsFound && (
+        {noResultadosEncontrados && (
           <p className="text-gray-400">No se encontraron resultados.</p>
         )}
       </div>
