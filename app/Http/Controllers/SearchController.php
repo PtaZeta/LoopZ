@@ -335,11 +335,11 @@ class SearchController extends Controller
             }
         }
 
-        $cancionesFinales->each(fn($c) => $c->is_in_user_loopz = in_array($c->id, $idsCancionesLoopz));
-        $playlistsFinales->each(fn($p) => $p->canciones->each(fn($c) => $c->is_in_user_loopz = in_array($c->id, $idsCancionesLoopz)));
-        $epsFinales->each(fn($ep) => $ep->canciones->each(fn($c) => $c->is_in_user_loopz = in_array($c->id, $idsCancionesLoopz)));
-        $singlesFinales->each(fn($s) => $s->canciones->each(fn($c) => $c->is_in_user_loopz = in_array($c->id, $idsCancionesLoopz)));
-        $albumesFinales->each(fn($a) => $a->canciones->each(fn($c) => $c->is_in_user_loopz = in_array($c->id, $idsCancionesLoopz)));
+        $cancionesFinales->each(fn($c) => $c->loopz_user = in_array($c->id, $idsCancionesLoopz));
+        $playlistsFinales->each(fn($p) => $p->canciones->each(fn($c) => $c->loopz_user = in_array($c->id, $idsCancionesLoopz)));
+        $epsFinales->each(fn($ep) => $ep->canciones->each(fn($c) => $c->loopz_user = in_array($c->id, $idsCancionesLoopz)));
+        $singlesFinales->each(fn($s) => $s->canciones->each(fn($c) => $c->loopz_user = in_array($c->id, $idsCancionesLoopz)));
+        $albumesFinales->each(fn($a) => $a->canciones->each(fn($c) => $c->loopz_user = in_array($c->id, $idsCancionesLoopz)));
 
 
         $resultados = [

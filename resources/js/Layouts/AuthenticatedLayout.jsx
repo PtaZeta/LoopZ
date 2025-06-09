@@ -120,7 +120,7 @@ const ImagenItemReproductor = memo(({ url, titulo, className = "w-10 h-10", icon
 
 ImagenItemReproductor.displayName = 'ImagenItemReproductor';
 
-export default function LayoutAutenticado({ children, header }) {
+export default function AuthenticatedLayout({ children, header }) {
     const { auth } = usePage().props;
     const usuario = auth.user;
     const [mostrandoMenuMovil, setMostrandoMenuMovil] = useState(false);

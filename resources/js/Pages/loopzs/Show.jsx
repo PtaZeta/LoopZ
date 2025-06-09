@@ -576,7 +576,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         });
 
         if (contextMenu.song.es_loopz) {
-            options[0].icon = <HeartIconSolid className="h-5 w-5 text-purple-500" />;
+            options[1].icon = <HeartIconSolid className="h-5 w-5 text-purple-500" />;
         }
 
         options.push({

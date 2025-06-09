@@ -233,13 +233,13 @@ const ItemListaCancion = ({ cancion, abrirMenuContexto, abrirMenuContextoMovil, 
 
       {auth.user && (
           <button
-              onClick={() => manejarAlternarCancionLoopz(cancion.id, cancion.is_in_user_loopz)}
+              onClick={() => manejarAlternarCancionLoopz(cancion.id, cancion.loopz_user)}
               disabled={procesandoMeGusta === cancion.id}
               className={`p-1 text-gray-400 hover:text-purple-400 focus:outline-none flex-shrink-0 ml-auto ${procesandoMeGusta === cancion.id ? 'cursor-wait' : ''}`}
-              title={cancion.is_in_user_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ"}
+              title={cancion.loopz_user ? "Quitar de LoopZ" : "Añadir a LoopZ"}
           >
               {procesandoMeGusta === cancion.id ? <IconoCargandoSolido className="h-5 w-5 animate-spin text-purple-400" /> :
-                  (cancion.is_in_user_loopz ? (<IconoCorazonSolido className="h-5 w-5 text-purple-500" />) : (<IconoCorazonContorno className="h-5 w-5" />))
+                  (cancion.loopz_user ? (<IconoCorazonSolido className="h-5 w-5 text-purple-500" />) : (<IconoCorazonContorno className="h-5 w-5" />))
               }
           </button>
       )}
@@ -354,7 +354,7 @@ export default function SearchIndex({ searchQuery, results, principal, principal
         if (indiceCancion !== -1) {
             nuevasCanciones[indiceCancion] = {
                 ...nuevasCanciones[indiceCancion],
-                is_in_user_loopz: !estaEnLoopz
+                loopz_user: !estaEnLoopz
             };
         }
         return nuevasCanciones;
@@ -378,7 +378,7 @@ export default function SearchIndex({ searchQuery, results, principal, principal
                 const nuevasCanciones = [...prevCanciones];
                 const indiceCancion = nuevasCanciones.findIndex(c => c.id === idCancion);
                 if (indiceCancion !== -1) {
-                    nuevasCanciones[indiceCancion] = { ...nuevasCanciones[indiceCancion], is_in_user_loopz: estaEnLoopz };
+                    nuevasCanciones[indiceCancion] = { ...nuevasCanciones[indiceCancion], loopz_user: estaEnLoopz };
                 }
                 return nuevasCanciones;
             });
@@ -469,9 +469,9 @@ export default function SearchIndex({ searchQuery, results, principal, principal
       });
 
       opciones.push({
-          label: menuContexto.cancion.is_in_user_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ",
-          action: () => manejarAlternarCancionLoopz(menuContexto.cancion.id, menuContexto.cancion.is_in_user_loopz),
-          icon: menuContexto.cancion.is_in_user_loopz ? <IconoCorazonSolido className="h-5 w-5 text-purple-500" /> : <IconoCorazonContorno className="h-5 w-5" />,
+          label: menuContexto.cancion.loopz_user ? "Quitar de LoopZ" : "Añadir a LoopZ",
+          action: () => manejarAlternarCancionLoopz(menuContexto.cancion.id, menuContexto.cancion.loopz_user),
+          icon: menuContexto.cancion.loopz_user ? <IconoCorazonSolido className="h-5 w-5 text-purple-500" /> : <IconoCorazonContorno className="h-5 w-5" />,
           disabled: procesandoMeGusta === menuContexto.cancion.id,
       });
 
@@ -481,15 +481,6 @@ export default function SearchIndex({ searchQuery, results, principal, principal
           icon: <QueueListIcon className="h-5 w-5" />,
           disabled: !añadirSiguiente,
       });
-
-      if (auth.user) {
-          opciones.push({
-              label: "Añadir a playlist",
-              icon: <ArrowUpOnSquareIcon className="h-5 w-5" />,
-              submenu: 'userPlaylists',
-          });
-      }
-
       opciones.push({
           label: "Compartir",
           icon: <ShareIcon className="h-5 w-5" />,

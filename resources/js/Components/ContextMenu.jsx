@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
 import PropTypes from 'prop-types';
 import { ChevronRightIcon } from '@heroicons/react/24/outline';
 
-const MinimalCheckIcon = ({ className }) => (
+const IconoCheckMinimal = ({ className }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     fill="none"
@@ -15,7 +15,7 @@ const MinimalCheckIcon = ({ className }) => (
   </svg>
 );
 
-const ContextMenu = memo(({
+const MenuContexto = memo(({
   x,
   y,
   show,
@@ -25,36 +25,36 @@ const ContextMenu = memo(({
   currentSong = null
 }) => {
   const menuRef = useRef(null);
-  const subMenuRef = useRef(null); // Nueva ref para el submenú
-  const [showSubMenu, setShowSubMenu] = useState(false);
-  const [subMenuOptions, setSubMenuOptions] = useState([]);
-  const [subMenuPosition, setSubMenuPosition] = useState({ x: 0, y: 0 });
-  const closeTimer = useRef(null);
+  const subMenuRef = useRef(null);
+  const [mostrarSubMenu, setMostrarSubMenu] = useState(false);
+  const [opcionesSubMenu, setOpcionesSubMenu] = useState([]);
+  const [posicionSubMenu, setPosicionSubMenu] = useState({ x: 0, y: 0 });
+  const temporizadorCierre = useRef(null);
 
   const handleClose = useCallback(() => {
-    setShowSubMenu(false);
-    setSubMenuOptions([]);
+    setMostrarSubMenu(false);
+    setOpcionesSubMenu([]);
     onClose();
   }, [onClose]);
 
-  const startCloseTimer = useCallback(() => {
-    closeTimer.current = setTimeout(handleClose, 100);
+  const iniciarTemporizadorCierre = useCallback(() => {
+    temporizadorCierre.current = setTimeout(handleClose, 100);
   }, [handleClose]);
 
-  const cancelCloseTimer = useCallback(() => {
-    if (closeTimer.current) {
-      clearTimeout(closeTimer.current);
-      closeTimer.current = null;
+  const cancelarTemporizadorCierre = useCallback(() => {
+    if (temporizadorCierre.current) {
+      clearTimeout(temporizadorCierre.current);
+      temporizadorCierre.current = null;
     }
   }, []);
 
   useEffect(() => {
     if (!show) {
-      setShowSubMenu(false);
-      setSubMenuOptions([]);
-      cancelCloseTimer();
+      setMostrarSubMenu(false);
+      setOpcionesSubMenu([]);
+      cancelarTemporizadorCierre();
     }
-  }, [show, cancelCloseTimer]);
+  }, [show, cancelarTemporizadorCierre]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -66,14 +66,14 @@ const ContextMenu = memo(({
       }
     };
 
-    if (show || showSubMenu) {
+    if (show || mostrarSubMenu) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [show, showSubMenu, handleClose]);
+  }, [show, mostrarSubMenu, handleClose]);
 
   if (!show) return null;
 
@@ -92,7 +92,7 @@ const ContextMenu = memo(({
   }
 
   const handleOptionInteraction = (option, event) => {
-    cancelCloseTimer();
+    cancelarTemporizadorCierre();
 
     if (option.submenu === 'userPlaylists') {
       const playlistOptions = Array.isArray(userPlaylists)
@@ -117,9 +117,9 @@ const ContextMenu = memo(({
         subMenuX = rect.left - subMenuWidth + window.scrollX;
       }
 
-      setSubMenuOptions(playlistOptions);
-      setSubMenuPosition({ x: subMenuX, y: subMenuY });
-      setShowSubMenu(true);
+      setOpcionesSubMenu(playlistOptions);
+      setPosicionSubMenu({ x: subMenuX, y: subMenuY });
+      setMostrarSubMenu(true);
     } else if (option.submenu) {
       const rect = event.currentTarget.getBoundingClientRect();
       let subMenuX = rect.right + window.scrollX;
@@ -129,9 +129,9 @@ const ContextMenu = memo(({
         subMenuX = rect.left - subMenuWidth + window.scrollX;
       }
 
-      setSubMenuOptions(option.submenu);
-      setSubMenuPosition({ x: subMenuX, y: subMenuY });
-      setShowSubMenu(true);
+      setOpcionesSubMenu(option.submenu);
+      setPosicionSubMenu({ x: subMenuX, y: subMenuY });
+      setMostrarSubMenu(true);
     } else {
       if (event.type === 'click' && option.action) {
         option.action();
@@ -141,7 +141,7 @@ const ContextMenu = memo(({
   };
 
   const handleSubMenuOptionClick = (option) => {
-    cancelCloseTimer(); // Cancelamos cualquier cierre pendiente
+    cancelarTemporizadorCierre();
     if (option.action) {
       option.action();
     }
@@ -157,8 +157,8 @@ const ContextMenu = memo(({
         role="menu"
         aria-orientation="vertical"
         aria-labelledby="options-menu"
-        onMouseEnter={cancelCloseTimer}
-        onMouseLeave={startCloseTimer}
+        onMouseEnter={cancelarTemporizadorCierre}
+        onMouseLeave={iniciarTemporizadorCierre}
       >
         <div className="py-1" role="none">
           {options.map((option, index) => (
@@ -174,7 +174,7 @@ const ContextMenu = memo(({
               }}
               onMouseEnter={(e) => {
                 if (option.submenu) handleOptionInteraction(option, e);
-                else setShowSubMenu(false);
+                else setMostrarSubMenu(false);
               }}
               className="flex items-center px-4 py-2 text-sm text-gray-300 hover:bg-slate-600 hover:text-white w-full text-left disabled:opacity-50 disabled:cursor-not-allowed"
               role="menuitem"
@@ -190,22 +190,22 @@ const ContextMenu = memo(({
         </div>
       </div>
 
-      {showSubMenu && (
+      {mostrarSubMenu && (
         <div
           ref={subMenuRef}
           className="absolute z-50 bg-slate-700 rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 focus:outline-none"
-          style={{ top: subMenuPosition.y, left: subMenuPosition.x, minWidth: `${subMenuWidth}px` }}
+          style={{ top: posicionSubMenu.y, left: posicionSubMenu.x, minWidth: `${subMenuWidth}px` }}
           role="menu"
           aria-orientation="vertical"
           aria-labelledby="options-menu"
-          onMouseEnter={cancelCloseTimer}
-          onMouseLeave={startCloseTimer}
+          onMouseEnter={cancelarTemporizadorCierre}
+          onMouseLeave={iniciarTemporizadorCierre}
         >
           <div className="py-1" role="none">
-            {subMenuOptions.length === 0 ? (
+            {opcionesSubMenu.length === 0 ? (
               <div className="px-4 py-2 text-sm text-gray-400">No tienes playlists</div>
             ) : (
-              subMenuOptions.map((option, index) => (
+              opcionesSubMenu.map((option, index) => (
                 <button
                   key={index}
                   onClick={() => handleSubMenuOptionClick(option)}
@@ -223,7 +223,7 @@ const ContextMenu = memo(({
                   {option.icon && <span className="mr-3">{option.icon}</span>}
                   {option.label}
                   {option.containsSong && (
-                    <MinimalCheckIcon className="ml-3 h-4 w-4 text-white" />
+                    <IconoCheckMinimal className="ml-3 h-4 w-4 text-white" />
                   )}
                 </button>
               ))
@@ -235,11 +235,11 @@ const ContextMenu = memo(({
   );
 });
 
-MinimalCheckIcon.propTypes = {
+IconoCheckMinimal.propTypes = {
   className: PropTypes.string,
 };
 
-ContextMenu.propTypes = {
+MenuContexto.propTypes = {
   x: PropTypes.number.isRequired,
   y: PropTypes.number.isRequired,
   show: PropTypes.bool.isRequired,
@@ -283,4 +283,4 @@ ContextMenu.propTypes = {
   }),
 };
 
-export default ContextMenu;
+export default MenuContexto;
