@@ -169,5 +169,7 @@ Route::post('/verificar-codigo', [CodigoVerificacionController::class, 'verifica
 Route::fallback(function () {
     return redirect()->route('welcome');
 });
-
+Route::get('/debug-env', function () {
+    dd($_ENV['MAIL_HOST'] ?? 'MAIL_HOST not in $_ENV', getenv('MAIL_HOST') ?: 'MAIL_HOST not in getenv');
+});
 require __DIR__.'/auth.php';

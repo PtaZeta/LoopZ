@@ -88,7 +88,6 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
     const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
     const [usuariosSeleccionados, setUsuariosSeleccionados] = useState(usuariosSeleccionadosIniciales);
     const [cargandoBusqueda, setCargandoBusqueda] = useState(false);
-    const [mostrarUsuariosIniciales, setMostrarUsuariosIniciales] = useState(false);
 
     const agregarUsuario = (usuario) => {
         if (!esCreador) return;
@@ -99,7 +98,6 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
             setData('userIds', nuevosUsuariosSeleccionados.map(u => u.id));
             setTerminoBusqueda('');
             setResultadosBusqueda([]);
-            setMostrarUsuariosIniciales(false);
         }
     };
 
@@ -116,13 +114,15 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
         if (terminoBusqueda.trim()) {
             realizarBusqueda(terminoBusqueda);
         } else {
-             realizarBusqueda('');
         }
     };
 
     const realizarBusqueda = useCallback(
         debounce(async (termino) => {
-            if (!esCreador) return;
+            if (!esCreador) {
+                setResultadosBusqueda([]);
+                return;
+            };
             setCargandoBusqueda(true);
             try {
                 const respuesta = await axios.get(route('usuarios.buscar', { q: termino }));
@@ -130,7 +130,6 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
                     usuario => !usuariosSeleccionados.some(seleccionado => seleccionado.id === usuario.id)
                 );
                 setResultadosBusqueda(usuariosDisponibles);
-                setMostrarUsuariosIniciales(!termino.trim() && usuariosDisponibles.length > 0);
             } catch (error) {
                  console.error("Error buscando usuarios:", error);
                  setResultadosBusqueda([]);
@@ -146,17 +145,19 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
         if (!esCreador) return;
         const termino = e.target.value;
         setTerminoBusqueda(termino);
-        realizarBusqueda(termino);
+        if (termino.trim().length > 0) {
+            realizarBusqueda(termino);
+        } else {
+            setResultadosBusqueda([]);
+            realizarBusqueda.cancel();
+        }
     };
 
     useEffect(() => {
-        if (esCreador && !terminoBusqueda.trim()) {
-            realizarBusqueda('');
-        }
         return () => {
             realizarBusqueda.cancel();
         };
-    }, [realizarBusqueda, terminoBusqueda, esCreador]);
+    }, [realizarBusqueda]);
 
     const manejarEnvio = (e) => {
         e.preventDefault();
@@ -178,7 +179,6 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
                 if (inputArchivoImagen) inputArchivoImagen.value = null;
                 setTerminoBusqueda('');
                 setResultadosBusqueda([]);
-                setMostrarUsuariosIniciales(false);
             },
             preserveScroll: true,
         });
@@ -322,7 +322,6 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
                                                     name="user-search"
                                                     value={terminoBusqueda}
                                                     onChange={manejarCambioBusqueda}
-                                                    onFocus={() => { if (!terminoBusqueda) realizarBusqueda('') }}
                                                     className="block w-full pr-10"
                                                     placeholder="Escribe para buscar..."
                                                     autoComplete="off"
@@ -337,7 +336,7 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
                                                     </div>
                                                 )}
                                             </div>
-                                            {!cargandoBusqueda && (terminoBusqueda || mostrarUsuariosIniciales) && esCreador && (
+                                            {!cargandoBusqueda && terminoBusqueda.trim().length > 0 && esCreador && (
                                                 <ul className="mt-2 border border-slate-600 rounded-md bg-slate-700 shadow-lg max-h-60 overflow-auto w-full z-10">
                                                     {resultadosBusqueda.length > 0 ? (
                                                         resultadosBusqueda.map(usuario => (
@@ -356,7 +355,7 @@ export default function ContenedorEdit({ auth, contenedor, errors: erroresSesion
                                                             </li>
                                                         ))
                                                     ) : (
-                                                        terminoBusqueda && <li className="px-4 py-2 text-sm text-gray-400">No se encontraron usuarios.</li>
+                                                        <li className="px-4 py-2 text-sm text-gray-400">No se encontraron usuarios.</li>
                                                     )}
                                                 </ul>
                                             )}

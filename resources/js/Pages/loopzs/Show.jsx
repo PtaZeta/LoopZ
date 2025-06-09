@@ -162,7 +162,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         });
     }, []);
     const contextMenuTimer = useRef(null);
-    const movil = window.innerWidth <= 768;
+    const isMobile = window.innerWidth <= 768;
 
 
     const urlImagenContenedor = contenedor?.imagen || obtenerUrlImagen(contenedor);
@@ -246,6 +246,45 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         const idsEnContenedor = new Set(contenedor?.canciones?.map(c => c.id) || []);
         return resultadosBusqueda.filter(c => !idsEnContenedor.has(c.id));
     }, [resultadosBusqueda, contenedor?.canciones]);
+    const manejarEliminarCancion = (pivotId) => {
+        if (!pivotId || eliminandoPivotId === pivotId) {
+            return;
+        }
+        const nombreRutaRemove = `${rutaBase}.canciones.remove`;
+        setEliminandoPivotId(pivotId);
+        router.delete(route(nombreRutaRemove, { contenedor: contenedor.id, pivotId: pivotId }), {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: (page) => {
+                if (page.props.contenedor?.canciones && Array.isArray(page.props.contenedor.canciones)) {
+                    page.props.contenedor.canciones.forEach(c => {
+                        if (typeof c.es_loopz ===
+                            'undefined') c.es_loopz = false;
+                    });
+                    setContenedor(prevContenedor => ({
+                        ...prevContenedor,
+                        canciones: page.props.contenedor.canciones,
+                        canciones_count: page.props.contenedor.canciones.length
+                    }));
+                } else {
+                    setContenedor(prevContenedor => ({
+                        ...prevContenedor,
+                        canciones: [],
+                        canciones_count: 0
+                    }));
+                }
+                setIsLiked(page.props.contenedor?.user_megusta ||
+                    false);
+                buscarCancionesApi(consultaBusqueda);
+                closeContextMenu();
+            },
+            onError: () => {
+            },
+            onFinish: () => {
+                setEliminandoPivotId(null);
+            },
+        });
+    };
     const manejarToggleCancion = (cancionId, playlistId) => {
         if (!cancionId || !playlistId) return;
         router.post(
@@ -523,15 +562,6 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         }
     }, [contextMenu.song, copiarAlPortapapeles, closeContextMenu]);
 
-    const openContainerContextMenu = useCallback((event) => {
-        const rect = event.currentTarget.getBoundingClientRect();
-        setContainerContextMenu({
-            show: true,
-            x: rect.left + window.scrollX,
-            y: rect.bottom + window.scrollY,
-        });
-    }, []);
-
     const handleCompartirContenedor = useCallback(() => {
         if (contenedor) {
             const containerUrl = route(`${rutaBase}.show`, contenedor.id);
@@ -595,7 +625,6 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             icon: <ShareIcon className="h-5 w-5" />,
             action: handleCompartirCancion,
         });
-
         return options;
     }, [
         contextMenu.song,
@@ -605,10 +634,36 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         handleCompartirCancion,
         contenedor?.can?.edit,
         tipoNombreMayuscula,
+        manejarEliminarCancion,
         eliminandoPivotId,
         añadirSiguiente,
         handleViewArtist
     ]);
+
+    const getContainerContextMenuOptions = useCallback(() => {
+        const options = [];
+        if (contenedor?.can?.edit) {
+            options.push({
+                label: `Editar ${tipoNombreMayuscula}`,
+                icon: <PencilIcon className="h-5 w-5" />,
+                action: handleEditContainer,
+            });
+        }
+        options.push({
+            label: `Compartir ${tipoNombreMayuscula}`,
+            icon: <ShareIcon className="h-5 w-5" />,
+            action: handleCompartirContenedor,
+        });
+        if (contenedor?.can?.delete) {
+            options.push({
+                label: `Eliminar ${tipoNombreMayuscula}`,
+                icon: <TrashIcon className="h-5 w-5" />,
+                action: handleDeleteContainer,
+            });
+        }
+        return options;
+    }, [contenedor, tipoNombreMayuscula, handleCompartirContenedor, handleEditContainer]);
+
 
     return (
         <AuthenticatedLayout user={auth.user}>
@@ -639,6 +694,14 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                 currentSong={contextMenu.song}
             />
 
+            <ContextMenu
+                x={containerContextMenu.x}
+                y={containerContextMenu.y}
+                show={containerContextMenu.show}
+                onClose={closeContainerContextMenu}
+                options={getContainerContextMenuOptions()}
+                isContainerMenu={true}
+            />
 
             <div className="py-12">
                 <div className="mx-auto max-w-6xl sm:px-6 lg:px-8">
@@ -698,7 +761,6 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                         {(likeProcessing === 'container') ? <LoadingIcon className="h-7 w-7 animate-spin text-purple-400" /> : (isLiked ? <HeartIconSolid className="h-7 w-7 text-purple-500" /> : <HeartIconOutline className="h-7 w-7" />)}
                                     </button>
                                 )}
-
                                 <button
                                     onClick={() => window.history.back()}
                                     className="inline-flex items-center px-4 py-2 border border-slate-600 rounded-full font-semibold text-xs text-gray-300 uppercase tracking-widest shadow-sm hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-25 transition ease-in-out duration-150"
@@ -711,7 +773,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
 
                     <div className="mt-10 p-6 md:p-8 bg-slate-800/80 backdrop-blur-sm shadow-inner rounded-lg border border-slate-700">
                         <h3 className="text-xl font-semibold mb-4 text-gray-100">
-                            Canciones ({contenedor?.canciones?.length || 0})
+                            Canciones en est{tipoContenedor === 'playlist' ? 'a' : 'e'} {tipoNombreMayuscula} ({contenedor?.canciones?.length || 0})
                         </h3>
                         {contenedor?.canciones && contenedor.canciones.length > 0 ?
                             (
@@ -721,7 +783,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                             key={cancion.pivot?.id ?? `fallback-${cancion.id}`}
                                             className={`p-2 bg-slate-700/60 rounded-md flex items-center space-x-3 hover:bg-purple-900/30 transition-colors duration-150 group cursor-pointer ${cancionActual?.id === cancion.id && (Reproduciendo || isPlayerLoading)
                                                 ? 'bg-purple-800/50 border border-purple-500' : ''}`}
-                                            onContextMenu={!movil ? (e) => openContextMenu(e, cancion) : undefined}
+                                            onContextMenu={!isMobile ? (e) => openContextMenu(e, cancion) : undefined}
                                             onDoubleClick={() => handleSongPlay(cancion, 'container')}
                                         >
                                             <button
@@ -764,7 +826,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                                     (cancion.es_loopz ? (<HeartIconSolid className="h-5 w-5 text-purple-500" />) : (<HeartIconOutline className="h-5 w-5" />))
                                                 }
                                             </button>
-                                            {movil && (
+                                            {isMobile && (
                                                 <button
                                                     onClick={(e) => openContextMenuMobile(e, cancion)}
                                                     className="p-1 text-gray-400 hover:text-gray-200 focus:outline-none"
@@ -780,7 +842,6 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                 <p className="text-gray-400 italic">Est{tipoContenedor === 'playlist' ? 'a' : 'e'} {tipoNombreMayuscula} aún no tiene canciones.</p>
                             )}
                     </div>
-
                 </div>
             </div>
             <Notificacion

@@ -102,44 +102,44 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
     const pagina = usePage();
     const { flash: mensajeFlash } = pagina.props;
 
-    const valorContextoReproductor = useContext(PlayerContext);
+    const playerContextValue = useContext(PlayerContext);
     const {
         cargarColaYIniciar = () => { },
-        reproducir = () => { },
-        pausar = () => { },
-        alternarAleatorio = () => { },
-        estaReproduciendo = false,
+        play = () => { },
+        pause = () => { },
+        toggleAleatorio = () => { },
+        Reproduciendo = false,
         aleatorio = false,
         cancionActual = null,
-        idFuente = null,
-        cargando: estaCargandoReproductor =
+        sourceId = null,
+        cargando: isPlayerLoading =
             false,
         añadirSiguiente = () => { },
-        colaReproductor = [],
-        indiceCancionActual
-    } = valorContextoReproductor ||
+        queue: playerQueue = [],
+        cancionActualIndex
+    } = playerContextValue ||
     {};
 
     const [contenedor, setContenedor] = useState(contenedorInicial);
-    const [estaEnMeGusta, setEstaEnMeGusta] = useState(contenedorInicial?.user_megusta || false);
+    const [isLiked, setIsLiked] = useState(contenedorInicial?.user_megusta || false);
     const [consultaBusqueda, setConsultaBusqueda] = useState('');
     const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
     const [estaBuscando, setEstaBuscando] = useState(false);
-    const [añadiendoCancionId, setAñadiendoCancionId] = useState(null);
+    const [anadiendoCancionId, setAnadiendoCancionId] = useState(null);
     const [eliminandoPivotId, setEliminandoPivotId] = useState(null);
-    const [procesandoMeGusta, setProcesandoMeGusta] = useState(null);
-    const longitudMinimaConsulta = 2;
+    const [likeProcessing, setLikeProcessing] = useState(null);
+    const minQueryLength = 2;
 
-    const [menuContexto, setMenuContexto] = useState({
-        mostrar: false,
+    const [contextMenu, setContextMenu] = useState({
+        show: false,
         x: 0,
         y: 0,
-        cancion: null,
+        song: null,
     });
     const [mostrarToast, setMostrarToast] = useState(false);
     const [mensajeToast, setMensajeToast] = useState('');
-    const [menuContextoContenedor, setMenuContextoContenedor] = useState({
-        mostrar: false,
+    const [containerContextMenu, setContainerContextMenu] = useState({
+        show: false,
         x: 0,
         y: 0,
     });
@@ -161,8 +161,8 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             }, 5000);
         });
     }, []);
-    const temporizadorMenuContexto = useRef(null);
-    const esMovil = window.innerWidth <= 768;
+    const contextMenuTimer = useRef(null);
+    const isMobile = window.innerWidth <= 768;
 
 
     const urlImagenContenedor = contenedor?.imagen || obtenerUrlImagen(contenedor);
@@ -192,14 +192,14 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             setEstaBuscando(false);
         }
     }, [contenedor?.id, rutaBase]);
-    const busquedaDebounceada = useCallback(debounce(buscarCancionesApi, 350), [buscarCancionesApi]);
+    const busquedaDebounced = useCallback(debounce(buscarCancionesApi, 350), [buscarCancionesApi]);
     const manejarCambioInputBusqueda = (e) => {
         const nuevaConsulta = e.target.value;
         setConsultaBusqueda(nuevaConsulta);
-        if (nuevaConsulta.length >= longitudMinimaConsulta) {
-            busquedaDebounceada(nuevaConsulta);
+        if (nuevaConsulta.length >= minQueryLength) {
+            busquedaDebounced(nuevaConsulta);
         } else {
-            busquedaDebounceada.cancel();
+            busquedaDebounced.cancel();
             setEstaBuscando(false);
             if (nuevaConsulta.length === 0) {
                 if (contenedor?.id && (tipoContenedor === 'playlist' || contenedor.can?.edit)) {
@@ -218,20 +218,20 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
         }
     }, [contenedor?.id, buscarCancionesApi, consultaBusqueda, tipoContenedor, contenedor?.can?.edit]);
     useEffect(() => {
-        const propiedadesContenedorActual = pagina.props.contenedor;
-        if (propiedadesContenedorActual && propiedadesContenedorActual.id === (contenedorInicial?.id || contenedor?.id)) {
-            if (JSON.stringify(propiedadesContenedorActual) !== JSON.stringify(contenedor)) {
-                if (!Array.isArray(propiedadesContenedorActual.canciones)) { propiedadesContenedorActual.canciones = []; }
-                propiedadesContenedorActual.canciones.forEach(c => { if (typeof c.es_loopz === 'undefined') c.es_loopz = false; });
-                setContenedor(propiedadesContenedorActual);
+        const currentContenedorProps = pagina.props.contenedor;
+        if (currentContenedorProps && currentContenedorProps.id === (contenedorInicial?.id || contenedor?.id)) {
+            if (JSON.stringify(currentContenedorProps) !== JSON.stringify(contenedor)) {
+                if (!Array.isArray(currentContenedorProps.canciones)) { currentContenedorProps.canciones = []; }
+                currentContenedorProps.canciones.forEach(c => { if (typeof c.es_loopz === 'undefined') c.es_loopz = false; });
+                setContenedor(currentContenedorProps);
             }
-            const estadoMeGustaProps = propiedadesContenedorActual?.user_megusta || false;
-            if (estadoMeGustaProps !== estaEnMeGusta) { setEstaEnMeGusta(estadoMeGustaProps); }
+            const likedStatusProps = currentContenedorProps?.user_megusta || false;
+            if (likedStatusProps !== isLiked) { setIsLiked(likedStatusProps); }
         } else if (contenedorInicial && !contenedor) {
             if (!Array.isArray(contenedorInicial.canciones)) { contenedorInicial.canciones = []; }
             contenedorInicial.canciones.forEach(c => { if (typeof c.es_loopz === 'undefined') c.es_loopz = false; });
             setContenedor(contenedorInicial);
-            setEstaEnMeGusta(contenedorInicial?.user_megusta || false);
+            setIsLiked(contenedorInicial?.user_megusta || false);
         }
 
         if (pagina.props.resultadosBusqueda && Array.isArray(pagina.props.resultadosBusqueda)) {
@@ -241,7 +241,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             }
         }
 
-    }, [pagina.props.contenedor, pagina.props.resultadosBusqueda, contenedor, contenedorInicial, estaEnMeGusta, consultaBusqueda]);
+    }, [pagina.props.contenedor, pagina.props.resultadosBusqueda, contenedor, contenedorInicial, isLiked, consultaBusqueda]);
     const resultadosFiltrados = useMemo(() => {
         const idsEnContenedor = new Set(contenedor?.canciones?.map(c => c.id) || []);
         return resultadosBusqueda.filter(c => !idsEnContenedor.has(c.id));
@@ -273,10 +273,10 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                         canciones_count: 0
                     }));
                 }
-                setEstaEnMeGusta(page.props.contenedor?.user_megusta ||
+                setIsLiked(page.props.contenedor?.user_megusta ||
                     false);
                 buscarCancionesApi(consultaBusqueda);
-                cerrarMenuContexto();
+                closeContextMenu();
             },
             onError: () => {
             },
@@ -285,7 +285,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             },
         });
     };
-    const manejarAlternarCancion = (cancionId, playlistId) => {
+    const manejarToggleCancion = (cancionId, playlistId) => {
         if (!cancionId || !playlistId) return;
         router.post(
             route('playlist.toggleCancion', {
@@ -296,16 +296,16 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             {
                 preserveScroll: true,
                 onSuccess: () => {
-                    cerrarMenuContexto();
+                    closeContextMenu();
                     router.reload({ only: ['contenedor', 'auth'] });
                 }
             }
         );
     };
 
-    const manejarAñadirCancion = (idCancion) => {
-        if (añadiendoCancionId === idCancion || !contenedor?.id) return;
-        setAñadiendoCancionId(idCancion);
+    const manejarAnadirCancion = (idCancion) => {
+        if (anadiendoCancionId === idCancion || !contenedor?.id) return;
+        setAnadiendoCancionId(idCancion);
         const nombreRutaAdd = `${rutaBase}.canciones.add`;
         router.post(route(nombreRutaAdd, contenedor.id), { cancion_id: idCancion, }, {
             preserveScroll: true,
@@ -328,50 +328,50 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                         canciones_count: prevContenedor?.canciones?.length || 0
                     }));
                 }
-                setEstaEnMeGusta(page.props.contenedor?.user_megusta || false);
+                setIsLiked(page.props.contenedor?.user_megusta || false);
                 startTransition(() => { setResultadosBusqueda(prev => prev.filter(cancion => cancion.id !== idCancion)); });
-                cerrarMenuContexto();
+                closeContextMenu();
             },
-            onFinish: () => setAñadiendoCancionId(null),
+            onFinish: () => setAnadiendoCancionId(null),
             onError: () => {
             },
         });
     };
 
-    const manejarAlternarCancionLoopz = (idCancion, estaEnLoopz) => {
-        if (!idCancion || procesandoMeGusta === idCancion) return;
-        setProcesandoMeGusta(idCancion);
+    const manejarCancionLoopzToggle = (songId, isInLoopz) => {
+        if (!songId || likeProcessing === songId) return;
+        setLikeProcessing(songId);
 
         setContenedor(prevContenedor => {
             if (!prevContenedor || !prevContenedor.canciones) return prevContenedor;
-            const nuevasCanciones = [...prevContenedor.canciones];
-            const indiceCancion = nuevasCanciones.findIndex(c => c.id === idCancion);
+            const newCanciones = [...prevContenedor.canciones];
+            const songIndex = newCanciones.findIndex(c => c.id === songId);
 
-            if (indiceCancion !== -1) {
-                nuevasCanciones[indiceCancion] = {
-                    ...nuevasCanciones[indiceCancion],
-                    es_loopz: !estaEnLoopz
+            if (songIndex !== -1) {
+                newCanciones[songIndex] = {
+                    ...newCanciones[songIndex],
+                    es_loopz: !isInLoopz
                 };
             }
             return {
                 ...prevContenedor,
-                canciones: nuevasCanciones
+                canciones: newCanciones
             };
         });
         setResultadosBusqueda(prevResultados => {
-            const nuevosResultados = [...prevResultados];
-            const indiceCancion = nuevosResultados.findIndex(c => c.id === idCancion);
+            const newResultados = [...prevResultados];
+            const songIndex = newResultados.findIndex(c => c.id === songId);
 
-            if (indiceCancion !== -1) {
-                nuevosResultados[indiceCancion] = {
-                    ...nuevosResultados[indiceCancion],
-                    es_loopz: !estaEnLoopz
+            if (songIndex !== -1) {
+                newResultados[songIndex] = {
+                    ...newResultados[songIndex],
+                    es_loopz: !isInLoopz
                 };
             }
 
-            return nuevosResultados;
+            return newResultados;
         });
-        router.post(route('cancion.loopz', { cancion: idCancion }), {}, {
+        router.post(route('cancion.loopz', { cancion: songId }), {}, {
             preserveScroll: true,
             preserveState: true,
             onSuccess: (page) => {
@@ -381,7 +381,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                     });
                     setContenedor(page.props.contenedor);
                 }
-                setEstaEnMeGusta(page.props.contenedor?.user_megusta || false);
+                setIsLiked(page.props.contenedor?.user_megusta || false);
 
 
                 if (page.props.resultadosBusqueda && Array.isArray(page.props.resultadosBusqueda)) {
@@ -392,36 +392,36 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             onError: () => {
                 setContenedor(prevContenedor => {
                     if (!prevContenedor || !prevContenedor.canciones) return prevContenedor;
-                    const nuevasCanciones = [...prevContenedor.canciones];
-                    const indiceCancion = nuevasCanciones.findIndex(c => c.id === idCancion);
-                    if (indiceCancion !== -1) {
-                        nuevasCanciones[indiceCancion] = { ...nuevasCanciones[indiceCancion], es_loopz: estaEnLoopz };
+                    const newCanciones = [...prevContenedor.canciones];
+                    const songIndex = newCanciones.findIndex(c => c.id === songId);
+                    if (songIndex !== -1) {
+                        newCanciones[songIndex] = { ...newCanciones[songIndex], es_loopz: isInLoopz };
                     }
-                    return { ...prevContenedor, canciones: nuevasCanciones };
+                    return { ...prevContenedor, canciones: newCanciones };
                 });
 
                 setResultadosBusqueda(prevResultados => {
-                    const nuevosResultados = [...prevResultados];
-                    const indiceCancion = nuevosResultados.findIndex(c => c.id === idCancion);
-                    if (indiceCancion !== -1) {
-                        nuevosResultados[indiceCancion] = { ...nuevosResultados[indiceCancion], es_loopz: estaEnLoopz };
+                    const newResultados = [...prevResultados];
+                    const songIndex = newResultados.findIndex(c => c.id === songId);
+                    if (songIndex !== -1) {
+                        newResultados[songIndex] = { ...newResultados[songIndex], es_loopz: isInLoopz };
                     }
-                    return nuevosResultados;
+                    return newResultados;
                 });
             },
             onFinish: () => {
-                setProcesandoMeGusta(null);
+                setLikeProcessing(null);
             },
         });
     };
-    const alternarLoopz = () => {
-        if (!contenedor?.id || procesandoMeGusta === 'contenedor') return;
-        setProcesandoMeGusta('contenedor');
+    const toggleLoopz = () => {
+        if (!contenedor?.id || likeProcessing === 'container') return;
+        setLikeProcessing('container');
         router.post(route('contenedores.toggle-loopz', { contenedor: contenedor.id }), {}, {
             preserveScroll: true,
             preserveState: true,
             onSuccess: (page) => {
-                setEstaEnMeGusta(page.props.contenedor?.user_megusta || false);
+                setIsLiked(page.props.contenedor?.user_megusta || false);
                 if (page.props.contenedor && JSON.stringify(page.props.contenedor) !== JSON.stringify(contenedor)) {
                     if (!Array.isArray(page.props.contenedor.canciones)) { page.props.contenedor.canciones = []; }
                     page.props.contenedor.canciones.forEach(c => { if (typeof c.es_loopz === 'undefined') c.es_loopz = false; });
@@ -430,15 +430,15 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             },
             onError: () => {
             },
-            onFinish: () => setProcesandoMeGusta(null),
+            onFinish: () => setLikeProcessing(null),
         });
     };
 
     const formatearDuracion = (segundos) => {
         if (isNaN(segundos) || segundos < 0) return 'N/A';
-        const minutos = Math.floor(segundos / 60);
-        const segundosRestantes = String(Math.floor(segundos % 60)).padStart(2, '0');
-        return `${minutos}:${segundosRestantes}`;
+        const minutes = Math.floor(segundos / 60);
+        const secondsRestantes = String(Math.floor(segundos % 60)).padStart(2, '0');
+        return `${minutes}:${secondsRestantes}`;
     };
     const artistas = useMemo(() => {
         return contenedor?.usuarios?.length > 0
@@ -456,231 +456,231 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
             ))
             : 'Artista Desconocido';
     }, [contenedor?.usuarios]);
-    const esFuenteActual = idFuente === contenedor?.id;
-    const mostrarBotonPausa = estaReproduciendo && esFuenteActual;
-    const manejarReproducirPausarPrincipal = () => {
-        if (mostrarBotonPausa) {
-            pausar();
+    const isCurrentSource = sourceId === contenedor?.id;
+    const showPauseButton = Reproduciendo && isCurrentSource;
+    const handleMainPlayPause = () => {
+        if (showPauseButton) {
+            pause();
         } else {
-            if (esFuenteActual && !estaReproduciendo && cancionActual) {
-                reproducir();
+            if (isCurrentSource && !Reproduciendo && cancionActual) {
+                play();
             } else if (contenedor?.canciones && contenedor.canciones.length > 0) {
                 cargarColaYIniciar(contenedor.canciones, { id: contenedor.id, iniciar: 0 });
             }
         }
     };
-    const manejarReproducirCancion = useCallback((cancion, fuente) => {
-        if (!cancion) return;
+    const handleSongPlay = useCallback((song, source) => {
+        if (!song) return;
 
-        const esCancionClicadaActual = cancionActual?.id === cancion.id;
+        const isClickedSongCurrent = cancionActual?.id === song.id;
 
-        if (estaReproduciendo && esCancionClicadaActual) {
-            pausar();
+        if (Reproduciendo && isClickedSongCurrent) {
+            pause();
         } else {
-            let colaCargar = [];
-            let indiceInicio =
+            let cargarCola = [];
+            let inicioIndex =
                 0;
-            let nuevoIdFuente = null;
+            let newSourceId = null;
 
-            if (fuente === 'contenedor' && contenedor?.canciones) {
-                colaCargar = contenedor.canciones;
-                indiceInicio = colaCargar.findIndex(s => s.id === cancion.id);
-                nuevoIdFuente = contenedor.id;
-            } else if (fuente === 'busqueda' && resultadosBusqueda) {
-                colaCargar = resultadosBusqueda;
-                indiceInicio = colaCargar.findIndex(s => s.id === cancion.id);
-                nuevoIdFuente = 'search-results';
+            if (source === 'container' && contenedor?.canciones) {
+                cargarCola = contenedor.canciones;
+                inicioIndex = cargarCola.findIndex(s => s.id === song.id);
+                newSourceId = contenedor.id;
+            } else if (source === 'search' && resultadosBusqueda) {
+                cargarCola = resultadosBusqueda;
+                inicioIndex = cargarCola.findIndex(s => s.id === song.id);
+                newSourceId = 'search-results';
             } else {
                 return;
             }
 
-            if (indiceInicio !== -1) {
-                cargarColaYIniciar(colaCargar, { iniciar: indiceInicio, id: nuevoIdFuente, clickDirecto: true });
+            if (inicioIndex !== -1) {
+                cargarColaYIniciar(cargarCola, { iniciar: inicioIndex, id: newSourceId, clickDirecto: true });
             } else {
             }
         }
-    }, [estaReproduciendo, cancionActual, cargarColaYIniciar, pausar, contenedor?.canciones, resultadosBusqueda]);
-    const abrirMenuContexto = useCallback((evento, cancion) => {
-        evento.preventDefault();
-        setMenuContexto({
-            mostrar: true,
-            x: evento.pageX,
-            y: evento.pageY,
-            cancion: cancion,
+    }, [Reproduciendo, cancionActual, cargarColaYIniciar, pause, contenedor?.canciones, resultadosBusqueda]);
+    const openContextMenu = useCallback((event, song) => {
+        event.preventDefault();
+        setContextMenu({
+            show: true,
+            x: event.pageX,
+            y: event.pageY,
+            song: song,
         });
     }, []);
 
-    const abrirMenuContextoMovil = useCallback((evento, cancion) => {
-        const rect = evento.currentTarget.getBoundingClientRect();
-        setMenuContexto({
-            mostrar: true,
+    const openContextMenuMobile = useCallback((event, song) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        setContextMenu({
+            show: true,
             x: rect.left + window.scrollX,
             y: rect.bottom + window.scrollY,
-            cancion: cancion,
+            song: song,
         });
     }, []);
 
-    const cerrarMenuContexto = useCallback(() => {
-        if (temporizadorMenuContexto.current) {
-            clearTimeout(temporizadorMenuContexto.current);
-            temporizadorMenuContexto.current = null;
+    const closeContextMenu = useCallback(() => {
+        if (contextMenuTimer.current) {
+            clearTimeout(contextMenuTimer.current);
+            contextMenuTimer.current = null;
         }
-        setMenuContexto({ ...menuContexto, mostrar: false, cancion: null });
-    }, [menuContexto]);
+        setContextMenu({ ...contextMenu, show: false, song: null });
+    }, [contextMenu]);
 
-    const cerrarMenuContextoContenedor = useCallback(() => {
-        setMenuContextoContenedor({ ...menuContextoContenedor, mostrar: false });
-    }, [menuContextoContenedor]);
+    const closeContainerContextMenu = useCallback(() => {
+        setContainerContextMenu({ ...containerContextMenu, show: false });
+    }, [containerContextMenu]);
 
-    const iniciarTemporizadorCierre = useCallback(() => {
-        temporizadorMenuContexto.current = setTimeout(cerrarMenuContexto, 100);
-    }, [cerrarMenuContexto]);
-    const cancelarTemporizadorCierre = useCallback(() => {
-        if (temporizadorMenuContexto.current) {
-            clearTimeout(temporizadorMenuContexto.current);
-            temporizadorMenuContexto.current = null;
+    const startCloseTimer = useCallback(() => {
+        contextMenuTimer.current = setTimeout(closeContextMenu, 100);
+    }, [closeContextMenu]);
+    const cancelCloseTimer = useCallback(() => {
+        if (contextMenuTimer.current) {
+            clearTimeout(contextMenuTimer.current);
+            contextMenuTimer.current = null;
         }
     }, []);
-    const manejarAñadirAColaSiguiente = useCallback(() => {
-        if (menuContexto.cancion && añadirSiguiente) {
-            añadirSiguiente(menuContexto.cancion);
-            cerrarMenuContexto();
+    const handleAddToQueueNext = useCallback(() => {
+        if (contextMenu.song && añadirSiguiente) {
+            añadirSiguiente(contextMenu.song);
+            closeContextMenu();
         }
-    }, [menuContexto.cancion, añadirSiguiente, cerrarMenuContexto]);
-    const manejarVerArtista = useCallback((artista) => {
-        if (artista?.id) {
-            router.visit(route('profile.show', artista.id));
-            cerrarMenuContexto();
+    }, [contextMenu.song, añadirSiguiente, closeContextMenu]);
+    const handleViewArtist = useCallback((artist) => {
+        if (artist?.id) {
+            router.visit(route('profile.show', artist.id));
+            closeContextMenu();
         }
-    }, [cerrarMenuContexto]);
+    }, [closeContextMenu]);
 
-    const manejarCompartirCancion = useCallback(() => {
-        if (menuContexto.cancion) {
-            const urlCancion = route('canciones.show', menuContexto.cancion.id);
-            copiarAlPortapapeles(urlCancion, 'URL de canción copiada');
-            cerrarMenuContexto();
+    const handleCompartirCancion = useCallback(() => {
+        if (contextMenu.song) {
+            const songUrl = route('canciones.show', contextMenu.song.id);
+            copiarAlPortapapeles(songUrl, 'URL de canción copiada');
+            closeContextMenu();
         }
-    }, [menuContexto.cancion, copiarAlPortapapeles, cerrarMenuContexto]);
+    }, [contextMenu.song, copiarAlPortapapeles, closeContextMenu]);
 
-    const abrirMenuContextoContenedor = useCallback((evento) => {
-        const rect = evento.currentTarget.getBoundingClientRect();
-        setMenuContextoContenedor({
-            mostrar: true,
+    const openContainerContextMenu = useCallback((event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        setContainerContextMenu({
+            show: true,
             x: rect.left + window.scrollX,
             y: rect.bottom + window.scrollY,
         });
     }, []);
 
-    const manejarCompartirContenedor = useCallback(() => {
+    const handleCompartirContenedor = useCallback(() => {
         if (contenedor) {
-            const urlContenedor = route(`${rutaBase}.show`, contenedor.id);
-            copiarAlPortapapeles(urlContenedor, `URL de ${tipoNombreMayuscula} copiada`);
-            cerrarMenuContextoContenedor();
+            const containerUrl = route(`${rutaBase}.show`, contenedor.id);
+            copiarAlPortapapeles(containerUrl, `URL de ${tipoNombreMayuscula} copiada`);
+            closeContainerContextMenu();
         }
-    }, [contenedor, rutaBase, tipoNombreMayuscula, copiarAlPortapapeles, cerrarMenuContextoContenedor]);
+    }, [contenedor, rutaBase, tipoNombreMayuscula, copiarAlPortapapeles, closeContainerContextMenu]);
 
-    const manejarEditarContenedor = useCallback(() => {
+    const handleEditContainer = useCallback(() => {
         if (contenedor?.can?.edit && contenedor?.id && rutaBase) {
             router.visit(route(`${rutaBase}.edit`, contenedor.id));
-            cerrarMenuContextoContenedor();
+            closeContainerContextMenu();
         }
-    }, [contenedor, rutaBase, cerrarMenuContextoContenedor]);
+    }, [contenedor, rutaBase, closeContainerContextMenu]);
 
-    const manejarEliminarContenedor = useCallback(() => {
+    const handleDeleteContainer = useCallback(() => {
         if (contenedor?.can?.delete && contenedor?.id && rutaBase) {
             router.delete(route(`${rutaBase}.destroy`, contenedor.id), {
-                onSuccess: () => cerrarMenuContextoContenedor(),
-                onFinish: () => cerrarMenuContextoContenedor(),
+                onSuccess: () => closeContainerContextMenu(),
+                onFinish: () => closeContainerContextMenu(),
             });
         }
-    }, [contenedor, rutaBase, cerrarMenuContextoContenedor]);
+    }, [contenedor, rutaBase, closeContainerContextMenu]);
 
-    const obtenerOpcionesMenuContexto = useCallback(() => {
-        if (!menuContexto.cancion) return [];
-        const opciones = [];
-        opciones.push({
+    const getContextMenuOptions = useCallback(() => {
+        if (!contextMenu.song) return [];
+        const options = [];
+        options.push({
             label: "Ver cancion",
             icon: <MusicalNoteIcon className="h-5 w-5" />,
             action: () => {
-                router.visit(route('canciones.show', menuContexto.cancion.id));
-                cerrarMenuContexto();
+                router.visit(route('canciones.show', contextMenu.song.id));
+                closeContextMenu();
             },
         });
 
-        opciones.push({
-            label: menuContexto.cancion.es_loopz ? "Quitar LoopZ" : "Añadir LoopZ",
-            action: () => manejarAlternarCancionLoopz(menuContexto.cancion.id, menuContexto.cancion.es_loopz),
+        options.push({
+            label: contextMenu.song.es_loopz ? "Quitar LoopZ" : "Añadir LoopZ",
+            action: () => manejarCancionLoopzToggle(contextMenu.song.id, contextMenu.song.es_loopz),
             icon: <HeartIconOutline className="h-5 w-5" />,
-            disabled: procesandoMeGusta === menuContexto.cancion.id,
+            disabled: likeProcessing === contextMenu.song.id,
         });
 
-        if (menuContexto.cancion.es_loopz) {
-            opciones[1].icon = <HeartIconSolid className="h-5 w-5 text-purple-500" />;
+        if (contextMenu.song.es_loopz) {
+            options[1].icon = <HeartIconSolid className="h-5 w-5 text-purple-500" />;
         }
 
-        opciones.push({
+        options.push({
             label: "Añadir a la cola",
-            action: manejarAñadirAColaSiguiente,
+            action: handleAddToQueueNext,
             icon: <QueueListIcon className="h-5 w-5" />,
             disabled: !añadirSiguiente,
         });
-        opciones.push({
+        options.push({
             label: "Añadir a playlist",
             icon: <ArrowUpOnSquareIcon className="h-5 w-5" />,
             submenu: 'userPlaylists',
         });
-        opciones.push({
+        options.push({
             label: "Compartir",
             icon: <ShareIcon className="h-5 w-5" />,
-            action: manejarCompartirCancion,
+            action: handleCompartirCancion,
         });
-        if (contenedor?.can?.edit && menuContexto.cancion.pivot?.id) {
-            opciones.push({
+        if (contenedor?.can?.edit && contextMenu.song.pivot?.id) {
+            options.push({
                 label: `Quitar de ${tipoNombreMayuscula}`,
-                action: () => manejarEliminarCancion(menuContexto.cancion.pivot.id),
+                action: () => manejarEliminarCancion(contextMenu.song.pivot.id),
                 icon: <TrashIcon className="h-5 w-5 text-red-500" />,
-                disabled: eliminandoPivotId === menuContexto.cancion.pivot.id,
+                disabled: eliminandoPivotId === contextMenu.song.pivot.id,
             });
         }
 
-        return opciones;
+        return options;
     }, [
-        menuContexto.cancion,
-        manejarAlternarCancionLoopz,
-        procesandoMeGusta,
-        manejarAñadirAColaSiguiente,
-        manejarCompartirCancion,
+        contextMenu.song,
+        manejarCancionLoopzToggle,
+        likeProcessing,
+        handleAddToQueueNext,
+        handleCompartirCancion,
         contenedor?.can?.edit,
         tipoNombreMayuscula,
         manejarEliminarCancion,
         eliminandoPivotId,
         añadirSiguiente,
-        manejarVerArtista
+        handleViewArtist
     ]);
 
-    const obtenerOpcionesMenuContextoContenedor = useCallback(() => {
-        const opciones = [];
+    const getContainerContextMenuOptions = useCallback(() => {
+        const options = [];
         if (contenedor?.can?.edit) {
-            opciones.push({
+            options.push({
                 label: `Editar ${tipoNombreMayuscula}`,
                 icon: <PencilIcon className="h-5 w-5" />,
-                action: manejarEditarContenedor,
+                action: handleEditContainer,
             });
         }
-        opciones.push({
+        options.push({
             label: `Compartir ${tipoNombreMayuscula}`,
             icon: <ShareIcon className="h-5 w-5" />,
-            action: manejarCompartirContenedor,
+            action: handleCompartirContenedor,
         });
         if (contenedor?.can?.delete) {
-            opciones.push({
+            options.push({
                 label: `Eliminar ${tipoNombreMayuscula}`,
                 icon: <TrashIcon className="h-5 w-5" />,
-                action: manejarEliminarContenedor,
+                action: handleDeleteContainer,
             });
         }
-        return opciones;
-    }, [contenedor, tipoNombreMayuscula, manejarCompartirContenedor, manejarEditarContenedor]);
+        return options;
+    }, [contenedor, tipoNombreMayuscula, handleCompartirContenedor, handleEditContainer]);
 
 
     return (
@@ -697,27 +697,27 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                 }
             ` }} />
             <ContextMenu
-                x={menuContexto.x}
-                y={menuContexto.y}
-                show={menuContexto.mostrar}
-                onClose={cerrarMenuContexto}
-                options={obtenerOpcionesMenuContexto()}
+                x={contextMenu.x}
+                y={contextMenu.y}
+                show={contextMenu.show}
+                onClose={closeContextMenu}
+                options={getContextMenuOptions()}
                 userPlaylists={(auth.user?.playlists || []).map(p => ({
                 id: p.id,
                 name: p.nombre,
                 imagen: p.imagen,
                 canciones: p.canciones || [],
-                action: () => manejarAlternarCancion(menuContexto.cancion?.id, p.id),
+                action: () => manejarToggleCancion(contextMenu.song?.id, p.id),
             }))}
-                currentSong={menuContexto.cancion}
+                currentSong={contextMenu.song}
             />
 
             <ContextMenu
-                x={menuContextoContenedor.x}
-                y={menuContextoContenedor.y}
-                show={menuContextoContenedor.mostrar}
-                onClose={cerrarMenuContextoContenedor}
-                options={obtenerOpcionesMenuContextoContenedor()}
+                x={containerContextMenu.x}
+                y={containerContextMenu.y}
+                show={containerContextMenu.show}
+                onClose={closeContainerContextMenu}
+                options={getContainerContextMenuOptions()}
                 isContainerMenu={true}
             />
 
@@ -754,15 +754,15 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                             </div>
                             <div className="flex items-center justify-center md:justify-start space-x-4">
                                 <button
-                                    onClick={manejarReproducirPausarPrincipal}
+                                    onClick={handleMainPlayPause}
                                     className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full font-semibold text-white shadow-lg hover:scale-105 transform transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-wait"
-                                    title={mostrarBotonPausa ? `Pausar ${tipoNombreMayuscula}` : `Reproducir ${tipoNombreMayuscula}`}
-                                    disabled={!contenedor?.canciones || contenedor.canciones.length === 0 || (estaCargandoReproductor && !estaReproduciendo && esFuenteActual)}
+                                    title={showPauseButton ? `Pausar ${tipoNombreMayuscula}` : `Reproducir ${tipoNombreMayuscula}`}
+                                    disabled={!contenedor?.canciones || contenedor.canciones.length === 0 || (isPlayerLoading && !Reproduciendo && isCurrentSource)}
                                 >
-                                    {estaCargandoReproductor && !estaReproduciendo && esFuenteActual ? <LoadingIcon className="h-7 w-7 animate-spin" /> : (mostrarBotonPausa ? <PauseIcon className="h-7 w-7" /> : <PlayIcon className="h-7 w-7" />)}
+                                    {isPlayerLoading && !Reproduciendo && isCurrentSource ? <LoadingIcon className="h-7 w-7 animate-spin" /> : (showPauseButton ? <PauseIcon className="h-7 w-7" /> : <PlayIcon className="h-7 w-7" />)}
                                 </button>
                                 <button
-                                    onClick={alternarAleatorio}
+                                    onClick={toggleAleatorio}
                                     className={`inline-flex items-center justify-center p-3 border border-slate-600 rounded-full font-semibold text-xs uppercase tracking-widest shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 transition ease-in-out duration-150 ${aleatorio ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-gray-300 hover:bg-slate-700'}`}
                                     title={aleatorio ? "Desactivar aleatorio" : "Activar aleatorio"}
                                     disabled={!contenedor?.canciones || contenedor.canciones.length === 0}
@@ -771,16 +771,16 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                 </button>
                                 {contenedor?.tipo === 'playlist' && auth.user && contenedor?.usuarios && !contenedor.usuarios.some(u => u.id === auth.user.id) && (
                                     <button
-                                        onClick={alternarLoopz}
-                                        disabled={procesandoMeGusta === 'contenedor' || !contenedor?.id}
-                                        className={`p-2 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${(procesandoMeGusta === 'contenedor') ? 'text-gray-500 cursor-wait' : 'text-gray-400 hover:text-purple-400'}`}
-                                        title={estaEnMeGusta ? `Quitar ${tipoNombreMayuscula} de LoopZ` : `Añadir ${tipoNombreMayuscula} a LoopZ`}
+                                        onClick={toggleLoopz}
+                                        disabled={likeProcessing === 'container' || !contenedor?.id}
+                                        className={`p-2 rounded-full transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${(likeProcessing === 'container') ? 'text-gray-500 cursor-wait' : 'text-gray-400 hover:text-purple-400'}`}
+                                        title={isLiked ? `Quitar ${tipoNombreMayuscula} de LoopZ` : `Añadir ${tipoNombreMayuscula} a LoopZ`}
                                     >
-                                        {(procesandoMeGusta === 'contenedor') ? <LoadingIcon className="h-7 w-7 animate-spin text-purple-400" /> : (estaEnMeGusta ? <HeartIconSolid className="h-7 w-7 text-purple-500" /> : <HeartIconOutline className="h-7 w-7" />)}
+                                        {(likeProcessing === 'container') ? <LoadingIcon className="h-7 w-7 animate-spin text-purple-400" /> : (isLiked ? <HeartIconSolid className="h-7 w-7 text-purple-500" /> : <HeartIconOutline className="h-7 w-7" />)}
                                     </button>
                                 )}
                                 <button
-                                    onClick={abrirMenuContextoContenedor}
+                                    onClick={openContainerContextMenu}
                                     className="p-3 border border-slate-600 rounded-full text-gray-300 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900"
                                     title="Opciones del contenedor"
                                 >
@@ -806,19 +806,19 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                     {contenedor.canciones.map((cancion, index) => (
                                         <li
                                             key={cancion.pivot?.id ?? `fallback-${cancion.id}`}
-                                            className={`p-2 bg-slate-700/60 rounded-md flex items-center space-x-3 hover:bg-purple-900/30 transition-colors duration-150 group cursor-pointer ${cancionActual?.id === cancion.id && (estaReproduciendo || estaCargandoReproductor)
+                                            className={`p-2 bg-slate-700/60 rounded-md flex items-center space-x-3 hover:bg-purple-900/30 transition-colors duration-150 group cursor-pointer ${cancionActual?.id === cancion.id && (Reproduciendo || isPlayerLoading)
                                                 ? 'bg-purple-800/50 border border-purple-500' : ''}`}
-                                            onContextMenu={!esMovil ? (e) => abrirMenuContexto(e, cancion) : undefined}
-                                            onDoubleClick={() => manejarReproducirCancion(cancion, 'contenedor')}
+                                            onContextMenu={!isMobile ? (e) => openContextMenu(e, cancion) : undefined}
+                                            onDoubleClick={() => handleSongPlay(cancion, 'container')}
                                         >
                                             <button
-                                                onClick={() => manejarReproducirCancion(cancion, 'contenedor')}
+                                                onClick={() => handleSongPlay(cancion, 'container')}
                                                 className="flex-shrink-0 text-gray-400 hover:text-blue-400 p-1 disabled:opacity-50 disabled:cursor-wait"
-                                                title={cancionActual?.id === cancion.id && estaReproduciendo ? `Pausar ${cancion.titulo}` : `Reproducir ${cancion.titulo}`}
-                                                disabled={estaCargandoReproductor && cancionActual?.id === cancion.id}
+                                                title={cancionActual?.id === cancion.id && Reproduciendo ? `Pausar ${cancion.titulo}` : `Reproducir ${cancion.titulo}`}
+                                                disabled={isPlayerLoading && cancionActual?.id === cancion.id}
                                             >
-                                                {estaCargandoReproductor && cancionActual?.id === cancion.id ? <LoadingIcon className="h-5 w-5 animate-spin text-blue-500" /> :
-                                                    (estaReproduciendo && cancionActual?.id === cancion.id) ? <PauseIcon className="h-5 w-5 text-blue-500" /> :
+                                                {isPlayerLoading && cancionActual?.id === cancion.id ? <LoadingIcon className="h-5 w-5 animate-spin text-blue-500" /> :
+                                                    (Reproduciendo && cancionActual?.id === cancion.id) ? <PauseIcon className="h-5 w-5 text-blue-500" /> :
                                                         <PlayIcon className="h-5 w-5" />
                                                 }
                                             </button>
@@ -841,19 +841,19 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                             </div>
                                             <span className="text-gray-400 text-xs pr-2 hidden sm:inline">{formatearDuracion(cancion.duracion)}</span>
                                             <button
-                                                onClick={() => manejarAlternarCancionLoopz(cancion.id, cancion.es_loopz)}
-                                                disabled={procesandoMeGusta === cancion.id}
-                                                className={`p-1 text-gray-400 hover:text-purple-400 focus:outline-none flex-shrink-0 ${procesandoMeGusta === cancion.id ? 'cursor-wait' : ''}`}
+                                                onClick={() => manejarCancionLoopzToggle(cancion.id, cancion.es_loopz)}
+                                                disabled={likeProcessing === cancion.id}
+                                                className={`p-1 text-gray-400 hover:text-purple-400 focus:outline-none flex-shrink-0 ${likeProcessing === cancion.id ? 'cursor-wait' : ''}`}
                                                 title={cancion.es_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ"}
                                             >
-                                                {procesandoMeGusta ===
+                                                {likeProcessing ===
                                                     cancion.id ? <LoadingIcon className="h-5 w-5 animate-spin text-purple-400" /> :
                                                     (cancion.es_loopz ? (<HeartIconSolid className="h-5 w-5 text-purple-500" />) : (<HeartIconOutline className="h-5 w-5" />))
                                                 }
                                             </button>
-                                            {esMovil && (
+                                            {isMobile && (
                                                 <button
-                                                    onClick={(e) => abrirMenuContextoMovil(e, cancion)}
+                                                    onClick={(e) => openContextMenuMobile(e, cancion)}
                                                     className="p-1 text-gray-400 hover:text-gray-200 focus:outline-none"
                                                     title="Opciones"
                                                 >
@@ -882,8 +882,8 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                 />
                             </div>
                             {estaBuscando && <p className="text-gray-400 italic text-center">Buscando...</p>}
-                            {!estaBuscando && consultaBusqueda && consultaBusqueda.length >= longitudMinimaConsulta && resultadosFiltrados.length === 0 && (<p className="text-gray-400 italic text-center pt-4">No se encontraron canciones que coincidan fuera de est{tipoContenedor === 'playlist' ? 'a' : 'e'} {tipoNombreMayuscula}.</p>)}
-                            {!estaBuscando && consultaBusqueda && consultaBusqueda.length < longitudMinimaConsulta && (<p className="text-gray-400 italic text-center pt-4">Escribe al menos {longitudMinimaConsulta} caracteres para buscar.</p>)}
+                            {!estaBuscando && consultaBusqueda && consultaBusqueda.length >= minQueryLength && resultadosFiltrados.length === 0 && (<p className="text-gray-400 italic text-center pt-4">No se encontraron canciones que coincidan fuera de est{tipoContenedor === 'playlist' ? 'a' : 'e'} {tipoNombreMayuscula}.</p>)}
+                            {!estaBuscando && consultaBusqueda && consultaBusqueda.length < minQueryLength && (<p className="text-gray-400 italic text-center pt-4">Escribe al menos {minQueryLength} caracteres para buscar.</p>)}
                             {!estaBuscando && !consultaBusqueda && resultadosFiltrados.length === 0 && contenedor?.canciones?.length > 0 && (<p className="text-gray-400 italic text-center pt-4">Todas las canciones disponibles ya están en est{tipoContenedor === 'playlist' ? 'a' : 'e'} {tipoNombreMayuscula}.</p>)}
                             {!estaBuscando && !consultaBusqueda && resultadosFiltrados.length === 0 && (!contenedor?.canciones || contenedor.canciones.length === 0) && (<p className="text-gray-400 italic text-center pt-4">No hay canciones disponibles para añadir.</p>)}
 
@@ -895,8 +895,8 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                             <li
                                                 key={c.id}
                                                 className="flex items-center justify-between p-2 hover:bg-blue-900/30 rounded space-x-3 group cursor-pointer"
-                                                onContextMenu={!esMovil ? (e) => abrirMenuContexto(e, c) : undefined}
-                                                onDoubleClick={() => manejarReproducirCancion(c, 'busqueda')}
+                                                onContextMenu={!isMobile ? (e) => openContextMenu(e, c) : undefined}
+                                                onDoubleClick={() => handleSongPlay(c, 'search')}
                                             >
                                                 <div className="flex items-center space-x-3 flex-grow overflow-hidden">
                                                     <ImagenItem url={obtenerUrlImagen(c)} titulo={c.titulo} className="w-10 h-10" iconoFallback={<MusicalNoteIcon className="h-5 w-5" />} />
@@ -917,27 +917,27 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                                 </div>
                                                 <div className="flex items-center space-x-2 flex-shrink-0">
                                                     <button
-                                                        onClick={() => manejarAlternarCancionLoopz(c.id, c.es_loopz)}
-                                                        disabled={procesandoMeGusta === c.id}
-                                                        className={`p-1 text-gray-400 hover:text-purple-400 focus:outline-none flex-shrink-0 ${procesandoMeGusta
+                                                        onClick={() => manejarCancionLoopzToggle(c.id, c.es_loopz)}
+                                                        disabled={likeProcessing === c.id}
+                                                        className={`p-1 text-gray-400 hover:text-purple-400 focus:outline-none flex-shrink-0 ${likeProcessing
                                                             === c.id ? 'cursor-wait' : ''}`}
                                                         title={c.es_loopz ? "Quitar de LoopZ" : "Añadir a LoopZ"}
                                                     >
-                                                        {procesandoMeGusta ===
+                                                        {likeProcessing ===
                                                             c.id ? <LoadingIcon className="h-5 w-5 animate-spin text-purple-400" /> :
                                                             (c.es_loopz ? (<HeartIconSolid className="h-5 w-5 text-purple-500" />) : (<HeartIconOutline className="h-5 w-5" />))
                                                         }
                                                     </button>
                                                     <button
-                                                        onClick={() => manejarAñadirCancion(c.id)}
-                                                        disabled={añadiendoCancionId === c.id}
-                                                        className={`ml-2 px-3 py-1 text-xs font-semibold rounded-md transition ease-in-out duration-150 flex-shrink-0 ${añadiendoCancionId === c.id ? 'bg-indigo-700 text-white cursor-wait opacity-75' : 'bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800'}`}
+                                                        onClick={() => manejarAnadirCancion(c.id)}
+                                                        disabled={anadiendoCancionId === c.id}
+                                                        className={`ml-2 px-3 py-1 text-xs font-semibold rounded-md transition ease-in-out duration-150 flex-shrink-0 ${anadiendoCancionId === c.id ? 'bg-indigo-700 text-white cursor-wait opacity-75' : 'bg-gradient-to-r from-purple-500 to-blue-500 text-white hover:from-purple-600 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800'}`}
                                                     >
-                                                        {añadiendoCancionId === c.id ? '...' : 'Añadir'}
+                                                        {anadiendoCancionId === c.id ? '...' : 'Añadir'}
                                                     </button>
-                                                    {esMovil && (
+                                                    {isMobile && (
                                                         <button
-                                                            onClick={(e) => abrirMenuContextoMovil(e, c)}
+                                                            onClick={(e) => openContextMenuMobile(e, c)}
                                                             className="p-1 text-gray-400 hover:text-gray-200 focus:outline-none"
                                                             title="Opciones"
                                                         >

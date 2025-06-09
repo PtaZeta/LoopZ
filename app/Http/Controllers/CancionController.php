@@ -412,7 +412,6 @@ class CancionController extends Controller
             return null;
 
         } catch (\Exception $e) {
-            Log::error('Error parsing S3 URL path: ' . $e->getMessage(), ['url' => $url]);
             return null;
         }
     }

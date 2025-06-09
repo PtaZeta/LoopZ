@@ -57,7 +57,7 @@ class ProfileController extends Controller
         $loopzSongIds = $usuarioAuth ? $this->getLoopZUsuario($usuarioAuth) : [];
 
         $consultaCanciones->each(function ($cancion) use ($loopzSongIds) {
-            $cancion->loopz_user = in_array($cancion->id, $loopzSongIds);
+            $cancion->es_loopz = in_array($cancion->id, $loopzSongIds);
         });
 
         $contenedoresBaseQuery = $usuario->perteneceContenedores()

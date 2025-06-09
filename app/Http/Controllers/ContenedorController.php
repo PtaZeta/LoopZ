@@ -451,7 +451,6 @@ class ContenedorController extends Controller
         $minimoBusqueda = 1;
         $limite = 30;
 
-
         $idsCancionesExistentes = [];
         if (in_array($contenedor->tipo, ['album', 'ep', 'single'])) {
             $idsCancionesExistentes = $contenedor->canciones()->pluck('canciones.id')->all();
@@ -468,7 +467,16 @@ class ContenedorController extends Controller
                 }
             });
 
-        if (!empty($idsCancionesExistentes)) {
+        if (in_array($contenedor->tipo, ['album', 'ep', 'single'])) {
+            $idsUsuariosContenedor = $contenedor->usuarios()->pluck('users.id')->all();
+            if ($idsUsuariosContenedor) {
+                $consultaCanciones->whereHas('usuarios', function ($q) use ($idsUsuariosContenedor) {
+                    $q->whereIn('users.id', $idsUsuariosContenedor);
+                });
+            }
+        }
+
+        if ($idsCancionesExistentes) {
             $consultaCanciones->whereNotIn('canciones.id', $idsCancionesExistentes);
         }
 
@@ -490,6 +498,7 @@ class ContenedorController extends Controller
 
         return response()->json($resultados);
     }
+
 
     public function anadirCancion(Request $peticion, Contenedor $contenedor)
     {
