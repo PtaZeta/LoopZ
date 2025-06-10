@@ -304,7 +304,6 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
     };
 
     const manejarAnadirCancion = (idCancion) => {
-        console.log(idCancion);
         if (anadiendoCancionId === idCancion || !contenedor?.id) return;
         setAnadiendoCancionId(idCancion);
         const nombreRutaAdd = `${rutaBase}.canciones.add`;
@@ -770,7 +769,7 @@ export default function ContenedorShow({ auth, contenedor: contenedorInicial }) 
                                 >
                                     <ShuffleIcon className="h-6 w-6" />
                                 </button>
-                                {contenedor?.tipo === 'playlist' && auth.user && contenedor?.usuarios && !contenedor.usuarios.some(u => u.id === auth.user.id) && (
+                                {auth.user && contenedor?.usuarios && !contenedor.usuarios.some(u => u.id === auth.user.id) && (
                                     <button
                                         onClick={toggleLoopz}
                                         disabled={likeProcessing === 'container' || !contenedor?.id}

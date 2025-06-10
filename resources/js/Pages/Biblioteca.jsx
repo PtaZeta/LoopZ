@@ -213,10 +213,10 @@ MostrarLista.propTypes = {
     tipoPredeterminado: PropTypes.string,
 };
 
-export default function MiBiblioteca({ auth, playlists = [], contenedoresLoopz = [], lanzamientos = [] }) {
+export default function MiBiblioteca({ auth, playlists = [], loopzContenedores = [], lanzamientos = [] }) {
     const idUsuarioLogueado = auth.user.id;
     const arrayPlaylists = Array.isArray(playlists) ? playlists : [];
-    const arrayContenedoresLoopz = Array.isArray(contenedoresLoopz) ? contenedoresLoopz : [];
+    const arrayContenedoresLoopz = Array.isArray(loopzContenedores) ? loopzContenedores : [];
     const arrayLanzamientos = Array.isArray(lanzamientos) ? lanzamientos : [];
 
     const [mostrarModalCrearPlaylist, setMostrarModalCrearPlaylist] = useState(false);
@@ -295,6 +295,6 @@ export default function MiBiblioteca({ auth, playlists = [], contenedoresLoopz =
 MiBiblioteca.propTypes = {
     auth: PropTypes.object.isRequired,
     playlists: PropTypes.array,
-    contenedoresLoopz: PropTypes.array,
+    loopzContenedores: PropTypes.array,
     lanzamientos: PropTypes.array,
 };
